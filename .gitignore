@@ -1,2 +1,8 @@
 ./build
 /build
+
+\.idea/
+
+cmake-build-debug/CMakeFiles/
+
+cmake-build-debug/
