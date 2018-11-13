@@ -23,11 +23,9 @@ void detectionsPoseCallback(const geometry_msgs::PoseArray::ConstPtr& input){
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr& input){
     // todo: save to file instead of this
-    for(const apriltags_ros::AprilTagDetection& tag : input->detections) {
+    for(apriltags_ros::AprilTagDetection tag : input->detections) {
                     std::vector<double> temp = std::vector<double>();
-                    //todo figure out why i need to do this with the ID
                     double idt = tag.id;
-                    ROS_INFO_STREAM(idt);
                     temp.push_back(idt);
                     temp.push_back(tag.size);
                     temp.push_back(tag.pose.pose.orientation.x);
