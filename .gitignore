@@ -1,8 +1,25 @@
 ./build
 /build
-
 \.idea/
 
 cmake-build-debug/CMakeFiles/
 
+
+
+
+
 cmake-build-debug/
+apriltags_ros
+arena_collision
+challenge_arena
+CMakeLists.txt
+common-sensors
+gazebo-pkgs
+gazebo_ros_link_attacher
+general-message-pkgs
+hw1_perception
+marrtino_navigation
+robotiq
+universal_robot
+ur10_platform_challenge_moveit_config
+ur_modern_driver
