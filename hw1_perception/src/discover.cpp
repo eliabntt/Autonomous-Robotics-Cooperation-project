@@ -1,5 +1,7 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "ros/package.h"
+
 #include <fstream>
 
 #include <geometry_msgs/Pose.h>
@@ -42,29 +44,26 @@ void detectionsPoseCallback(const geometry_msgs::PoseArray::ConstPtr &input) {
 
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
-    // todo: save to file instead of this
-    ROS_INFO_STREAM("CACCA");
-    fstream output_file("~/Desktop/test.txt");
-    output_file.open;
-    output_file << "debug write\n";
+    std::string file_path = ros::package::getPath("hw1_perception")+"/output.txt";
+    std::fstream output_file(file_path, std::fstream::out);
+    if (!(output_file.is_open())){
+        ROS_INFO_STREAM("error: failed opening file, data won't be saved");
+    }
+    output_file << "detected frames:\n";
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         std::vector<double> temp = std::vector<double>();
-        double idt = tag.id;
-        if (std::find(params.begin(), params.end(), tagnames[int(idt)]) != params.end()) {
+        int idt = int(tag.id);
+        if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             ROS_INFO_STREAM(idt);
-            temp.push_back(idt);
-            temp.push_back(tag.size);
-            temp.push_back(tag.pose.pose.orientation.x);
-            temp.push_back(tag.pose.pose.orientation.y);
-            temp.push_back(tag.pose.pose.orientation.z);
-            temp.push_back(tag.pose.pose.orientation.w);
-            temp.push_back(tag.pose.pose.position.x);
-            temp.push_back(tag.pose.pose.position.y);
-            temp.push_back(tag.pose.pose.position.z);
-            for(int i = 0; i <  temp.size(); i++){
-                output_file << std::to_string(temp[i]) << "\n";
-            }
-            output_file << "--------\n"
+            output_file << "tag " << idt << " name: " << tagnames[idt] << "\n";
+            output_file << "    size: " << tag.size << "\n";
+            output_file << "    orientation: x=" << tag.pose.pose.orientation.x
+                << " y= " << tag.pose.pose.orientation.y
+                << " z= " << tag.pose.pose.orientation.z
+                << " w= " << tag.pose.pose.orientation.w << "\n";
+            output_file << "    position: x=" << tag.pose.pose.position.x
+                << " y= " << tag.pose.pose.position.y
+                << " z= " << tag.pose.pose.position.z << "\n";
         }
     }
     output_file.close();
