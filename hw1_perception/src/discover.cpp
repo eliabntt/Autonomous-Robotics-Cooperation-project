@@ -6,7 +6,7 @@
 #include <apriltags_ros/AprilTagDetectionArray.h>
 
 std::vector<std::string> params;
-std::vector<std::string> tagnames = {
+const std::vector<std::string> tagnames = {
         "red_cube_1",
         "red_cube_2",
         "red_cube_3",
@@ -24,6 +24,7 @@ std::vector<std::string> tagnames = {
         "red_triangle_2",
         "red_triangle_3"
 };
+bool stop = false;
 
 void detectionsPoseCallback(const geometry_msgs::PoseArray::ConstPtr &input) {
     // todo: save to file instead of this
@@ -42,7 +43,6 @@ void detectionsPoseCallback(const geometry_msgs::PoseArray::ConstPtr &input) {
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // todo: save to file instead of this
-    ROS_INFO_STREAM("CACCA");
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         std::vector<double> temp = std::vector<double>();
         double idt = tag.id;
@@ -59,11 +59,13 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             temp.push_back(tag.pose.pose.position.z);
         }
     }
+    stop = true;
 }
 
 int main(int argc, char *argv[]) {
 
     ros::init(argc, argv, "discover");
+
 
     if (argc == 1)
         params = tagnames;
@@ -79,7 +81,9 @@ int main(int argc, char *argv[]) {
     ros::NodeHandle n;
     ros::Subscriber sub_comprehensive = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 1,
                                                                                            detectionsCallback);
-//todo see why spinonce() not working
-    ros::spin();
+
+    while (ros::ok() && !stop) {
+        ros::spinOnce();
+    }
     return 0;
 }
