@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include <fstream>
 
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseArray.h>
@@ -43,6 +44,9 @@ void detectionsPoseCallback(const geometry_msgs::PoseArray::ConstPtr &input) {
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // todo: save to file instead of this
     ROS_INFO_STREAM("CACCA");
+    fstream output_file("~/Desktop/test.txt");
+    output_file.open;
+    output_file << "debug write\n";
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         std::vector<double> temp = std::vector<double>();
         double idt = tag.id;
@@ -57,8 +61,13 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             temp.push_back(tag.pose.pose.position.x);
             temp.push_back(tag.pose.pose.position.y);
             temp.push_back(tag.pose.pose.position.z);
+            for(int i = 0; i <  temp.size(); i++){
+                output_file << std::to_string(temp[i]) << "\n";
+            }
+            output_file << "--------\n"
         }
     }
+    output_file.close();
 }
 
 int main(int argc, char *argv[]) {
