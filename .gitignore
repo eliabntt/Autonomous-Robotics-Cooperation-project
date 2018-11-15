@@ -1,23 +1,14 @@
-./build
-/build
-\.idea/
-
-cmake-build-debug/CMakeFiles/
-
 CMakeLists.txt
 
-
-
-cmake-build-debug/
+.idea
 apriltags_ros
 arena_collision
 challenge_arena
-CMakeLists.txt
+cmake-build-debug
 common-sensors
 gazebo-pkgs
 gazebo_ros_link_attacher
 general-message-pkgs
-hw1_perception
 marrtino_navigation
 robotiq
 universal_robot
