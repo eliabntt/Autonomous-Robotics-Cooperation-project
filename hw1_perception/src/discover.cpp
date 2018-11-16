@@ -90,7 +90,6 @@ int main(int argc, char *argv[]) {
     tograb = n.advertise<apriltags_ros::AprilTagDetection>("to_grab", 1000);
     toavoid = n.advertise<apriltags_ros::AprilTagDetection>("to_avoid", 1000);
 
-    ROS_INFO_STREAM("ciao");
     ros::Rate rate(4);
 
     if (forever)
