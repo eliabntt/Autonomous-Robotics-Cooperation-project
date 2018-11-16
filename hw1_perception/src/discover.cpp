@@ -76,7 +76,8 @@ int main(int argc, char *argv[]) {
             else if (argv[i] == std::string("forever")) {
                 ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
                 forever = true;
-                params = tagnames;
+                if(argc == 2)
+                    params = tagnames;
             } else
                 ROS_INFO_STREAM(argv[i] << " is NOT a valid tag or keyword");
     }
