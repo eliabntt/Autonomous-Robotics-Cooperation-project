@@ -34,7 +34,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     std::string file_path = ros::package::getPath("hw1_perception") + "/output.txt";
     std::fstream output_file(file_path, std::fstream::out);
     if (!(output_file.is_open()))
-        ROS_INFO_STREAM("ERROR: failure opening file, data won't be saved");
+        ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
 
     output_file << "Detected frames, w.r.t. Kinect reference frame:\n";
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
@@ -60,7 +60,6 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 }
 
 int main(int argc, char *argv[]) {
-    ros::init(argc, argv, "discover");
 
     if (argc == 1) {
         ROS_INFO_STREAM("No parameters passed. Detecting all possible tags");
@@ -76,6 +75,8 @@ int main(int argc, char *argv[]) {
             } else
                 ROS_INFO_STREAM(argv[i] << " is NOT a valid tag or keyword");
     }
+
+    ros::init(argc, argv, "discover");
 
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 1, detectionsCallback);
