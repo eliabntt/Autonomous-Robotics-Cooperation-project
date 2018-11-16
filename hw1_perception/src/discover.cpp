@@ -5,7 +5,6 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "apriltags_ros/AprilTagDetectionArray.h"
-#include <unistd.h>
 
 std::vector<std::string> params;
 const std::vector<std::string> tagnames = {
@@ -28,9 +27,11 @@ const std::vector<std::string> tagnames = {
 };
 bool stop = false;
 bool forever = false;
+ros::Publisher tograb, toavoid;
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // set output file name and open a stream on it
+
     std::string file_path = ros::package::getPath("hw1_perception") + "/output.txt";
     std::fstream output_file(file_path, std::fstream::out);
     if (!(output_file.is_open()))
@@ -53,6 +54,9 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             output_file << "    position: x = " << tag.pose.pose.position.x
                         << "  y = " << tag.pose.pose.position.y
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
+            tograb.publish(tag);
+        } else {
+            toavoid.publish(tag);
         }
     }
     output_file.close();
@@ -72,6 +76,7 @@ int main(int argc, char *argv[]) {
             else if (argv[i] == std::string("forever")) {
                 ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
                 forever = true;
+                params = tagnames;
             } else
                 ROS_INFO_STREAM(argv[i] << " is NOT a valid tag or keyword");
     }
@@ -81,18 +86,23 @@ int main(int argc, char *argv[]) {
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
+    tograb = n.advertise<apriltags_ros::AprilTagDetection>("to_grab", 1000);
+    toavoid = n.advertise<apriltags_ros::AprilTagDetection>("to_avoid", 1000);
+
+    ROS_INFO_STREAM("ciao");
+    ros::Rate rate(4);
 
     if (forever)
         while (ros::ok()) {
             ros::spinOnce();
-            usleep(250 * 1000); //four sample per second
+            rate.sleep();
         }
     else {
         // a single spinOnce call won't work, so repeating the call
         // until first detection message arrives, then stop
         while (ros::ok() && !stop) {
             ros::spinOnce();
-            usleep(25 * 1000);
+            rate.sleep();
         }
     }
 
