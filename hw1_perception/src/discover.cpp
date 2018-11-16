@@ -2,13 +2,13 @@
 
 #include "ros/ros.h"
 #include "ros/package.h"
-#include "std_msgs/String.h" // todo maybe unused
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "apriltags_ros/AprilTagDetectionArray.h"
+#include <unistd.h>
 
-std::vector <std::string> params;
-const std::vector <std::string> tagnames = {
+std::vector<std::string> params;
+const std::vector<std::string> tagnames = {
         "red_cube_1",
         "red_cube_2",
         "red_cube_3",
@@ -79,15 +79,21 @@ int main(int argc, char *argv[]) {
     ros::init(argc, argv, "discover");
 
     ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 1, detectionsCallback);
+    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
+                                                                             detectionsCallback);
 
     if (forever)
-        ros::spin();
+        while (ros::ok()) {
+            ros::spinOnce();
+            usleep(250 * 1000); //four sample per second
+        }
     else {
         // a single spinOnce call won't work, so repeating the call
         // until first detection message arrives, then stop
-        while (ros::ok() && !stop)
+        while (ros::ok() && !stop) {
             ros::spinOnce();
+            usleep(25 * 1000);
+        }
     }
 
     return 0;
