@@ -5,6 +5,9 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "apriltags_ros/AprilTagDetectionArray.h"
+#include "tf2_ros/transform_listener.h"
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 
 std::vector<std::string> params;
 const std::vector<std::string> tagnames = {
@@ -29,6 +32,18 @@ bool stop = false;
 bool forever = false;
 ros::Publisher tograb, toavoid;
 
+geometry_msgs::TransformStamped transform(std::string from, std::string to) {
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener(tfBuffer);
+    try {
+        return tfBuffer.lookupTransform(to, from, ros::Time(0), ros::Duration(10)); //Time(0) latest
+    } catch (tf2::TransformException &exception) {
+        ROS_WARN("%s", exception.what());
+        ros::Duration(1.0).sleep();
+    }
+    return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));;
+}
+
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // set output file name and open a stream on it
 
@@ -38,11 +53,18 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
 
     output_file << "Detected frames, w.r.t. Kinect reference frame:\n";
+
+    //todo check this (from and to frames)
+    geometry_msgs::TransformStamped transformStamped = transform("base_link","camera_rgb_frame");
+
+
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         int idt = (int) tag.id;
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM(idt);
+
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, transformStamped);
 
             output_file << "tag id: " << idt << std::endl
                         << "frame id: " << tagnames[idt] << std::endl;
@@ -64,6 +86,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 }
 
 int main(int argc, char *argv[]) {
+    ros::init(argc, argv, "discover");
 
     if (argc == 1) {
         ROS_INFO_STREAM("No parameters passed. Detecting all possible tags");
@@ -72,17 +95,16 @@ int main(int argc, char *argv[]) {
         for (int i = 1; i < argc; i++)
             // for each parameter, check if it is a frame id and save it in a list
             if (std::find(tagnames.begin(), tagnames.end(), argv[i]) != tagnames.end())
-                params.push_back(argv[i]);
+                params.emplace_back(argv[i]);
             else if (argv[i] == std::string("forever")) {
                 ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
                 forever = true;
-                if(argc == 2)
+                if (argc == 2)
                     params = tagnames;
             } else
                 ROS_INFO_STREAM(argv[i] << " is NOT a valid tag or keyword");
     }
 
-    ros::init(argc, argv, "discover");
 
     ros::NodeHandle n;
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
@@ -106,5 +128,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    ros::waitForShutdown();
     return 0;
 }
