@@ -16,7 +16,6 @@ const std::vector<std::string> tagnames = {
         "red_triangle_1", "red_triangle_2", "red_triangle_3"
 };
 
-bool stop = false;
 bool forever = false;
 ros::Publisher tograb, toavoid;
 
@@ -86,7 +85,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         }
     }
     output_file.close();
-    stop = true;  // useless in forever mode
+
     if (!forever) // exit if in single-shot mode
         ros::shutdown();
 }
@@ -119,22 +118,14 @@ int main(int argc, char *argv[]) {
     tograb = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_grab", 1000);
     toavoid = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_avoid", 1000);
 
+    // in single-shot mode, a single spinOnce call won't work,
+    // so repeat it until first detection message arrives, then stop
+    // in forever mode, rate will be maintained
     ros::Rate rate(4); // expressed in Hz
-
-    if (forever)
-        while (ros::ok()) {
-            ros::spinOnce();
-            rate.sleep();
-        }
-    else {
-        // a single spinOnce call won't work, so repeating the call
-        // until first detection message arrives, then stop
-        while (ros::ok() && !stop) {
-            ros::spinOnce();
-            rate.sleep();
-        }
+    while (ros::ok()) {
+        ros::spinOnce();
+        rate.sleep();
     }
 
-    ros::waitForShutdown();
     return 0;
 }
