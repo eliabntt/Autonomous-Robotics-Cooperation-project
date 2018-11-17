@@ -32,14 +32,16 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
 }
 
 apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag) {
-
+    // get transform between object and camera
     geometry_msgs::TransformStamped tagTransform = transform(tagnames[tag.id], "camera_rgb_optical_frame");
 
+    // offset vector
     geometry_msgs::Vector3Stamped offset;
     offset.vector.x = (tag.size) / 2; // todo: check if the values make sense (orientation-wise)
     offset.vector.y = (tag.size) / 2;
     offset.vector.z = 0;
 
+    // apply offset
     geometry_msgs::Vector3Stamped newPosition;
     tf2::doTransform(offset, newPosition, tagTransform);
     tag.pose.pose.position.x = newPosition.vector.x;
@@ -68,7 +70,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         int idt = (int) tag.id;
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
-            ROS_INFO_STREAM(idt);
+            ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
             output_file << "tag id: " << idt << std::endl
                         << "frame id: " << tagnames[idt] << std::endl;
             output_file << "    size: " << tag.size << std::endl;
@@ -80,9 +82,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
                         << "  y = " << tag.pose.pose.position.y
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
             tograb.publish(tag);
-        } else {
+        } else
             toavoid.publish(tag);
-        }
     }
     output_file.close();
 
@@ -113,8 +114,7 @@ int main(int argc, char *argv[]) {
     }
 
     ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
-                                                                             detectionsCallback);
+    n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100, detectionsCallback);
     tograb = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_grab", 1000);
     toavoid = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_avoid", 1000);
 
