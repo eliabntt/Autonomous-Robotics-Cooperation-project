@@ -46,7 +46,7 @@ geometry_msgs::TransformStamped transform(std::string from, std::string to) {
 
 apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag){
 
-    geometry_msgs::TransformStamped tagTransform = transform(tagnames[tag.id], "camera_rgb_frame");
+    geometry_msgs::TransformStamped tagTransform = transform(tagnames[tag.id], "camera_rgb_optical_frame");
 
     geometry_msgs::Vector3Stamped offset;
     offset.vector.x = (tag.size)/2;// todo: check if the values make sense (orientation-wise)
@@ -73,7 +73,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     output_file << "Detected frames, w.r.t. Kinect reference frame:\n";
 
     //todo check this (from and to frames)
-    geometry_msgs::TransformStamped transformStamped = transform("base_link","camera_rgb_frame");
+    geometry_msgs::TransformStamped transformStamped = transform("base_link","camera_rgb_optical_frame");
 
 
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
@@ -81,8 +81,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM(idt);
-            tf2::doTransform(tag.pose.pose, tag.pose.pose, transformStamped);
             tag = addOffset(tag);
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, transformStamped);
             output_file << "tag id: " << idt << std::endl
                         << "frame id: " << tagnames[idt] << std::endl;
             output_file << "    size: " << tag.size << std::endl; // todo FR is this value important?
@@ -95,6 +95,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
             tograb.publish(tag);
         } else {
+            tag = addOffset(tag);
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, transformStamped);
             toavoid.publish(tag);
         }
     }
