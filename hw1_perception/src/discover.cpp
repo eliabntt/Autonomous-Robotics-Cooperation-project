@@ -8,7 +8,6 @@
 #include "tf2_ros/transform_listener.h"
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
-
 std::vector<std::string> params;
 const std::vector<std::string> tagnames = {
         "red_cube_1",
@@ -28,6 +27,7 @@ const std::vector<std::string> tagnames = {
         "red_triangle_2",
         "red_triangle_3"
 };
+
 bool stop = false;
 bool forever = false;
 ros::Publisher tograb, toavoid;
@@ -41,8 +41,26 @@ geometry_msgs::TransformStamped transform(std::string from, std::string to) {
         ROS_WARN("%s", exception.what());
         ros::Duration(1.0).sleep();
     }
-    return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));;
+    return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));
 }
+
+apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag){
+
+    geometry_msgs::TransformStamped tagTransform = transform(tagnames[tag.id], "camera_rgb_frame");
+
+    geometry_msgs::Vector3Stamped offset;
+    offset.vector.x = (tag.size)/2;// todo: check if the values make sense (orientation-wise)
+    offset.vector.y = (tag.size)/2;
+    offset.vector.z = 0;
+
+    geometry_msgs::Vector3Stamped newPosition;
+    tf2::doTransform(offset, newPosition, tagTransform);
+    tag.pose.pose.position.x = newPosition.vector.x;
+    tag.pose.pose.position.y = newPosition.vector.y;
+    tag.pose.pose.position.z = newPosition.vector.z;
+    return tag;
+}
+
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // set output file name and open a stream on it
@@ -63,9 +81,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM(idt);
-
             tf2::doTransform(tag.pose.pose, tag.pose.pose, transformStamped);
-
+            tag = addOffset(tag);
             output_file << "tag id: " << idt << std::endl
                         << "frame id: " << tagnames[idt] << std::endl;
             output_file << "    size: " << tag.size << std::endl; // todo FR is this value important?
