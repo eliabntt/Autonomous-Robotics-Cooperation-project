@@ -64,18 +64,17 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 
     geometry_msgs::PoseArray poseGrab, poseAvoid, poseMine;
     poseGrab.header.stamp = ros::Time::now();
-    poseGrab.header.frame_id = "/camera_rgb_optical_frame";
+    poseGrab.header.frame_id = "/base_link";
     poseAvoid.header.stamp = ros::Time::now();
-    poseAvoid.header.frame_id = "/camera_rgb_optical_frame";
+    poseAvoid.header.frame_id = "/base_link";
     poseMine.header.stamp = ros::Time::now();
-    poseMine.header.frame_id = "/camera_rgb_optical_frame";
+    poseMine.header.frame_id = "/base_link";
 
     // loop through detections
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         // adding offset and referring all poses w.r.t. base link
 
         //  tag = addOffset(tag);
-        // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
 
         int idt = tag.id;
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
@@ -92,13 +91,23 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
                         << "  y = " << tag.pose.pose.position.y
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
 
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+
             poseGrab.poses.emplace_back(tag.pose.pose);
-            tag.pose.pose.position.x = tag.pose.pose.position.x - (tag.size) / 2;
-            tag.pose.pose.position.y = tag.pose.pose.position.y - (tag.size) / 2;
+            //todo tune THIS
+            tag.pose.pose.position.x = tag.pose.pose.position.x + (tag.size) / 2;
+            tag.pose.pose.position.y = tag.pose.pose.position.y + (tag.size) / 2;
+            tag.pose.pose.position.z = tag.pose.pose.position.z + (tag.size) / 2;
             poseMine.poses.emplace_back(tag.pose.pose);
         } else {
             //  tag = addOffset(tag);
-            // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform); //todo tune THIS
+            
+            //todo tune THIS
+            tag.pose.pose.position.x = tag.pose.pose.position.x + (tag.size) / 2;
+            tag.pose.pose.position.y = tag.pose.pose.position.y + (tag.size) / 2;
+            tag.pose.pose.position.z = tag.pose.pose.position.z + (tag.size) / 2;
+
             poseAvoid.poses.emplace_back(tag.pose.pose);
         }
     }
