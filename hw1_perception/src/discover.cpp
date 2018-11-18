@@ -57,11 +57,14 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     std::fstream output_file(file_path, std::fstream::out);
     if (!(output_file.is_open()))
         ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
+
+    //todo eventually change this wrt what we decide to publish
     output_file << "Detected frames, w.r.t. robot's Base reference frame:\n";
 
     // frame transform from camera to base
     geometry_msgs::TransformStamped camBaseTransform = transform("camera_rgb_optical_frame", "base_link");
 
+    //initialize array to be published
     geometry_msgs::PoseArray poseGrab, poseAvoid, poseMine;
     poseGrab.header.stamp = ros::Time::now();
     poseGrab.header.frame_id = "/base_link";
@@ -80,6 +83,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
+
+            //todo decide what to output
             output_file << "tag id: " << idt << std::endl
                         << "frame id: " << tagnames[idt] << std::endl;
             output_file << "    size: " << tag.size << std::endl;
@@ -101,9 +106,9 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             poseMine.poses.emplace_back(tag.pose.pose);
         } else {
             //  tag = addOffset(tag);
-            tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform); //todo tune THIS
-            
-            //todo tune THIS
+            tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+
+            //todo tune THIS and put it in a separate function
             tag.pose.pose.position.x = tag.pose.pose.position.x + (tag.size) / 2;
             tag.pose.pose.position.y = tag.pose.pose.position.y + (tag.size) / 2;
             tag.pose.pose.position.z = tag.pose.pose.position.z + (tag.size) / 2;
@@ -113,6 +118,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     }
     output_file.close();
 
+    //publish PoseArray
     toavoid.publish(poseAvoid);
     tograb.publish(poseGrab);
     tograb_mine.publish(poseMine);
