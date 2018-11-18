@@ -17,7 +17,7 @@ const std::vector<std::string> tagnames = {
 };
 
 bool forever = false;
-ros::Publisher tograb, toavoid;
+ros::Publisher tograb, toavoid, tograb_mine;
 
 geometry_msgs::TransformStamped transform(const std::string from, const std::string to) {
     tf2_ros::Buffer tfBuffer;
@@ -34,6 +34,7 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
 apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag) {
     // get transform between object and camera
     geometry_msgs::TransformStamped tagTransform = transform(tagnames[tag.id], "camera_rgb_optical_frame");
+
 
     // offset vector
     geometry_msgs::Vector3Stamped offset;
@@ -64,8 +65,9 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     // loop through detections
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         // adding offset and referring all poses w.r.t. base link
-        tag = addOffset(tag);
-        tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+
+      //  tag = addOffset(tag);
+       // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
 
         int idt = (int) tag.id;
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
@@ -81,9 +83,12 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             output_file << "    position: x = " << tag.pose.pose.position.x
                         << "  y = " << tag.pose.pose.position.y
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
-            tograb.publish(tag);
+            tograb.publish(tag.pose);
+            tag.pose.pose.position.x = tag.pose.pose.position.x+(tag.size) / 2;
+            tag.pose.pose.position.y = tag.pose.pose.position.y+(tag.size) / 2;
+            tograb_mine.publish(tag.pose);
         } else
-            toavoid.publish(tag);
+            toavoid.publish(tag.pose);
     }
     output_file.close();
 
@@ -114,14 +119,16 @@ int main(int argc, char *argv[]) {
     }
 
     ros::NodeHandle n;
-    n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100, detectionsCallback);
-    tograb = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_grab", 1000);
-    toavoid = n.advertise<apriltags_ros::AprilTagDetection>("tags_to_avoid", 1000);
+    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100, detectionsCallback);
+    tograb = n.advertise<geometry_msgs::PoseStamped>("tags_to_grab", 1000);
+    tograb_mine = n.advertise<geometry_msgs::PoseStamped>("tags_to_grab_mine", 1000);
+    toavoid = n.advertise<geometry_msgs::PoseStamped>("tags_to_avoid", 1000);
+
 
     // in single-shot mode, a single spinOnce call won't work,
     // so repeat it until first detection message arrives, then stop
     // in forever mode, rate will be maintained
-    ros::Rate rate(4); // expressed in Hz
+    ros::Rate rate(40); // expressed in Hz
     while (ros::ok()) {
         ros::spinOnce();
         rate.sleep();
