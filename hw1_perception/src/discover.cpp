@@ -62,14 +62,22 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     // frame transform from camera to base
     geometry_msgs::TransformStamped camBaseTransform = transform("camera_rgb_optical_frame", "base_link");
 
+    geometry_msgs::PoseArray poseGrab, poseAvoid, poseMine;
+    poseGrab.header.stamp = ros::Time::now();
+    poseGrab.header.frame_id = "/camera_rgb_optical_frame";
+    poseAvoid.header.stamp = ros::Time::now();
+    poseAvoid.header.frame_id = "/camera_rgb_optical_frame";
+    poseMine.header.stamp = ros::Time::now();
+    poseMine.header.frame_id = "/camera_rgb_optical_frame";
+
     // loop through detections
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
         // adding offset and referring all poses w.r.t. base link
 
-      //  tag = addOffset(tag);
-       // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+        //  tag = addOffset(tag);
+        // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
 
-        int idt = (int) tag.id;
+        int idt = tag.id;
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
@@ -83,14 +91,23 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
             output_file << "    position: x = " << tag.pose.pose.position.x
                         << "  y = " << tag.pose.pose.position.y
                         << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
-            tograb.publish(tag.pose);
-            tag.pose.pose.position.x = tag.pose.pose.position.x+(tag.size) / 2;
-            tag.pose.pose.position.y = tag.pose.pose.position.y+(tag.size) / 2;
-            tograb_mine.publish(tag.pose);
-        } else
-            toavoid.publish(tag.pose);
+
+            poseGrab.poses.emplace_back(tag.pose.pose);
+            tag.pose.pose.position.x = tag.pose.pose.position.x - (tag.size) / 2;
+            tag.pose.pose.position.y = tag.pose.pose.position.y - (tag.size) / 2;
+            poseMine.poses.emplace_back(tag.pose.pose);
+        } else {
+            //  tag = addOffset(tag);
+            // tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+            poseAvoid.poses.emplace_back(tag.pose.pose);
+        }
     }
     output_file.close();
+
+    toavoid.publish(poseAvoid);
+    tograb.publish(poseGrab);
+    tograb_mine.publish(poseMine);
+
 
     if (!forever) // exit if in single-shot mode
         ros::shutdown();
@@ -119,10 +136,11 @@ int main(int argc, char *argv[]) {
     }
 
     ros::NodeHandle n;
-    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100, detectionsCallback);
-    tograb = n.advertise<geometry_msgs::PoseStamped>("tags_to_grab", 1000);
-    tograb_mine = n.advertise<geometry_msgs::PoseStamped>("tags_to_grab_mine", 1000);
-    toavoid = n.advertise<geometry_msgs::PoseStamped>("tags_to_avoid", 1000);
+    ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
+                                                                             detectionsCallback);
+    tograb = n.advertise<geometry_msgs::PoseArray>("tags_to_grab", 1000);
+    tograb_mine = n.advertise<geometry_msgs::PoseArray>("tags_to_grab_mine", 1000);
+    toavoid = n.advertise<geometry_msgs::PoseArray>("tags_to_avoid", 1000);
 
 
     // in single-shot mode, a single spinOnce call won't work,
