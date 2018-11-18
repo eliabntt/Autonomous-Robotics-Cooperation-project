@@ -32,10 +32,9 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
 }
 
 apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag) {
-    //todo tune THIS
-    tag.pose.pose.position.x = tag.pose.pose.position.x + (tag.size) / 2;
+    tag.pose.pose.position.x = tag.pose.pose.position.x - 0.01;
     tag.pose.pose.position.y = tag.pose.pose.position.y + (tag.size) / 2;
-    tag.pose.pose.position.z = tag.pose.pose.position.z + (tag.size) / 2;
+    tag.pose.pose.position.z = tag.pose.pose.position.z + 0.0075;
     return tag;
 }
 
