@@ -1,8 +1,8 @@
 <!-- launch file for discover -->
 <launch>
-<arg name="sim" default="true"/>
-<arg name="ids" />
-<arg name="forever" default="true"/>
+<arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
+<arg name="ids" default="" doc="The frame_ids to be detected. If empty all are considered valid"/>
+<arg name="forever" default="true" doc="If the program has to run forever"/>
 
 
     <node name="hw1_perception" pkg="hw1_perception" type="hw1_perception" output="screen">
