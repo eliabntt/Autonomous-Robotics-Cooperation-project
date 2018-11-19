@@ -45,11 +45,12 @@ In shell separate lanciare:
     - Il parametro `forever` viene utilizzato per non terminare l'esecuzione dopo un solo ciclo di ricerca dei frame
         (il file di testo non viene toccato se impostato a `true`)
 
-- Note
-    - La lista dei nomi dei tag si può trovare nella costante `tagnames` all'inizio di [discover.cpp](src/discover.cpp)
-    - Dopo aver fatto partire i vari moduli, spostare qualche oggetto dal tavolo di supporto alla superficie sotto la camera per vedere a terminale la pubblicazione e l'elaborazione dei messaggi
-    - I topic pubblicati possono essere visualizzati in Rviz o tramite shell:
-        ```bash
-        rostopic echo /tags_to_grab
-        rostopic echo /tags_to_avoid
-        ```
+Note aggiuntive
+    
+- La lista dei nomi dei tag si può trovare nella costante `tagnames` all'inizio di [discover.cpp](src/discover.cpp)
+- Dopo aver fatto partire i vari moduli, spostare qualche oggetto dal tavolo di supporto alla superficie sotto la camera per vedere a terminale la pubblicazione e l'elaborazione dei messaggi
+- I topic pubblicati possono essere visualizzati in Rviz o tramite shell:
+    ```bash
+    rostopic echo /tags_to_grab
+    rostopic echo /tags_to_avoid
+    ```
