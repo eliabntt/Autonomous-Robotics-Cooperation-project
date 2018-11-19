@@ -7,6 +7,7 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "geometry_msgs/Vector3.h"
+#include "boost/algorithm/string.hpp"
 
 std::vector<std::string> params;
 const std::vector<std::string> tagnames = {
@@ -118,30 +119,52 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         ros::shutdown();
 }
 
-int main(int argc, char *argv[]) {
-    ros::init(argc, argv, "discover");
 
-    if (argc == 1) {
-        ROS_INFO_STREAM("No parameters passed. Detecting all possible tags");
-        params = tagnames;
+void initParam(ros::NodeHandle node_handle) {
+    if (node_handle.hasParam("sim")) {
+        node_handle.getParam("sim", sim);
+        if (sim)
+            ROS_INFO_STREAM("Simulation...");
+        else
+            ROS_INFO_STREAM("Testing on real robot...");
     } else {
-        for (int i = 1; i < argc; i++)
-            // for each parameter, check if it is a frame id and save it in a list
-            if (std::find(tagnames.begin(), tagnames.end(), argv[i]) != tagnames.end())
-                params.emplace_back(argv[i]);
-            else if (argv[i] == std::string("forever")) {
-                ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
-                forever = true;
-
-                // only forever is passed: detect all tags
-                if (argc == 2)
-                    params = tagnames;
-            } else
-                ROS_INFO_STREAM(argv[i] << " is NOT a valid tag or keyword");
+        ROS_ERROR("Failed to get param 'sim' (boolean). Setting 'sim' to 'true'.");
+        sim = true;
     }
 
+    if (node_handle.hasParam("forever")) {
+        ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
+        forever = true;
+    } else forever = false;
+
+    if (node_handle.hasParam("ids")) {
+
+        std::string tmp;
+        std::vector<std::string> ids;
+        node_handle.getParam("ids", tmp);
+        boost::erase_all(tmp, " ");
+        boost::split(ids, tmp, boost::is_any_of(","));
+
+        for (int i = 0; i < ids.size(); i++) {
+            if (std::find(tagnames.begin(), tagnames.end(), ids[i]) != tagnames.end())
+                params.emplace_back(ids[i]);
+            else
+                ROS_INFO_STREAM(ids[i] << " is NOT a valid tag or keyword");
+        }
+    } else {
+        params = tagnames;
+    }
+}
+
+int main(int argc, char *argv[]) {
+    ros::init(argc, argv, "hw1_perception");
+
+
     // subscribe to receive detections
-    ros::NodeHandle n;
+    ros::NodeHandle n("~");
+
+    initParam(n);
+
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
     // initialize publishers of results
@@ -159,3 +182,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
