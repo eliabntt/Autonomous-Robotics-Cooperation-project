@@ -22,6 +22,30 @@ bool forever = false;
 bool sim = true;
 bool is_identity = false;
 ros::Publisher pubGrab, pubAvoid;
+std::fstream output_file;
+
+bool file_init() {
+    std::string file_path = ros::package::getPath("hw1_perception") + "/output.txt";
+    output_file = std::fstream(file_path, std::fstream::out);
+    if (!(output_file.is_open())) {
+        ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
+        return false;
+    }
+    return true;
+}
+
+void write_tag(apriltags_ros::AprilTagDetection tag) {
+    output_file << "tag id: " << tag.id << std::endl
+                << "frame id: " << tagnames[tag.id] << std::endl;
+    output_file << "    size: " << tag.size << std::endl;
+    output_file << "    orientation: x = " << tag.pose.pose.orientation.x
+                << "  y = " << tag.pose.pose.orientation.y
+                << "  z = " << tag.pose.pose.orientation.z
+                << "  w = " << tag.pose.pose.orientation.w << std::endl;
+    output_file << "    position: x = " << tag.pose.pose.position.x
+                << "  y = " << tag.pose.pose.position.y
+                << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
+}
 
 geometry_msgs::TransformStamped transform(const std::string from, const std::string to) {
     tf2_ros::Buffer tfBuffer;
@@ -53,10 +77,9 @@ apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag)
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // set output file name and open a stream on it
-    std::string file_path = ros::package::getPath("hw1_perception") + "/output.txt";
-    std::fstream output_file(file_path, std::fstream::out);
-    if (!(output_file.is_open()))
-        ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
+    if (!forever) {
+        file_init();
+    }
 
 
     // initialize array to be published
@@ -71,12 +94,14 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     if (is_identity) {
         poseGrab.header.frame_id = "/camera_rgb_optical_frame";
         poseAvoid.header.frame_id = "/camera_rgb_optical_frame";
-        output_file << "Detected frames, w.r.t. camera reference frame:\n";
     } else {
         poseGrab.header.frame_id = "/base_link";
         poseAvoid.header.frame_id = "/base_link";
-        output_file << "Detected frames, w.r.t. base reference frame:\n";
     }
+    if (!forever)
+        is_identity ? output_file << "Detected frames, w.r.t. camera reference frame:\n" :
+        output_file << "Detected frames, w.r.t. base reference frame:\n";
+
 
     // loop through detections
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
@@ -91,17 +116,8 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // tag found over objects on the table
             ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
-
-            output_file << "tag id: " << idt << std::endl
-                        << "frame id: " << tagnames[idt] << std::endl;
-            output_file << "    size: " << tag.size << std::endl;
-            output_file << "    orientation: x = " << tag.pose.pose.orientation.x
-                        << "  y = " << tag.pose.pose.orientation.y
-                        << "  z = " << tag.pose.pose.orientation.z
-                        << "  w = " << tag.pose.pose.orientation.w << std::endl;
-            output_file << "    position: x = " << tag.pose.pose.position.x
-                        << "  y = " << tag.pose.pose.position.y
-                        << "  z = " << tag.pose.pose.position.z << std::endl << std::endl;
+            if (!forever)
+                write_tag(tag);
 
             // add pose to vectors
             poseGrab.poses.emplace_back(tag.pose.pose);
