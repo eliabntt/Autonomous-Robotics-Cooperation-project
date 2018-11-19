@@ -1,0 +1,14 @@
+<!-- launch file for discover -->
+<launch>
+<arg name="sim" default="true"/>
+<arg name="ids" />
+<arg name="forever" default="true"/>
+
+
+    <node name="hw1_perception" pkg="hw1_perception" type="hw1_perception" output="screen">
+        <param name="sim" value="$(arg sim)"/>
+        <param name="forever" value="$(arg forever)"/>
+        <param name="ids" value="$(arg ids)"/>
+    </node>
+
+</launch>
