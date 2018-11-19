@@ -39,13 +39,12 @@ In shell separate lanciare:
     ```roslaunch challenge_arena challenge.launch sim:=true```
 - Per apriltags:  
   ``` roslaunch challenge_arena apriltag.launch ```
-- Per rviz(**NON** necessario):  
+- Per rviz(*opzionale*):  
    ```rosrun rviz rviz -d `rospack find hw1_perception`/rviz/our_config.rviz```
 - Per utilizzare effettivamente quanto sviluppato:  
-   ```rosrun hw1_perception hw1_perception [forever] [[frame_id(s)]]```  
+   ```roslaunch hw1_perception discover.launch ids:="[[frame_id],]" [sim:=true/false] [forever:=true/false]```  
     - Il parametro ```forever``` viene utilizzato per non terminare l'esecuzione dopo un solo ciclo di ricerca dei frame
-    - I parametri ```[[frame_id(s)]]``` rappresentano i ```tagnames``` dei frame che vogliamo all'interno del file di output o all'interno del publisher corrispondente. Se non sono validi verrà visualizzato all'interno della console un messaggio di errore.
-    - Se ```forever``` viene passato da solo verranno considerati come ricercati TUTTI i tag all'interno del campo visivo della Kinect.
-    - Se non vengono passati parametri si esegue un solo ciclo considerando come validi TUTTI i tag all'interno del campo visivo anche in questo caso.
-
+    - Il parametro ```ids``` rappresenta la lista dei ```tagnames``` dei frame che vogliamo all'interno del file di output o all'interno del publisher corrispondente. Se non sono validi verrà visualizzato all'interno della console un messaggio di errore.
+    - Il parametro ```sim``` indica il fatto se siamo in ambiente simulato o reale per poter utilizzare alcuni parametri in modo più efficiente
+    
 I topic pubblicati per il momento possono essere facilmente visualizzati in *rviz*.
