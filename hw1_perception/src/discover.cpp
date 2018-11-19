@@ -145,14 +145,17 @@ void initParam(ros::NodeHandle node_handle) {
         boost::erase_all(tmp, " ");
         boost::split(ids, tmp, boost::is_any_of(","));
 
-        for (int i = 0; i < ids.size(); i++) {
-            if (std::find(tagnames.begin(), tagnames.end(), ids[i]) != tagnames.end())
-                params.emplace_back(ids[i]);
-            else
-                ROS_INFO_STREAM(ids[i] << " is NOT a valid tag or keyword");
+        if (tmp.length() > 0)
+            for (auto i:ids) {
+                if (std::find(tagnames.begin(), tagnames.end(), i) != tagnames.end())
+                    params.emplace_back(i);
+                else
+                    ROS_INFO_STREAM(i << " is NOT a valid tag or keyword");
+            }
+        else {
+            ROS_INFO_STREAM("No ids passed, all flagged as valid..");
+            params = tagnames;
         }
-    } else {
-        params = tagnames;
     }
 }
 
