@@ -3,7 +3,7 @@
 ## Aspetti principali
 
 - Configurazione *Rviz* per meglio visualizzare alcuni dati nell'ambiente di lavoro e i risultati ottenuti
-- *Listener* per [*apriltags*](http://wiki.ros.org/apriltags_ros) sul topic **/tag_detections** per ottenere contemporaneamente, per ciascun oggetto nel campo visivo della Kinect:
+- *Listener* per [apriltags](http://wiki.ros.org/apriltags_ros) sul topic `/tag_detections` per ottenere contemporaneamente, per ciascun oggetto nel campo visivo della Kinect:
     - ID del tag
     - Size del tag
     - Pose rispetto a `camera_rgb_optical_frame`
@@ -59,5 +59,5 @@ Note aggiuntive
     - ```forever:=false```  
     - ```ids:=""```  
     
-- Se vengono passati *solamente* id NON validi verranno considerati tutti validi
-- Se vengono passati boolean NON validi(a `sim` o `forever`), verrà adottato il comportamento di default
+- Se vengono passati *solamente* id NON validi verranno considerati tutti validi.
+- Se vengono passati boolean NON validi (a `sim` o `forever`), verrà adottato il comportamento di default.

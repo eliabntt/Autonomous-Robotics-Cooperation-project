@@ -147,7 +147,6 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 
 void initParam(ros::NodeHandle node_handle) {
     // evaluate node's given parameters
-
     if (node_handle.hasParam("sim")) {
         if (!node_handle.getParam("sim", sim)) {
             ROS_WARN_STREAM("Not valid 'sim' parameter's value. Setting 'sim' to 'true'.");
@@ -155,7 +154,7 @@ void initParam(ros::NodeHandle node_handle) {
         }
 
         ROS_INFO_STREAM((sim ? "Simulation..." : "Testing on real robot..."));
-    } //since it has default else not necessary
+    } // else not necessary: it has a default value
 
     if (node_handle.hasParam("forever")) {
         if (!node_handle.getParam("forever", forever)) {
@@ -174,8 +173,6 @@ void initParam(ros::NodeHandle node_handle) {
 
         // get string, remove spaces and split by ','
         node_handle.getParam("ids", tmp);
-
-
         boost::erase_all(tmp, " ");
         boost::split(ids, tmp, boost::is_any_of(","));
 
@@ -185,7 +182,7 @@ void initParam(ros::NodeHandle node_handle) {
             else
                 ROS_WARN_STREAM(i << " is NOT a valid tag or keyword");
 
-        //if params is still empty I will flagg all tags as valid
+        // if params is still empty, flag all tags as valid
         if (params.empty()) {
             ROS_INFO_STREAM("No (valid) ids passed, all flagged as valid.");
             params = tagnames;
