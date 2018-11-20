@@ -18,7 +18,7 @@ const std::vector<std::string> tagnames = {
         "red_triangle_1", "red_triangle_2", "red_triangle_3"
 };
 
-bool forever = false, sim = false, isIdentity = false;
+bool forever = false, sim = true, isIdentity = false;
 ros::Publisher pubGrab, pubAvoid;
 std::fstream outputFile;
 
