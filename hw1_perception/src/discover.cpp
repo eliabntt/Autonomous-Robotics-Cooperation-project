@@ -107,7 +107,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 
     // add a "header" to the file, before printing poses
     if (isFileInit)
-        outputFile << "Detected frames, w.r.t " << (isIdentity ? "camera" : "base") << " reference frame:\n";
+        outputFile << "Detected frames, w.r.t. " << (isIdentity ? "camera" : "base") << " reference frame:\n";
 
     // loop through detections
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
