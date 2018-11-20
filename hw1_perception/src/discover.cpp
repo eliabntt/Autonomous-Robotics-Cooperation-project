@@ -83,8 +83,9 @@ apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag)
 
 void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &input) {
     // initialize stream to file
+    bool isFileInit = false;
     if (!forever)
-        fileInit();
+        isFileInit = fileInit();
 
     // initialize arrays to be published
     geometry_msgs::PoseArray poseGrab, poseAvoid;
@@ -105,7 +106,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     }
 
     // add a "header" to the file, before printing poses
-    if (!forever)
+    if (isFileInit)
         outputFile << "Detected frames, w.r.t " << (isIdentity ? "camera" : "base") << " reference frame:\n";
 
     // loop through detections
@@ -121,7 +122,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // (requested) tag found over objects on the table: write on file
             ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
-            if (!forever)
+            if (isFileInit)
                 fileTagWrite(tag);
 
             // add pose to vectors
@@ -131,7 +132,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     }
 
     // close stream to file
-    if (!forever)
+    if (isFileInit)
         outputFile.close();
 
     // publish PoseArrays
@@ -149,17 +150,18 @@ void initParam(ros::NodeHandle node_handle) {
 
     if (node_handle.hasParam("sim")) {
         node_handle.getParam("sim", sim);
-        ROS_INFO_STREAM(sim ? "Simulation..." : "Testing on real robot...");
+        ROS_INFO_STREAM((sim ? "Simulation..." : "Testing on real robot..."));
     } else {
         ROS_ERROR_STREAM("Failed to get param 'sim' (boolean). Setting 'sim' to 'true'.");
         sim = true;
     }
 
     if (node_handle.hasParam("forever")) {
-        ROS_INFO_STREAM("Forever parameter detected. Scan will not end.");
-        forever = true;
-    } else
-        forever = false; // should not be needed
+        node_handle.getParam("forever", forever);
+        ROS_INFO_STREAM("Scan will " << (forever ? "not end."
+                                                 : "run only for one detection. \n File \"output.txt\" will be created."));
+
+    }
 
     if (node_handle.hasParam("ids")) {
         // extract list of ids (objects to grab)
@@ -168,17 +170,20 @@ void initParam(ros::NodeHandle node_handle) {
 
         // get string, remove spaces and split by ','
         node_handle.getParam("ids", tmp);
+
+
         boost::erase_all(tmp, " ");
         boost::split(ids, tmp, boost::is_any_of(","));
 
-        if (tmp.length() > 0)
-            for (auto i:ids)
-                if (std::find(tagnames.begin(), tagnames.end(), i) != tagnames.end())
-                    params.emplace_back(i);
-                else
-                    ROS_INFO_STREAM(i << " is NOT a valid tag or keyword");
-        else {
-            ROS_INFO_STREAM("No ids passed, all flagged as valid.");
+        for (auto i:ids)
+            if (std::find(tagnames.begin(), tagnames.end(), i) != tagnames.end())
+                params.emplace_back(i);
+            else
+                ROS_WARN_STREAM(i << " is NOT a valid tag or keyword");
+
+        //if params is still empty I will flagg all tags as valid
+        if (params.empty()) {
+            ROS_INFO_STREAM("No (valid) ids passed, all flagged as valid.");
             params = tagnames;
         }
     }
