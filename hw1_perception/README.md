@@ -14,7 +14,7 @@
     2. le posizioni dei tag *NON* richiesti, se presenti
 - Scrittura in un file `output.txt` (dentro la cartella del modulo) delle informazioni dei tag richiesti, come da consegna
 
-## Modalit‡ di funzionamento
+## Modalit√† di funzionamento
 
 In shell separate lanciare:
 
@@ -40,21 +40,23 @@ In shell separate lanciare:
         se trovati, vengono salvati all'interno del file di output e pubblicati dal publisher corrispondente.
         Altri tag trovati ma non richiesti vengono pubblicati dall'altro publisher dedicato.
         Se il parametro non viene fornito, saranno pubblicati e salvati tutti i tag trovati.
-        Se si inseriscono valori non validi saranno trascurati e verr‡ visualizzato sulla shell un messaggio di errore.
+        Se si inseriscono valori non validi saranno trascurati e verr√† visualizzato sulla shell un messaggio di errore.
     - Il parametro `sim` discrimina tra ambiente reale o simulato per poter utilizzare i parametri di offset e migliorare la precisione.
     - Il parametro `forever` viene utilizzato per non terminare l'esecuzione dopo un solo ciclo di ricerca dei frame
         (il file di testo non viene toccato se impostato a `true`)
 
 Note aggiuntive
     
-- La lista dei nomi dei tag si puÚ trovare nella costante `tagnames` all'inizio di [discover.cpp](src/discover.cpp)
+- La lista dei nomi dei tag si pu√≤ trovare nella costante `tagnames` all'inizio di [discover.cpp](src/discover.cpp)
 - Dopo aver fatto partire i vari moduli, spostare qualche oggetto dal tavolo di supporto alla superficie sotto la camera per vedere a terminale la pubblicazione e l'elaborazione dei messaggi
 - I topic pubblicati possono essere visualizzati in Rviz o tramite shell:  
 	```rostopic echo /tags_to_grab```
 	
 	```rostopic echo /tags_to_avoid```
-- I parametri hanno tutti valori di default
-    - ```sim:=true```
-    - ```forever:=false```
-    - ```ids=""```
+- I parametri hanno tutti valori di default  
+    
+    - ```sim:=true```  
+    - ```forever:=false```  
+    - ```ids:=""```  
+    
 - Se vengono passati *solamente* id NON validi verranno considerati tutti validi
