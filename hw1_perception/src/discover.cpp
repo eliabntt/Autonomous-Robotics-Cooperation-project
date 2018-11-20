@@ -149,18 +149,22 @@ void initParam(ros::NodeHandle node_handle) {
     // evaluate node's given parameters
 
     if (node_handle.hasParam("sim")) {
-        node_handle.getParam("sim", sim);
+        if (!node_handle.getParam("sim", sim)) {
+            ROS_WARN_STREAM("Not valid 'sim' parameter's value. Setting 'sim' to 'true'.");
+            sim = true;
+        }
+
         ROS_INFO_STREAM((sim ? "Simulation..." : "Testing on real robot..."));
-    } else {
-        ROS_ERROR_STREAM("Failed to get param 'sim' (boolean). Setting 'sim' to 'true'.");
-        sim = true;
-    }
+    } //since it has default else not necessary
 
     if (node_handle.hasParam("forever")) {
-        node_handle.getParam("forever", forever);
+        if (!node_handle.getParam("forever", forever)) {
+            ROS_WARN_STREAM("Not valid 'forever' parameter's value. Setting 'forever' to 'false'.");
+            forever = false;
+        }
+
         ROS_INFO_STREAM("Scan will " << (forever ? "not end."
                                                  : "run only for one detection. \n File \"output.txt\" will be created."));
-
     }
 
     if (node_handle.hasParam("ids")) {
@@ -196,6 +200,7 @@ int main(int argc, char *argv[]) {
     ros::NodeHandle n("~");
     initParam(n);
 
+    ROS_INFO_STREAM("\n\nDetection starting...\n\n");
     // subscribe to receive detections
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
