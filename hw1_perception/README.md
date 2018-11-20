@@ -33,7 +33,7 @@ In shell separate lanciare:
 - Per utilizzare effettivamente quanto sviluppato:  
     ```
     roslaunch hw1_perception discover.launch 
-        ids:="[[frame_id],]" [sim:=true/false] [forever:=true/false]
+        [ids:="[[frame_id],]"] [sim:=true/false] [forever:=true/false]
     ```
     
     - Il parametro `ids` contiene la lista dei tag (separati da `,`) che si vuole cercare sul tavolo:
@@ -53,3 +53,8 @@ Note aggiuntive
 	```rostopic echo /tags_to_grab```
 	
 	```rostopic echo /tags_to_avoid```
+- I parametri hanno tutti valori di default
+    - ```sim:=true```
+    - ```forever:=false```
+    - ```ids=""```
+- Se vengono passati *solamente* id NON validi verranno considerati tutti validi
