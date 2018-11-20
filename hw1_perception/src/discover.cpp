@@ -176,11 +176,17 @@ void initParam(ros::NodeHandle node_handle) {
         boost::erase_all(tmp, " ");
         boost::split(ids, tmp, boost::is_any_of(","));
 
-        for (auto i:ids)
+        std::string empty("");
+        for (auto i:ids) {
+            // exclude empty strings
+            if (i == empty)
+                continue;
+
             if (std::find(tagnames.begin(), tagnames.end(), i) != tagnames.end())
                 params.emplace_back(i);
             else
                 ROS_WARN_STREAM(i << " is NOT a valid tag or keyword");
+        }
 
         // if params is still empty, flag all tags as valid
         if (params.empty()) {
@@ -197,7 +203,7 @@ int main(int argc, char *argv[]) {
     ros::NodeHandle n("~");
     initParam(n);
 
-    ROS_INFO_STREAM("\n\nDetection starting...\n\n");
+    ROS_INFO_STREAM("Detection starting...\n\n");
     // subscribe to receive detections
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
