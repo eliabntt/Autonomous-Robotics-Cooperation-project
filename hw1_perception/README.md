@@ -43,7 +43,7 @@ In shell separate lanciare:
         Se si inseriscono valori non validi saranno trascurati e verrà visualizzato sulla shell un messaggio di errore.
     - Il parametro `sim` discrimina tra ambiente reale o simulato per poter utilizzare i parametri di offset e migliorare la precisione.
     - Il parametro `forever` viene utilizzato per non terminare l'esecuzione dopo un solo ciclo di ricerca dei frame
-        (il file di testo non viene toccato se impostato a `true`)
+        (il file di testo non viene toccato se impostato a `true`).
 
 Note aggiuntive
     
@@ -52,8 +52,11 @@ Note aggiuntive
 - I topic pubblicati possono essere visualizzati in Rviz o tramite shell:  
 	```rostopic echo /tags_to_grab```
 	
-	```rostopic echo /tags_to_avoid```
-- I parametri hanno tutti valori di default  
+	```rostopic echo /tags_to_avoid```  
+	
+	Vengono pubblicate solo le pose e *non* i rispettivi id dei tag, poiché in quest'ultimo caso oltre a un messaggio *custom* occorre creare un plugin esterno per la visualizzazione in Rviz (`rostopic` funziona regolarmente).
+
+- I parametri hanno tutti valori di default:  
     
     - ```sim:=true```  
     - ```forever:=false```  
