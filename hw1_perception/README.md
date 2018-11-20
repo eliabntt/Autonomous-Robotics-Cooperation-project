@@ -60,3 +60,4 @@ Note aggiuntive
     - ```ids:=""```  
     
 - Se vengono passati *solamente* id NON validi verranno considerati tutti validi
+- Se vengono passati boolean NON validi(a `sim` o `forever`), verrà adottato il comportamento di default
