@@ -28,11 +28,11 @@ In shell separate lanciare:
     ```
 - Rviz per visualizzare i risultati *(opzionale)*:  
     ```
-    rosrun rviz rviz -d `rospack find hw1_perception`/rviz/our_config.rviz
+    rosrun rviz rviz -d `rospack find g01_perception`/rviz/our_config.rviz
     ```
 - Per utilizzare effettivamente quanto sviluppato:  
     ```
-    roslaunch hw1_perception discover.launch 
+    roslaunch g01_perception discover.launch 
         [ids:="[[frame_id],]"] [sim:=true/false] [forever:=true/false]
     ```
     

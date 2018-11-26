@@ -24,7 +24,7 @@ std::fstream outputFile;
 
 bool fileInit() {
     // set output file name and open a stream on it
-    std::string filePath = ros::package::getPath("hw1_perception") + "/output.txt";
+    std::string filePath = ros::package::getPath("g01_perception") + "/output.txt";
     outputFile = std::fstream(filePath, std::fstream::out);
     if (!(outputFile.is_open())) {
         ROS_ERROR_STREAM("ERROR: failure opening file, data won't be saved");
@@ -53,13 +53,15 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
     tf2_ros::TransformListener tfListener(tfBuffer);
 
     try {
-        return tfBuffer.lookupTransform(to, from, ros::Time(0), ros::Duration(0.1)); //Time(0) = latest
+	//todo test
+        return tfBuffer.lookupTransform(to, from, ros::Time(0), ros::Duration(10)); //Time(0) = latest
     } catch (tf2::TransformException &exception) {
         ROS_WARN_STREAM(exception.what());
 
         // return an identity transform as a fallback
         isIdentity = true;
-        return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(0.1));
+        //todo test
+	return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));
     }
 }
 
@@ -197,7 +199,7 @@ void initParam(ros::NodeHandle node_handle) {
 }
 
 int main(int argc, char *argv[]) {
-    ros::init(argc, argv, "hw1_perception");
+    ros::init(argc, argv, "g01_perception");
 
     // parse parameters
     ros::NodeHandle n("~");
@@ -214,7 +216,8 @@ int main(int argc, char *argv[]) {
     // in single-shot mode, a single spinOnce call won't work, so
     // repeat it until first detection message arrives, then stop;
     // in forever mode, rate will be maintained
-    ros::Rate rate(5); // expressed in Hz
+    //todo test
+    ros::Rate rate(100); // expressed in Hz
     while (ros::ok()) {
         ros::spinOnce();
         rate.sleep();
