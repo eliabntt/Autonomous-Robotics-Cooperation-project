@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>hw2_moveit</name>
+    <name>g01_perception</name>
     <version>1.0.0</version>
-    <description>The hw2_moveit package</description>
+    <description>The g01_perception package</description>
 
     <!-- One maintainer tag required, multiple allowed, one person per tag -->
     <!-- Example:  -->
@@ -21,7 +21,7 @@
     <!-- Url tags are optional, but multiple are allowed, one per tag -->
     <!-- Optional attribute type can be: website, bugtracker, or repository -->
     <!-- Example: -->
-    <!-- <url type="website">http://wiki.ros.org/hw2_moveit</url> -->
+    <!-- <url type="website">http://wiki.ros.org/g01_perception</url> -->
 
 
     <!-- Author tags are optional, multiple are allowed, one per tag -->
