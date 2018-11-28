@@ -32,8 +32,29 @@ G01Gripper::G01Gripper() : command(), n(){
     ROS_INFO("Reference frame: %s", my_group.getEndEffectorLink().c_str());
 
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>("/robotiq_hands/l_hand/SModelRobotOutput",1);
-
     close(255);
+
+
+
+    geometry_msgs::Pose target_pose1;
+    target_pose1.orientation.w = 1.0;
+    target_pose1.position.x = -0.25;
+    target_pose1.position.y = 0.04;
+    target_pose1.position.z = 1.5;
+    my_group.setPoseTarget(target_pose1);
+
+    //todo complete
+    //my_group.setWorkspace()
+
+    //todo use it for home function setting
+    //my_group.getCurrentPose("ee_link");
+    
+    moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+    bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    my_group.move();
+
+    ROS_INFO_NAMED("tutorial", "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+
 
 /*
     if(sim)
