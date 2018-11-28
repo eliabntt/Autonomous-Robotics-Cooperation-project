@@ -7,13 +7,14 @@
 #include "g01_gripper.h"
 
 G01Gripper::G01Gripper() : command(), n(){
+    ros::AsyncSpinner spinner(2);
+    spinner.start();
 
     //init
     //todo implement better for wrong inputs(see hw1)
     sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
+    gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>("/robotiq_hands/l_hand/SModelRobotOutput",1);
 
-    ros::AsyncSpinner spinner(2);
-    spinner.start();
 
     //robot
     std::string PLANNING_GROUP = "manipulator";
@@ -31,30 +32,35 @@ G01Gripper::G01Gripper() : command(), n(){
     ROS_INFO("Reference frame: %s", my_group.getPlanningFrame().c_str());
     ROS_INFO("Reference frame: %s", my_group.getEndEffectorLink().c_str());
 
-    gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>("/robotiq_hands/l_hand/SModelRobotOutput",1);
-    close(255);
 
-
+    //todo targe home position to fix the joint links
 
     geometry_msgs::Pose target_pose1;
-    target_pose1.orientation.w = 1.0;
-    target_pose1.position.x = -0.25;
-    target_pose1.position.y = 0.04;
-    target_pose1.position.z = 1.5;
+    target_pose1.orientation.x = -0.05;
+    target_pose1.orientation.y = 0.8;
+    target_pose1.orientation.z = 0.03;
+    target_pose1.orientation.w = 0.4;
+    target_pose1.position.x = 0.37;
+    target_pose1.position.y = -0.12;
+    target_pose1.position.z = 1.6;
     my_group.setPoseTarget(target_pose1);
 
-    //todo complete
+    //todo complete - limit
     //my_group.setWorkspace()
 
-    //todo use it for home function setting
-    //my_group.getCurrentPose("ee_link");
-    
+    geometry_msgs::PoseStamped c = my_group.getCurrentPose("ee_link");
+    ROS_INFO_STREAM(c);
+
     moveit::planning_interface::MoveGroupInterface::Plan my_plan;
     bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     my_group.move();
 
     ROS_INFO_NAMED("tutorial", "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
 
+
+    close(255);
+
+    spinner.stop();
 
 /*
     if(sim)
@@ -88,15 +94,11 @@ void G01Gripper::open() {
     gripperCommandPub.publish(command);
 }
 
+//todo probably will need different howMuch
 void G01Gripper::close(int howMuch) {
     assert(howMuch > 0);
     //if is active
-    //todo complete
-    if(command.rACT == 1)
-    {
-        ROS_INFO_STREAM("a");
-        return;
-    }
+    ROS_INFO_STREAM("a");
     command.rACT = 1;
     command.rMOD= 0;
     command.rGTO= 1;
@@ -104,7 +106,7 @@ void G01Gripper::close(int howMuch) {
     command.rGLV= 0;
     command.rICF= 0;
     command.rICS= 0;
-    command.rPRA= 255;
+    command.rPRA= (unsigned char) howMuch;
     command.rSPA= 255;
     command.rFRA= 150;
     command.rPRB= 0;
@@ -117,6 +119,6 @@ void G01Gripper::close(int howMuch) {
     command.rSPS= 0;
     command.rFRS= 0;
     gripperCommandPub.publish(command);
-    ROS_INFO_STREAM("prova");
-    return;
+    ROS_INFO_STREAM("b");
+
 }
