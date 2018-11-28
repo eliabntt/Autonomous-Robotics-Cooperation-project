@@ -31,15 +31,20 @@ private:
     void close(int howMuch);
     void open();
 
+    moveit_msgs::CollisionObject collision(geometry_msgs::Pose pose, double length, double width, double height, std::string obj_id);
+
 
     ros::NodeHandle n;
 
+    //gripper
     robotiq_s_model_control::SModel_robot_output command;
-
     robotiq_s_model_control::SModel_robot_input status;
+
+    //collisions
+    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+
     ros::Publisher gripperCommandPub;
     ros::ServiceClient client;
-
     bool sim;
 
 };
