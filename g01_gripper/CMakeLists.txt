@@ -14,10 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     geometry_msgs
     moveit_ros_planning_interface
-    moveit_core
-    moveit_visual_tools
-    moveit_ros_planning
     tf2
+    robotiq_s_model_control
 )
 
 ## System dependencies are found with CMake's conventions
