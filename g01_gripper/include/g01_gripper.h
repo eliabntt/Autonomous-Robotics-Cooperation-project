@@ -2,6 +2,7 @@
 // Created by eliabntt on 28/11/18.
 //
 #include <ros/ros.h>
+#include "std_msgs/String.h"
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
@@ -13,6 +14,10 @@
 
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+//ROS messages
+#include <robotiq_s_model_control/SModel_robot_output.h>
+#include <robotiq_s_model_control/SModel_robot_input.h>
+
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
 
@@ -23,7 +28,19 @@ public:
 
 
 private:
-    bool move(double x, double y);
+    void close(int howMuch);
+    void open();
+
+
+    ros::NodeHandle n;
+
+    robotiq_s_model_control::SModel_robot_output command;
+
+    robotiq_s_model_control::SModel_robot_input status;
+    ros::Publisher gripperCommandPub;
+    ros::ServiceClient client;
+
+    bool sim;
 
 };
 
