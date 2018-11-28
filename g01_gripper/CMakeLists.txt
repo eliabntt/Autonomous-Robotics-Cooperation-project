@@ -13,6 +13,11 @@ find_package(catkin REQUIRED COMPONENTS
     cmake_modules
     std_msgs
     geometry_msgs
+    moveit_ros_planning_interface
+    moveit_core
+    moveit_visual_tools
+    moveit_ros_planning
+    tf2
 )
 
 ## System dependencies are found with CMake's conventions
