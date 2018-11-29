@@ -2,13 +2,11 @@
 // Created by eliabntt on 28/11/18.
 //
 
-#include <g01_gripper.h>
-
 #include "g01_gripper.h"
 
 std::string planFrameId, endEffId;
 
-G01Gripper::G01Gripper() : command(), n(){
+G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better?
     ros::AsyncSpinner spinner(2);
     spinner.start();
@@ -18,16 +16,16 @@ G01Gripper::G01Gripper() : command(), n(){
     //todo implement better for wrong inputs(see hw1)
     sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
 
-
     //robot
     std::string PLANNING_GROUP = "manipulator";
     moveit::planning_interface::MoveGroupInterface my_group(PLANNING_GROUP);
     //gripper
-    gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>("/robotiq_hands/l_hand/SModelRobotOutput",1);
+    gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
+            "/robotiq_hands/l_hand/SModelRobotOutput", 1);
 
     //todo mmmm maybe see this
-    const robot_state::JointModelGroup* joint_model_group =
-        my_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
+    const robot_state::JointModelGroup *joint_model_group =
+            my_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
 
     //some basic info
     planFrameId = my_group.getPlanningFrame();
@@ -35,14 +33,19 @@ G01Gripper::G01Gripper() : command(), n(){
     ROS_INFO_STREAM("Reference frame: " << planFrameId);
     ROS_INFO_STREAM("End effector frame: " << endEffId);
     geometry_msgs::PoseStamped c = my_group.getCurrentPose(endEffId);
-    ROS_INFO_STREAM(c);
+    //ROS_INFO_STREAM(c);
+
+    // todo surrounding walls with addCollision
+
+    // populate list of objects and collision areas
+    getApriltagDetections();
 
     //todo targe home position to fix the joint links
     geometry_msgs::Pose target_pose1;
     tf::Quaternion q_rot;
-    double r=0, p=3.145/2, y=0;
+    double r = 0, p = 3.145 / 2, y = 0;
     q_rot = tf::createQuaternionFromRPY(r, p, y);
-    tf::quaternionTFToMsg(q_rot,target_pose1.orientation);
+    tf::quaternionTFToMsg(q_rot, target_pose1.orientation);
 
     target_pose1.position.x = 0.37;
     target_pose1.position.y = -0.12;
@@ -57,8 +60,7 @@ G01Gripper::G01Gripper() : command(), n(){
     my_group.move();
     ROS_INFO_STREAM("Visualizing plan 1 (pose goal)" << (success ? "" : "FAILED"));
 
-
-    close(255);
+    gripperClose(255);
     //todo cycle this for initialization of the workspace and also for the single small objects
     //OVERWRITE ONLY THE POSITION
 
@@ -72,7 +74,7 @@ G01Gripper::G01Gripper() : command(), n(){
     myobj.orientation.y = 0;
     myobj.orientation.z = 0;
     myobj.orientation.w = 1;
-    collision_objects.emplace_back(collision(myobj, 0.4,0.6,0.2, "ciao"));
+    collision_objects.emplace_back(addCollisionBlock(myobj, 0.4, 0.6, 0.2, "ciao"));
 
     //todo out of the cycle
     planning_scene_interface.addCollisionObjects(collision_objects);
@@ -91,70 +93,113 @@ G01Gripper::G01Gripper() : command(), n(){
  */
 }
 
-void G01Gripper::open() {
+
+void G01Gripper::getApriltagDetections() {
+    ros::Subscriber subGrab = n.subscribe("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
+    ros::Subscriber subAvoid = n.subscribe("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
+}
+
+void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
+    ROS_INFO_STREAM("grabCB");
+    for (geometry_msgs::PoseStamped item: input->poses) {
+        objectsToGrab.push_back(item);
+
+        // set position to a corner
+        std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z todo tune in tags.h
+        item.pose.position.x -= vol[0] / 2;
+        item.pose.position.y -= vol[1] / 2;
+
+        addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id);
+    }
+    ROS_INFO_STREAM("got grab");
+}
+
+void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
+    ROS_INFO_STREAM("avoidCB");
+    for (geometry_msgs::PoseStamped item: input->poses) {
+        objectsToAvoid.push_back(item);
+
+        // todo set position to a corner, not the center of the tag
+        std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
+        item.pose.position.x -= vol[0] / 2;
+        item.pose.position.y -= vol[1] / 2;
+
+        addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id);
+    }
+    ROS_INFO_STREAM("got avoid");
+}
+
+void G01Gripper::gripperOpen() {
     command.rACT = 1;
-    command.rMOD= 0;
-    command.rGTO= 1;
-    command.rATR= 0;
-    command.rGLV= 0;
-    command.rICF= 0;
-    command.rICS= 0;
-    command.rPRA= 0;
-    command.rSPA= 0;
-    command.rFRA= 0;
-    command.rPRB= 0;
-    command.rSPB= 0;
-    command.rFRB= 255;
-    command.rPRC= 0;
-    command.rSPC= 0;
-    command.rFRC= 0;
-    command.rPRS= 0;
-    command.rSPS= 0;
-    command.rFRS= 0;
+    command.rMOD = 0;
+    command.rGTO = 1;
+    command.rATR = 0;
+    command.rGLV = 0;
+    command.rICF = 0;
+    command.rICS = 0;
+    command.rPRA = 0;
+    command.rSPA = 0;
+    command.rFRA = 0;
+    command.rPRB = 0;
+    command.rSPB = 0;
+    command.rFRB = 255;
+    command.rPRC = 0;
+    command.rSPC = 0;
+    command.rFRC = 0;
+    command.rPRS = 0;
+    command.rSPS = 0;
+    command.rFRS = 0;
     gripperCommandPub.publish(command);
 }
 
 //todo probably will need different howMuch based on the object
-void G01Gripper::close(int howMuch) {
+void G01Gripper::gripperClose(int howMuch) {
     assert(howMuch > 0);
     command.rACT = 1;
-    command.rMOD= 0;
-    command.rGTO= 1;
-    command.rATR= 0;
-    command.rGLV= 0;
-    command.rICF= 0;
-    command.rICS= 0;
-    command.rPRA= (unsigned char) howMuch;
-    command.rSPA= 255;
-    command.rFRA= 150;
-    command.rPRB= 0;
-    command.rSPB= 0;
-    command.rFRB= 0;
-    command.rPRC= 0;
-    command.rSPC= 0;
-    command.rFRC= 0;
-    command.rPRS= 0;
-    command.rSPS= 0;
-    command.rFRS= 0;
+    command.rMOD = 0;
+    command.rGTO = 1;
+    command.rATR = 0;
+    command.rGLV = 0;
+    command.rICF = 0;
+    command.rICS = 0;
+    command.rPRA = (unsigned char) howMuch;
+    command.rSPA = 255;
+    command.rFRA = 150;
+    command.rPRB = 0;
+    command.rSPB = 0;
+    command.rFRB = 0;
+    command.rPRC = 0;
+    command.rSPC = 0;
+    command.rFRC = 0;
+    command.rPRS = 0;
+    command.rSPS = 0;
+    command.rFRS = 0;
     gripperCommandPub.publish(command);
 }
 
-
-moveit_msgs::CollisionObject G01Gripper::collision(geometry_msgs::Pose pose, double length, double width, double height, std::string obj_id)
-{
+moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose pose,
+                                                           double Xlen, double Ylen, double Zlen, std::string obj_id) {
     moveit_msgs::CollisionObject collision_object;
     collision_object.header.frame_id = planFrameId;
     collision_object.id = obj_id;
     shape_msgs::SolidPrimitive primitive;
     primitive.type = primitive.BOX;
     primitive.dimensions.resize(3);
-    primitive.dimensions[0] = length;
-    primitive.dimensions[1] = width;
-    primitive.dimensions[2] = height;
-    geometry_msgs::Pose box_pose;
-    box_pose = pose;
+    primitive.dimensions[0] = Xlen;
+    primitive.dimensions[1] = Ylen;
+    primitive.dimensions[2] = Zlen;
+    geometry_msgs::Pose box_pose = pose;
     collision_object.primitives.push_back(primitive);
     collision_object.primitive_poses.push_back(box_pose);
     collision_object.operation = collision_object.ADD;
+    return collision_object;
+}
+
+moveit_msgs::CollisionObject G01Gripper::removeCollisionBlock(std::string obj_id) {
+    // todo untested
+    moveit_msgs::CollisionObject collision_object;
+    collision_object.header.frame_id = planFrameId;
+    collision_object.id = obj_id;
+    collision_object.operation = collision_object.REMOVE;
     return collision_object;
 }
