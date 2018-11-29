@@ -46,6 +46,8 @@ private:
     //movement
     void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 8);
 
+    void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
+
     ros::Publisher gripperCommandPub;
     ros::ServiceClient client;
     bool sim;
