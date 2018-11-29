@@ -43,6 +43,9 @@ private:
     //collisions
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
 
+    //movement
+    void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 8);
+
     ros::Publisher gripperCommandPub;
     ros::ServiceClient client;
     bool sim;

@@ -158,3 +158,39 @@ moveit_msgs::CollisionObject G01Gripper::collision(geometry_msgs::Pose pose, dou
     collision_object.operation = collision_object.ADD;
     return collision_object;
 }
+
+
+void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps){
+    //divide
+    std::vector<geometry_msgs::Pose> steps;
+    steps.reserve(n_steps);
+    double t=0;
+
+    for (int idx = 0; idx < n_steps; idx++){
+        t = idx/n_steps;
+        geometry_msgs::Pose intermediate_step;
+        intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
+        intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
+        intermediate_step.position.z = ((1 - t) * from.position.z) + (t * to.position.z);
+        intermediate_step.orientation.x = ((1 - t) * from.orientation.x) + (t * to.orientation.x);
+        intermediate_step.orientation.y = ((1 - t) * from.orientation.y) + (t * to.orientation.y);
+        intermediate_step.orientation.z = ((1 - t) * from.orientation.z) + (t * to.orientation.z);
+        intermediate_step.orientation.w = ((1 - t) * from.orientation.w) + (t * to.orientation.w);
+        steps.emplace_back(intermediate_step);
+    }
+    steps.emplace_back(to);
+
+    //plan
+    moveit_msgs::RobotTrajectory trajectory;
+    const double jump_threshold = 0.0;
+    const double eef_step = 0.01;
+    double success = 0;
+    for(int i=0; i < 3; i++) {
+        success = my_group.computeCartesianPath(steps, eef_step, jump_threshold, trajectory);
+        ROS_INFO_STREAM("movement planning: " << success * 100.0 << "% achieved");
+        if (success > 0.9){
+            my_group.move();
+            break;
+        }
+    }
+}
