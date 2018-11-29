@@ -1,0 +1,58 @@
+//
+// Created by rig8f on 29/11/18.
+//
+
+#ifndef G01_PERCEPTION_TAGS_H
+#define G01_PERCEPTION_TAGS_H
+
+const std::vector<std::string> tagnames = {
+        "red_cube_1", "red_cube_2", "red_cube_3", "red_cube_4",
+        "yellow_cyl_1", "yellow_cyl_2",
+        "green_triangle_1", "green_triangle_2", "green_triangle_3",
+        "blue_cube_1", "blue_cube_2", "blue_cube_3", "blue_cube_4",
+        "red_triangle_1", "red_triangle_2", "red_triangle_3"
+};
+
+// todo tune here
+const float CUBE_LEN = 0.07; // 7 cm
+const float CYL_HEIGHT = 0.20;  // 20 cm
+const float TRI_SECTION = 0.10; // largest base of triangle: 7*sqrt(2) (hyp of half cube)
+const float TRI_HEIGHT = 0.05;  // height of tri, half of largest base
+
+inline std::vector<float> getVolume(int tag_id) {
+    std::vector<float> vol;
+    if (tag_id < 0)
+        return vol; // error case
+    else if (tag_id < 4) { // cube
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CUBE_LEN);
+    } else if (tag_id < 6) { // cyl
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CYL_HEIGHT);
+    } else if (tag_id < 9) { // tri
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_HEIGHT);
+    } else if (tag_id < 13) { // cube
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CUBE_LEN);
+        vol.emplace_back(CUBE_LEN);
+    } else if (tag_id < 16) { // tri
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_HEIGHT);
+    }
+    return vol;
+}
+
+inline std::vector<float> getVolume(std::string tag_name) {
+    int index = -1;
+    auto it = std::find(tagnames.begin(), tagnames.end(), tag_name);
+    if (it != tagnames.end())
+        index = std::distance(tagnames.begin(), it);
+    return getVolume(index);
+}
+
+#endif //G01_PERCEPTION_TAGS_H

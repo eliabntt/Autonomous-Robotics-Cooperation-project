@@ -8,15 +8,10 @@
 #include "apriltags_ros/AprilTagDetectionArray.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 #include "tf2_ros/transform_listener.h"
+#include "g01_perception/PoseStampedArray.h"
+#include "../include/tags.h"
 
 std::vector<std::string> params;
-const std::vector<std::string> tagnames = {
-        "red_cube_1", "red_cube_2", "red_cube_3", "red_cube_4",
-        "yellow_cyl_1", "yellow_cyl_2",
-        "green_triangle_1", "green_triangle_2", "green_triangle_3",
-        "blue_cube_1", "blue_cube_2", "blue_cube_3", "blue_cube_4",
-        "red_triangle_1", "red_triangle_2", "red_triangle_3"
-};
 
 bool forever = false, sim = true, isIdentity = false;
 ros::Publisher pubGrab, pubAvoid;
@@ -83,7 +78,7 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
         isFileInit = fileInit();
 
     // initialize arrays to be published
-    geometry_msgs::PoseArray poseGrab, poseAvoid;
+    g01_perception::PoseStampedArray poseGrab, poseAvoid;
     poseGrab.header.stamp = ros::Time::now();
     poseAvoid.header.stamp = ros::Time::now();
 
@@ -115,16 +110,18 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
 		tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
 
         int idt = tag.id;
+        geometry_msgs::PoseStamped ps = tag.pose;
+        ps.header.frame_id = tagnames[idt]; // overwrite to contain tag name
         if (std::find(params.begin(), params.end(), tagnames[idt]) != params.end()) {
             // (requested) tag found over objects on the table: write on file
             ROS_INFO_STREAM("tag id: " << idt << " = " << tagnames[idt]);
             if (isFileInit)
                 fileTagWrite(tag);
 
-            // add pose to vectors
-            poseGrab.poses.emplace_back(tag.pose.pose);
+            // add poseStamped to vectors
+            poseGrab.poses.emplace_back(ps);
         } else
-            poseAvoid.poses.emplace_back(tag.pose.pose);
+            poseAvoid.poses.emplace_back(ps);
     }
 
     // close stream to file
@@ -139,7 +136,6 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     if (!forever)
         ros::shutdown();
 }
-
 
 void initParam(ros::NodeHandle node_handle) {
     // evaluate node's given parameters
@@ -204,8 +200,8 @@ int main(int argc, char *argv[]) {
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
     // initialize publishers of results
-    pubGrab = n.advertise<geometry_msgs::PoseArray>("/tags_to_grab", 1000);
-    pubAvoid = n.advertise<geometry_msgs::PoseArray>("/tags_to_avoid", 1000);
+    pubGrab = n.advertise<g01_perception::PoseStampedArray>("/tags_to_grab", 1000);
+    pubAvoid = n.advertise<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000);
 
     // in single-shot mode, a single spinOnce call won't work, so
     // repeat it until first detection message arrives, then stop;
