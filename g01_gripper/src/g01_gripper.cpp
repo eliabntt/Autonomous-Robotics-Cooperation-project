@@ -80,13 +80,13 @@ G01Gripper::G01Gripper() : command(), n(){
     my_group.move();
 
     geometry_msgs::Pose test_pose_2 = target_pose1;
-    test_pose_2.position.x -= 0.5;
-    test_pose_2.position.y += 0.15;
-    test_pose_2.position.z -= 0.25;
-    double r2=0, p2=-3.145/2, y2=0;
-    q_rot = tf::createQuaternionFromRPY(r, p, y);
+    test_pose_2.position.x -= 0.1;
+    test_pose_2.position.y += 0.1;
+    test_pose_2.position.z += 0.1;
+    double r2=3.145/2, p2=3.145/4, y2=3.145/4;
+   // poseToYPR(test_pose_2, &y2, &p2, &r2);
+    q_rot = tf::createQuaternionFromRPY(r2, p2, y2);
     tf::quaternionTFToMsg(q_rot,test_pose_2.orientation);
-
     move(target_pose1, test_pose_2, my_group);
 
     spinner.stop();
@@ -182,8 +182,11 @@ void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::
     double intermediate_roll, intermediate_pitch, intermediate_yaw;
     poseToYPR(from, &from_yaw, &from_pitch, &from_roll);
     poseToYPR(to, &to_yaw, &to_pitch, &to_roll);
+    ROS_INFO_STREAM("FROM y: "<<from_yaw<<" p: "<<from_pitch<<" r: "<<from_yaw);
+    ROS_INFO_STREAM("TO y: "<<to_yaw<<" p: "<<to_pitch<<" r: "<<to_yaw);
+
     for (int idx = 0; idx < n_steps; idx++){
-        t = idx/n_steps;
+        t = double(idx)/n_steps;
         geometry_msgs::Pose intermediate_step;
         intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
         intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
@@ -191,6 +194,9 @@ void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::
         intermediate_roll = ((1 - t) * from_roll) + (t * to_roll);
         intermediate_pitch = ((1 - t) * from_pitch) + (t * to_pitch);
         intermediate_yaw = ((1 - t) * from_yaw) + (t * to_yaw);
+        ROS_INFO_STREAM("t: "<<t);
+        ROS_INFO_STREAM("y: "<<intermediate_yaw<<" p: "<<intermediate_pitch<<" r: "<<intermediate_yaw);
+        ROS_INFO_STREAM("x: "<<intermediate_step.position.x);
         intermediate_step.orientation = tf::createQuaternionMsgFromRollPitchYaw(intermediate_roll, intermediate_pitch, intermediate_yaw);
         steps.emplace_back(intermediate_step);
     }
