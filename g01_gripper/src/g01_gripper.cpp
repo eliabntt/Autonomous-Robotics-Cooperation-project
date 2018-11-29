@@ -77,6 +77,16 @@ G01Gripper::G01Gripper() : command(), n(){
     //todo out of the cycle
     planning_scene_interface.addCollisionObjects(collision_objects);
 
+    geometry_msgs::Pose test_pose_2 = target_pose1;
+    test_pose_2.position.x += 0.25;
+    test_pose_2.position.y += 0.15;
+    test_pose_2.position.z -= 0.25;
+    double r2=0, p2=-3.145/2, y2=0;
+    q_rot = tf::createQuaternionFromRPY(r, p, y);
+    tf::quaternionTFToMsg(q_rot,test_pose_2.orientation);
+
+    move(target_pose1, test_pose_2, my_group);
+
     spinner.stop();
 
 
