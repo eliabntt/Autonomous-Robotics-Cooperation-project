@@ -67,6 +67,7 @@ G01Gripper::G01Gripper() : command(), n(){
     myobj.position.x = 1;
     myobj.position.y = 22;
     myobj.position.z = 1;
+    //orientation must be this and must NOT be overwritten
     myobj.orientation.x = 0;
     myobj.orientation.y = 0;
     myobj.orientation.z = 0;
