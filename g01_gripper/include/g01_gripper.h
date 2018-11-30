@@ -36,7 +36,7 @@ private:
     ros::ServiceClient client;
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-
+    std::vector<moveit_msgs::CollisionObject> collision_objects;
     std::vector<geometry_msgs::PoseStamped> objectsToGrab, objectsToAvoid;
 
     // arm
@@ -47,12 +47,11 @@ private:
     void gripperOpen();
 
     // collisions
-    moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, double Xlen, double Ylen, double Zlen, std::string obj_id);
+    moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
     moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
 
 
     // apriltags connection
-    void getApriltagDetections();
     void grabCB(const g01_perception::PoseStampedArray::ConstPtr &input);
     void avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input);
 };
