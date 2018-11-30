@@ -98,10 +98,9 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
 
         // set position to a corner
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z todo tune in tags.h
-        item.pose.position.x -= vol[0] / 2;
-        item.pose.position.y -= vol[1] / 2;
+        item.pose.position.z -= vol[2] / 2;
 
-        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], -vol[2], item.header.frame_id));
+        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
     ROS_INFO_STREAM("grabCBEnd");
 }
@@ -113,10 +112,9 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
 
         // todo set position to a corner, not the center of the tag
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
-        item.pose.position.x -= vol[0] / 2;
-        item.pose.position.y -= vol[1] / 2;
+        item.pose.position.z -= vol[2] / 2;
 
-        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], -vol[2], item.header.frame_id));
+        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
     ROS_INFO_STREAM("avoidCBEnd");
 }
@@ -179,6 +177,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
     primitive.dimensions.resize(3);
     primitive.dimensions[0] = Xlen;
     primitive.dimensions[1] = Ylen;
+    ROS_INFO_STREAM(Zlen);
     primitive.dimensions[2] = Zlen;
     geometry_msgs::Pose box_pose = pose;
     collision_object.primitives.push_back(primitive);

@@ -16,7 +16,7 @@ const std::vector<std::string> tagnames = {
 };
 
 // todo tune here
-const float CUBE_LEN = 0.15; // L = 15 cm
+const float CUBE_LEN = 0.105; // length of cube
 const float CYL_HEIGHT = 2 * CUBE_LEN; // height of cylinder, twice the cube
 const float TRI_SECTION = CUBE_LEN * sqrt(2); // largest base of triangle: L*sqrt(2) (hyp of half cube)
 const float TRI_HEIGHT = TRI_SECTION / 2; // height of tri, half of largest base
