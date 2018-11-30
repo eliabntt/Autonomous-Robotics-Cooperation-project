@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
     // repeat it until first detection message arrives, then stop;
     // in forever mode, rate will be maintained
     //todo test
-    ros::Rate rate(100); // expressed in Hz
+    ros::Rate rate(5); // expressed in Hz
     while (ros::ok()) {
         ros::spinOnce();
         rate.sleep();
