@@ -51,6 +51,7 @@ private:
     moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
 
     // apriltags connection
+    ros::Subscriber subGrab, subAvoid;
     void grabCB(const g01_perception::PoseStampedArray::ConstPtr &input);
     void avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input);
 };
