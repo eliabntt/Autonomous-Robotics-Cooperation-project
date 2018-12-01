@@ -94,14 +94,21 @@ G01Gripper::G01Gripper() : command(), n() {
 void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
     ROS_INFO_STREAM("grabCB");
     for (geometry_msgs::PoseStamped item: input->poses) {
-        objectsToGrab.push_back(item);
-
-        // set position to a corner
+        // set position to the center of the object
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z todo tune in tags.h
         item.pose.position.z -= vol[2] / 2;
 
+        //objectsToGrab.push_back(item);
+        if(vol[0] == vol[2])
+            cubeToGrab.emplace_back(item);
+        else if(vol[0] < vol[2])
+            cylToGrab.emplace_back(item);
+        else
+            triToGrab.emplace_back(item); // todo evaluate further center/orient tuning, but maybe unneeded
+
         collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
+    //ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
     ROS_INFO_STREAM("grabCBEnd");
 }
 
@@ -110,7 +117,6 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
     for (geometry_msgs::PoseStamped item: input->poses) {
         objectsToAvoid.push_back(item);
 
-        // todo set position to a corner, not the center of the tag
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
         item.pose.position.z -= vol[2] / 2;
 
@@ -177,7 +183,6 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
     primitive.dimensions.resize(3);
     primitive.dimensions[0] = Xlen;
     primitive.dimensions[1] = Ylen;
-    ROS_INFO_STREAM(Zlen);
     primitive.dimensions[2] = Zlen;
     geometry_msgs::Pose box_pose = pose;
     collision_object.primitives.push_back(primitive);
