@@ -13,12 +13,13 @@ G01Gripper::G01Gripper() : command(), n() {
         spinner.start();
 
         //init
-        // todo surrounding walls with addCollision
-        ros::Subscriber subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
-        ros::Subscriber subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
 
         //todo implement better for wrong inputs(see hw1)
         sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
+
+        // todo surrounding walls with addCollision
+        subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
+        subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
 
         //robot
         std::string PLANNING_GROUP = "manipulator";
