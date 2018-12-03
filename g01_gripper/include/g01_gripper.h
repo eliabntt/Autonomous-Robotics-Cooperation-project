@@ -41,7 +41,7 @@ private:
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
     //movement
-    void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 8);
+    void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
