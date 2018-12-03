@@ -11,30 +11,31 @@ G01Gripper::G01Gripper() : command(), n() {
     bool finish = false;
     spinner.start();
 
+    //todo implement better for wrong inputs(see hw1)
+    sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
+
+    //robot
+    std::string PLANNING_GROUP = "manipulator";
+    moveit::planning_interface::MoveGroupInterface my_group(PLANNING_GROUP);
+
+    //todo maybe?
+    //my_group.setPlannerId("RRTConnectkConfigDefault");
+    //ROS_INFO_STREAM(my_group.getDefaultPlannerId());
+
+    //gripper
+    gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
+            "/robotiq_hands/l_hand/SModelRobotOutput", 1);
+
+    const robot_state::JointModelGroup *joint_model_group =
+            my_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
+
+    //some basic info
+    planFrameId = my_group.getPlanningFrame();
+    endEffId = my_group.getEndEffectorLink();
+
+
     while (ros::ok() && !finish) {
         //init
-
-        //todo implement better for wrong inputs(see hw1)
-        sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
-
-        //robot
-        std::string PLANNING_GROUP = "manipulator";
-        moveit::planning_interface::MoveGroupInterface my_group(PLANNING_GROUP);
-
-        //todo maybe?
-        //my_group.setPlannerId("RRTConnectkConfigDefault");
-        //ROS_INFO_STREAM(my_group.getDefaultPlannerId());
-
-        //gripper
-        gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
-                "/robotiq_hands/l_hand/SModelRobotOutput", 1);
-
-        const robot_state::JointModelGroup *joint_model_group =
-                my_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
-
-        //some basic info
-        planFrameId = my_group.getPlanningFrame();
-        endEffId = my_group.getEndEffectorLink();
 
         moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
@@ -57,7 +58,19 @@ G01Gripper::G01Gripper() : command(), n() {
         subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
         subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
 
+        if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty())
+        {
+            subGrab.shutdown();
+            subAvoid.shutdown();
+            ROS_INFO_STREAM("tags arrived");
+            finish = true;
+        }
+    }
+    finish = false;
+    while(!finish)
+    {
         //gripperClose(255);
+        moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
         //todo out of the cycle
         planning_scene_interface.addCollisionObjects(collision_objects);
@@ -66,8 +79,8 @@ G01Gripper::G01Gripper() : command(), n() {
 
             geometry_msgs::Pose test_pose_2;
             test_pose_2.position = i.pose.position;
-            test_pose_2.position.z += 0.8;
-            test_pose_2.orientation = my_group.getCurrentPose("ee_link").pose.orientation;
+            test_pose_2.position.z += 0.1;
+            test_pose_2.orientation = my_group.getCurrentPose().pose.orientation;
 
             moveit_msgs::RobotTrajectory trajectory;
             const double jump_threshold = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
@@ -90,11 +103,27 @@ G01Gripper::G01Gripper() : command(), n() {
             my_plan.trajectory_ = trajectory;
             moveit_msgs::MoveItErrorCodes a = my_group.execute(my_plan);
             ROS_INFO_STREAM(a);
+
+
+            moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
+            std::vector<double> joint_group_positions;
+            current_state->copyJointGroupPositions(joint_model_group,
+                                                   joint_group_positions);
+            joint_group_positions[0] = -3.14/2; // radians
+            joint_group_positions[1] = -1.86; // radians
+            joint_group_positions[2] = 1.72788; // radians
+            joint_group_positions[3] = -1.65; // radians
+            joint_group_positions[4] = -3.14/2; // radians
+            joint_group_positions[5] = 3.14/3; // radians
+            my_group.setJointValueTarget(joint_group_positions);
+
+            bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+            my_group.move();
+                
             finish = true;
         }
     }
     spinner.stop();
-
 
 /*
     open();
@@ -108,7 +137,6 @@ G01Gripper::G01Gripper() : command(), n() {
 }
 
 void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
-    if (cubeToGrab.empty() && cylToGrab.empty() && triToGrab.empty() && objectsToAvoid.empty())
         for (geometry_msgs::PoseStamped item: input->poses) {
             // set position to the center of the object
             std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z todo tune in tags.h
@@ -125,12 +153,9 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
             collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
             ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
         }
-    else
-        subGrab.shutdown();
 }
 
 void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
-    if (cubeToGrab.empty() && cylToGrab.empty() && triToGrab.empty() && objectsToAvoid.empty())
         for (geometry_msgs::PoseStamped item: input->poses) {
             objectsToAvoid.push_back(item);
 
@@ -139,8 +164,6 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
 
             collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
         }
-    else
-        subAvoid.shutdown();
 }
 
 void G01Gripper::gripperOpen() {
@@ -233,7 +256,7 @@ std::vector<geometry_msgs::Pose> G01Gripper::move(geometry_msgs::Pose from, geom
     // ROS_INFO_STREAM("FROM y: " << from_yaw << " p: " << from_pitch << " r: " << from_yaw);
     //  ROS_INFO_STREAM("TO y: " << to_yaw << " p: " << to_pitch << " r: " << to_yaw);
 
-    for (int idx = 0; idx < n_steps; idx++) {
+    for (int idx = 1; idx < n_steps; idx++) {
         t = double(idx) / n_steps;
         geometry_msgs::Pose intermediate_step;
         intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
