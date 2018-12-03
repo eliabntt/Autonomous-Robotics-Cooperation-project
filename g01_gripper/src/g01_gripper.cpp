@@ -20,8 +20,11 @@ G01Gripper::G01Gripper() : command(), n() {
         //robot
         std::string PLANNING_GROUP = "manipulator";
         moveit::planning_interface::MoveGroupInterface my_group(PLANNING_GROUP);
-        my_group.setPlannerId("RRTConnectkConfigDefault");
-        ROS_INFO_STREAM(my_group.getDefaultPlannerId());
+
+        //todo maybe?
+        //my_group.setPlannerId("RRTConnectkConfigDefault");
+        //ROS_INFO_STREAM(my_group.getDefaultPlannerId());
+
         //gripper
         gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
                 "/robotiq_hands/l_hand/SModelRobotOutput", 1);
