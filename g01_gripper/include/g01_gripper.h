@@ -15,6 +15,7 @@
 #include <robotiq_s_model_control/SModel_robot_input.h>
 #include "g01_perception/PoseStampedArray.h"
 #include "../../g01_perception/include/tags.h"
+#include <moveit/robot_trajectory/robot_trajectory.h>
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
@@ -41,7 +42,7 @@ private:
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
     //movement
-    void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
+    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
