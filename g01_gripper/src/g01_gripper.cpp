@@ -59,24 +59,26 @@ G01Gripper::G01Gripper() : command(), n() {
         my_group.move();
         ROS_INFO_STREAM("Visualizing plan 1 (pose goal)" << (success ? "" : "FAILED"));
 
-        gripperClose(255);
+        //gripperClose(255);
 
         //todo out of the cycle
         planning_scene_interface.addCollisionObjects(collision_objects);
 
         my_group.move();
+        ROS_INFO_STREAM("cacca" << cubeToGrab.empty());
+        for (auto i : cubeToGrab) {
+            geometry_msgs::Pose test_pose_2 = i.pose;
 
-        geometry_msgs::Pose test_pose_2 = target_pose1;
-        test_pose_2.position.x -= 0.1;
-        test_pose_2.position.y += 0.1;
-        test_pose_2.position.z += 0.1;
-        double r2=3.145/2, p2=3.145/4, y2=3.145/4;
-        // poseToYPR(test_pose_2, &y2, &p2, &r2);
-        q_rot = tf::createQuaternionFromRPY(r2, p2, y2);
-        tf::quaternionTFToMsg(q_rot,test_pose_2.orientation);
-        move(target_pose1, test_pose_2, my_group);
+            test_pose_2.position.z += 0.1;
+            double r2 = 3.145 / 2, p2 = 3.145 / 4, y2 = 3.145 / 4;
+            //fixme
+            // poseToYPR(test_pose_2, &y2, &p2, &r2);
+            ROS_INFO_STREAM("ciao");
+            q_rot = tf::createQuaternionFromRPY(r2, p2, y2);
+            tf::quaternionTFToMsg(q_rot, test_pose_2.orientation);
+            move(target_pose1, test_pose_2, my_group);
+        }
 
-        ROS_INFO_DELAYED_THROTTLE(2,"Finishing...");
         finish = false;
     }
     spinner.stop();
@@ -101,9 +103,10 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
         item.pose.position.z -= vol[2] / 2;
 
         //objectsToGrab.push_back(item);
-        if(vol[0] == vol[2])
+        ROS_INFO_STREAM(vol[0]<<vol[1]);
+        if (vol[0] == vol[2])
             cubeToGrab.emplace_back(item);
-        else if(vol[0] < vol[2])
+        else if (vol[0] < vol[2])
             cylToGrab.emplace_back(item);
         else
             triToGrab.emplace_back(item); // todo evaluate further center/orient tuning, but maybe unneeded
@@ -203,21 +206,22 @@ moveit_msgs::CollisionObject G01Gripper::removeCollisionBlock(std::string obj_id
 }
 
 
-void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps){
+void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to,
+                      moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps) {
     //divide
     std::vector<geometry_msgs::Pose> steps;
     steps.reserve(n_steps);
-    double t=0;
+    double t = 0;
     double from_roll, from_pitch, from_yaw;
     double to_roll, to_pitch, to_yaw;
     double intermediate_roll, intermediate_pitch, intermediate_yaw;
     poseToYPR(from, &from_yaw, &from_pitch, &from_roll);
     poseToYPR(to, &to_yaw, &to_pitch, &to_roll);
-    ROS_INFO_STREAM("FROM y: "<<from_yaw<<" p: "<<from_pitch<<" r: "<<from_yaw);
-    ROS_INFO_STREAM("TO y: "<<to_yaw<<" p: "<<to_pitch<<" r: "<<to_yaw);
+    ROS_INFO_STREAM("FROM y: " << from_yaw << " p: " << from_pitch << " r: " << from_yaw);
+    ROS_INFO_STREAM("TO y: " << to_yaw << " p: " << to_pitch << " r: " << to_yaw);
 
-    for (int idx = 0; idx < n_steps; idx++){
-        t = double(idx)/n_steps;
+    for (int idx = 0; idx < n_steps; idx++) {
+        t = double(idx) / n_steps;
         geometry_msgs::Pose intermediate_step;
         intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
         intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
@@ -225,31 +229,32 @@ void G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::
         intermediate_roll = ((1 - t) * from_roll) + (t * to_roll);
         intermediate_pitch = ((1 - t) * from_pitch) + (t * to_pitch);
         intermediate_yaw = ((1 - t) * from_yaw) + (t * to_yaw);
-        ROS_INFO_STREAM("t: "<<t);
-        ROS_INFO_STREAM("y: "<<intermediate_yaw<<" p: "<<intermediate_pitch<<" r: "<<intermediate_yaw);
-        ROS_INFO_STREAM("x: "<<intermediate_step.position.x);
-        intermediate_step.orientation = tf::createQuaternionMsgFromRollPitchYaw(intermediate_roll, intermediate_pitch, intermediate_yaw);
+        ROS_INFO_STREAM("t: " << t);
+        ROS_INFO_STREAM("y: " << intermediate_yaw << " p: " << intermediate_pitch << " r: " << intermediate_yaw);
+        ROS_INFO_STREAM("x: " << intermediate_step.position.x);
+        intermediate_step.orientation = tf::createQuaternionMsgFromRollPitchYaw(intermediate_roll, intermediate_pitch,
+                                                                                intermediate_yaw);
         steps.emplace_back(intermediate_step);
     }
     steps.emplace_back(to);
 
     //plan
     moveit_msgs::RobotTrajectory trajectory;
-    const double jump_threshold = (sim ? 0.0 : 0.1);//no idea if it is a good value
+    const double jump_threshold = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double eef_step = 0.01;
     double success = 0;
-    for(int i=0; i < 3; i++) {
+    for (int i = 0; i < 3; i++) {
         success = my_group.computeCartesianPath(steps, eef_step, jump_threshold, trajectory);
         ROS_INFO_STREAM("movement planning: " << success * 100.0 << "% achieved");
-        if (success > 0.5){//todo check this
-            my_group.move();
-            break;
-        }
+        my_group.move();
+        break;
     }
 }
 
-void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll){
+
+void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
     tf::Quaternion quaternion;
     tf::quaternionMsgToTF(pose.orientation, quaternion);
     tf::Matrix3x3 mat(quaternion);
     mat.getEulerYPR(*yaw, *pitch, *roll);
+}
