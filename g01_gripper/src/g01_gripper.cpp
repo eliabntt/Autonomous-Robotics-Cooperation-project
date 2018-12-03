@@ -35,7 +35,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
 
     while (ros::ok() && !finish) {
-        //init
+        gripperOpen();
 
         moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
@@ -79,7 +79,10 @@ G01Gripper::G01Gripper() : command(), n() {
 
             geometry_msgs::Pose test_pose_2;
             test_pose_2.position = i.pose.position;
-            test_pose_2.position.z += 0.1;
+            //fixme
+            test_pose_2.position.x += 0.01;
+            test_pose_2.position.y += 0.01;
+            test_pose_2.position.z += 0.00;
             test_pose_2.orientation = my_group.getCurrentPose().pose.orientation;
 
             moveit_msgs::RobotTrajectory trajectory;
@@ -88,6 +91,7 @@ G01Gripper::G01Gripper() : command(), n() {
             std::vector<geometry_msgs::Pose> waypoints = move(my_group.getCurrentPose().pose, test_pose_2, my_group);
 
             my_group.setMaxVelocityScalingFactor(0.1);
+            my_group.setGoalPositionTolerance(0.0001);
 
             double fraction = my_group.computeCartesianPath(waypoints, eef_step,
                                                             jump_threshold, trajectory);
@@ -102,7 +106,10 @@ G01Gripper::G01Gripper() : command(), n() {
             rt.getRobotTrajectoryMsg(trajectory);
             my_plan.trajectory_ = trajectory;
             moveit_msgs::MoveItErrorCodes a = my_group.execute(my_plan);
-            ROS_INFO_STREAM(a);
+
+            gripperClose(155);
+            if(sim)
+                my_group.attachObject(i.header.frame_id, endEffId);
 
 
             moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
@@ -119,21 +126,15 @@ G01Gripper::G01Gripper() : command(), n() {
 
             bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
             my_group.move();
-                
+
+            if(sim)
+                my_group.detachObject(i.header.frame_id);
+
             finish = true;
         }
     }
     spinner.stop();
-
-/*
-    open();
-    if(sim)
-        my_group.detachObject(id);
-
-    close(255);
-    if(sim)
-        my_group.attatchObject(id, endEffId);
- */
+    ros::shutdown();
 }
 
 void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
