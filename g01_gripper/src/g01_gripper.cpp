@@ -9,7 +9,8 @@ std::string planFrameId, endEffId;
 G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better?
     ros::AsyncSpinner spinner(2);
-    while (n.ok()) {
+    bool finish = false;
+    while (n.ok() && !finish) {
         spinner.start();
 
         //init
@@ -62,21 +63,10 @@ G01Gripper::G01Gripper() : command(), n() {
 
         gripperClose(255);
 
-        //todo cycle this for initialization of the workspace and also for the single small objects
-        //OVERWRITE ONLY THE POSITION
-        geometry_msgs::Pose myobj;
-        myobj.position.x = 1;
-        myobj.position.y = 22;
-        myobj.position.z = 1;
-        //orientation must be this and must NOT be overwritten
-        myobj.orientation.x = 0;
-        myobj.orientation.y = 0;
-        myobj.orientation.z = 0;
-        myobj.orientation.w = 1;
-        collision_objects.emplace_back(addCollisionBlock(myobj, 0.4, 0.6, 0.2, "ciao"));
-
         //todo out of the cycle
         planning_scene_interface.addCollisionObjects(collision_objects);
+	ros::Duration(1).sleep(); 
+	finish = false;
     }
     spinner.stop();
 
@@ -180,8 +170,11 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
     collision_object.header.frame_id = "world";
     collision_object.id = obj_id;
     shape_msgs::SolidPrimitive primitive;
-    primitive.type = primitive.BOX;
-    primitive.dimensions.resize(3);
+    if(Xlen == Ylen)
+    	primitive.type = primitive.BOX;
+	else
+		primitive.type = primitive.TRIANG;    
+	primitive.dimensions.resize(3);
     primitive.dimensions[0] = Xlen;
     primitive.dimensions[1] = Ylen;
     primitive.dimensions[2] = Zlen;
