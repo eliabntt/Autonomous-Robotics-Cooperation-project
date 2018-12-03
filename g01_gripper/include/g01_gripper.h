@@ -16,6 +16,7 @@
 #include "g01_perception/PoseStampedArray.h"
 #include "../../g01_perception/include/tags.h"
 #include <moveit/robot_trajectory/robot_trajectory.h>
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
