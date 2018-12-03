@@ -32,6 +32,7 @@ private:
     //gripper
     robotiq_s_model_control::SModel_robot_output command;
     robotiq_s_model_control::SModel_robot_input status;
+
     ros::Publisher gripperCommandPub;
     ros::ServiceClient client;
 
@@ -39,8 +40,11 @@ private:
     std::vector<moveit_msgs::CollisionObject> collision_objects;
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
-    // arm
-    bool move(double x, double y);
+    //movement
+    void move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 8);
+
+    void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
+
 
     // gripper
     void gripperClose(int howMuch);
