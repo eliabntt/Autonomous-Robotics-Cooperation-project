@@ -2,11 +2,12 @@
 // Created by eliabntt on 28/11/18.
 //
 #include "g01_gripper.h"
+
 std::string planFrameId, endEffId;
 
 G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better?
-    ros::AsyncSpinner spinner(0);
+    ros::AsyncSpinner spinner(2);
     bool finish = false;
     spinner.start();
 
@@ -21,9 +22,6 @@ G01Gripper::G01Gripper() : command(), n() {
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
             "/robotiq_hands/l_hand/SModelRobotOutput", 1);
 
-    const robot_state::JointModelGroup *joint_model_group =
-            my_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
-
     //some basic info
     planFrameId = my_group.getPlanningFrame();
     endEffId = my_group.getEndEffectorLink();
@@ -35,9 +33,6 @@ G01Gripper::G01Gripper() : command(), n() {
         moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
         moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
-
-        //     current_state->copyJointGroupPositions(joint_model_group,
-        //                                          home_joint_positions);
 
         my_group.setJointValueTarget(home_joint_positions);
 
@@ -76,8 +71,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 test_pose_2.position.z += 0.00;
                 double y, p, r;
                 poseToYPR(my_group.getCurrentPose().pose, &y, &p, &r);
-                ROS_INFO_STREAM(y << p << r);
-
+                //todo check
                 test_pose_2.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
 
                 moveit_msgs::RobotTrajectory trajectory;
@@ -96,33 +90,28 @@ G01Gripper::G01Gripper() : command(), n() {
                                                      PLANNING_GROUP);
                 rt.setRobotTrajectoryMsg(*my_group.getCurrentState(), trajectory);
 
-                trajectory_processing::IterativeParabolicTimeParameterization iptp;
-                bool time_success = iptp.computeTimeStamps(rt);
-                rt.getRobotTrajectoryMsg(trajectory);
                 my_plan.trajectory_ = trajectory;
                 moveit_msgs::MoveItErrorCodes a = my_group.execute(my_plan);
 
                 gripperClose(155);
-                my_group.attachObject(i.header.frame_id, endEffId);
+                //  my_group.attachObject(i.header.frame_id, endEffId);
 
-                // todo fixme index problems
-                int id = std::find(tagnames.begin(), tagnames.end(), i.header.frame_id) != tagnames.end();
-                if (sim) gazeboAttach(linknames[id][0],linknames[id][1]);
+                long id = std::find(tagnames.begin(), tagnames.end(), i.header.frame_id) - tagnames.begin();
+                if (sim) gazeboAttach(linknames[id][0], linknames[id][1]);
 
                 moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
-                /*  current_state->copyJointGroupPositions(joint_model_group,
-                                                         home_joint_positions);*/
+
                 my_group.setJointValueTarget(home_joint_positions);
 
                 bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
                 my_group.move();
-                my_group.detachObject(i.header.frame_id);
+                //fixme
+                //     my_group.detachObject(i.header.frame_id);
 
-                if (sim) gazeboDetach(linknames[id][0],linknames[id][1]);
-
-
-                finish = true;
+                if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
+                gripperOpen();
             }
+            finish = true;
     }
     spinner.stop();
     ros::shutdown();
@@ -143,8 +132,8 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
             triToGrab.emplace_back(item); // todo evaluate further center/orient tuning, but maybe unneeded
 
         collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
-        ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
     }
+    ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
 }
 
 void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
@@ -290,12 +279,10 @@ bool G01Gripper::gazeboAttach(std::string model2, std::string link2) {
 bool G01Gripper::gazeboDetach(std::string model2, std::string link2) {
     ros::ServiceClient client2 = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
     gazebo_ros_link_attacher::AttachRequest req;
-    ROS_INFO_STREAM("IL SIGNORE");
     req.link_name_1 = "wrist_3_link";
     req.link_name_2 = link2;
     req.model_name_1 = "robot";
     req.model_name_2 = model2;
     gazebo_ros_link_attacher::AttachResponse res;
-    client2.call(req, res);
-    return true;
+    return client2.call(req, res);
 }
