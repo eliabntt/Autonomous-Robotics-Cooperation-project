@@ -1,1 +1,0 @@
-Detected frames, w.r.t. camera reference frame:
