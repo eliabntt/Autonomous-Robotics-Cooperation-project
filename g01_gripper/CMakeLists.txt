@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
     moveit_ros_planning_interface
     tf2
     robotiq_s_model_control
+        gazebo_ros
 )
 
 ## System dependencies are found with CMake's conventions

@@ -14,6 +14,23 @@ const std::vector<std::string> tagnames = {
         "blue_cube_1", "blue_cube_2", "blue_cube_3", "blue_cube_4",
         "red_triangle_1", "red_triangle_2", "red_triangle_3"
 };
+const std::vector<std::vector<std::string>> linknames = {
+        {"cube1",          "cube1_link"},
+        {"cube2",          "cube2_link"},
+        {"cube3",          "cube3_link"},
+        {"cube4",          "cube4_link"},
+        {"Hexagon1",       "Hexagon1_link"},
+        {"Hexagon1",       "Hexagon2_link"},
+        {"Triangle1",      "Triangle1_link"},
+        {"Triangle3",      "Triangle3_link"},
+        {"Triangle3",      "Triangle3_link"},
+        {"blue_cube_1",    "blue_cube_1_link"},
+        {"blue_cube_2",    "blue_cube_2_link"},
+        {"blue_cube_3",    "blue_cube_3_link"},
+        {"blue_cube_4",    "blue_cube_4_link"},
+        {"red_triangle_1", "red_triangle_1_link"},
+        {"red_triangle_2", "red_triangle_2_link"},
+        {"red_triangle_3", "red_triangle_3_link"}};
 
 // todo tune here
 const float CUBE_LEN = 0.098; // length of cube

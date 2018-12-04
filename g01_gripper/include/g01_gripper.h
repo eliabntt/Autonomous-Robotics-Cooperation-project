@@ -17,6 +17,9 @@
 #include "../../g01_perception/include/tags.h"
 #include <moveit/robot_trajectory/robot_trajectory.h>
 #include <moveit/trajectory_processing/iterative_time_parameterization.h>
+#include "gazebo_ros_link_attacher/Attach.h"
+#include "gazebo_ros_link_attacher/AttachRequest.h"
+#include "gazebo_ros_link_attacher/AttachResponse.h"
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
@@ -44,13 +47,10 @@ private:
 
     //movement
     std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
+    std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 3.14 / 3};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
-
-    // gripper
-    void gripperClose(int howMuch);
-    void gripperOpen();
 
     // collisions
     moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
@@ -60,6 +60,12 @@ private:
     ros::Subscriber subGrab, subAvoid;
     void grabCB(const g01_perception::PoseStampedArray::ConstPtr &input);
     void avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input);
+    bool gazeboAttach(std::string model2, std::string link2);
+    bool gazeboDetach(std::string model2, std::string link2);
+
+    // gripper
+    void gripperClose(int howMuch);
+    void gripperOpen();
 };
 
 #endif
