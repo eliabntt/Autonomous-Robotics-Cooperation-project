@@ -46,11 +46,12 @@ private:
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
     //movement
-    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
+    std::string PLANNING_GROUP = "manipulator";
+    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, unsigned long n_steps = 3);
+    void moveObjects(moveit::planning_interface::MoveGroupInterface &group, std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
     std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 3.14 / 3};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
-
 
     // collisions
     moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
