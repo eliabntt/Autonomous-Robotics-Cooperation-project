@@ -55,6 +55,7 @@ private:
     // collisions
     moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
     moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
+    void addCollisionWalls();
 
     // apriltags connection
     ros::Subscriber subGrab, subAvoid;
