@@ -20,7 +20,6 @@
 #include "gazebo_ros_link_attacher/Attach.h"
 #include "gazebo_ros_link_attacher/AttachRequest.h"
 #include "gazebo_ros_link_attacher/AttachResponse.h"
-#include <eigen_conversions/eigen_msg.h>
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
@@ -49,11 +48,12 @@ private:
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
     //movement
+    std::string PLANNING_GROUP = "manipulator";
+    void moveObjects(moveit::planning_interface::MoveGroupInterface &group, std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
     std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
     std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
-
 
     // collisions
     moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
@@ -70,7 +70,6 @@ private:
     void gripperClose(int howMuch);
     void gripperOpen();
     bool isHeld();
-
 };
 
 #endif
