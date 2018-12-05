@@ -59,7 +59,7 @@ G01Gripper::G01Gripper() : command(), n() {
     //todo add walls
     planning_scene_interface.addCollisionObjects(collision_objects);
 
-    moveObjects(my_group, cylToGrab, true); // with rotation
+    moveObjects(my_group, cylToGrab); //fixme // with rotation
     moveObjects(my_group, cubeToGrab);
     moveObjects(my_group, triToGrab);
 
@@ -70,10 +70,6 @@ G01Gripper::G01Gripper() : command(), n() {
 void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                              std::vector<geometry_msgs::PoseStamped> objectList, bool rotate) {
     if (objectList.empty()) return;
-
-    /*
-     *
-     */
 
     // settings
     group.setMaxVelocityScalingFactor(0.1);
@@ -101,7 +97,9 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         if (rotate) //todo check
             objectPose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
         else
-            objectPose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0,0,0);
+            objectPose.orientation =  group.getCurrentPose().pose.orientation;
+
+        ROS_INFO_STREAM( group.getCurrentPose().pose.orientation);
 
         // compute waypoints on path to the target, create a cartesian path on them
         std::vector<geometry_msgs::Pose> waypoints = move(group.getCurrentPose().pose, objectPose);
@@ -128,7 +126,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
             group.setPoseTarget(pose);
             bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-            if(!success)
+            if (!success)
                 break;
             else
                 group.move();
@@ -136,7 +134,13 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             r_y = group.getCurrentPose().pose.position.y;
         }
 
-
+        //move with the fingers alongside the obj
+        geometry_msgs::Pose pose = group.getCurrentPose().pose;
+        pose.position.z -= 0.1;
+        group.setPoseTarget(pose);
+        bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+        if (success)
+            group.move();
 
         // close the gripper, adjust rviz and gazebo
         int how_much = 150;
@@ -152,7 +156,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // back to home todo change this to box LZ
         // plan and execute the movement
         group.setJointValueTarget(home_joint_positions);
-        bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         if (success)
             group.move();
         else
@@ -272,7 +276,8 @@ moveit_msgs::CollisionObject G01Gripper::removeCollisionBlock(std::string obj_id
 }
 
 
-std::vector<geometry_msgs::Pose> G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to, unsigned long n_steps) {
+std::vector<geometry_msgs::Pose> G01Gripper::move(geometry_msgs::Pose from, geometry_msgs::Pose to,
+                                                  unsigned long n_steps) {
     //divide
     std::vector<geometry_msgs::Pose> steps;
     double t = 0;
