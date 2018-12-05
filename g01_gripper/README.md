@@ -18,7 +18,7 @@ roslaunch ur10_platform_challenge_moveit_config moveit_rviz.launch sim:=true
 ```
 
 ```
-roslaunch challenge_arena apriltags.launch sim:=true
+roslaunch challenge_arena apriltag.launch sim:=true
 ```
 
 ```

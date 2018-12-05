@@ -43,7 +43,8 @@ G01Gripper::G01Gripper() : command(), n() {
         bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         my_group.move();
 
-        // todo surrounding walls with addCollision
+        addCollisionWalls();
+                // todo surrounding walls with addCollision
         subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
         subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
 
@@ -349,4 +350,18 @@ bool G01Gripper::isHeld() {
 
 void G01Gripper::getGripper(const robotiq_s_model_control::SModel_robot_input &msg) {
     status = msg;
+}
+
+void G01Gripper::addCollisionWalls() {
+    geometry_msgs::Pose back_wall;
+    back_wall.position.x = 1.2;
+    back_wall.position.y = -0.2;
+    back_wall.position.z = 1;
+    geometry_msgs::Pose side_wall;
+    side_wall.position.x = 0.15;
+    side_wall.position.y = -0.8;
+    side_wall.position.z = 1;
+    collision_objects.emplace_back(addCollisionBlock(back_wall, 0.1, 1.3, 2, "back_wall"));
+    collision_objects.emplace_back(addCollisionBlock(side_wall, 2, 0.1, 2, "side_wall"));
+    ROS_INFO_STREAM("watermelon");
 }
