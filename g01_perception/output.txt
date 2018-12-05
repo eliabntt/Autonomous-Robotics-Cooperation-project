@@ -1,0 +1,7 @@
+Detected frames, w.r.t. world reference frame:
+tag id: 3
+frame id: red_cube_4
+    size: 0.052
+    orientation: x = 0.0118615  y = 0.00439959  z = 0.992526  w = 0.121376
+    position: x = 0.12518  y = -0.167259  z = 1.04311
+
