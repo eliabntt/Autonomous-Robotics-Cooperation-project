@@ -43,8 +43,6 @@ G01Gripper::G01Gripper() : command(), n() {
         bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         my_group.move();
 
-        addCollisionWalls();
-                // todo surrounding walls with addCollision
         subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
         subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
 
@@ -56,8 +54,10 @@ G01Gripper::G01Gripper() : command(), n() {
         }
     }
 
+    addCollisionWalls(); // surrounding walls
+
     ROS_INFO_STREAM("Pick and place starting...");
-    //todo add walls
+
     planning_scene_interface.addCollisionObjects(collision_objects);
 
     moveObjects(my_group, cylToGrab); //fixme // with rotation
@@ -94,11 +94,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         objectPose.position.x += 0.05;
         objectPose.position.z += 0.3;
         poseToYPR(group.getCurrentPose().pose, &y, &p, &r);
-
-        if (rotate) //todo check
-            objectPose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
-        else
-            objectPose.orientation =  group.getCurrentPose().pose.orientation;
+        objectPose.orientation =  group.getCurrentPose().pose.orientation;
 
         ROS_INFO_STREAM( group.getCurrentPose().pose.orientation);
 
@@ -156,12 +152,26 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         // back to home todo change this to box LZ
         // plan and execute the movement
-        group.setJointValueTarget(home_joint_positions);
-        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        if (success)
-            group.move();
+
+        geometry_msgs::Pose LZ_pose;
+        LZ_pose.position.x = ;
+        LZ_pose.position.y = ;
+        LZ_pose.position.z = ;
+
+        if (rotate) //todo check
+            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
         else
-            ROS_ERROR_STREAM("plan to box LZ failed"); // todo build a better error check
+            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, 0);
+
+        waypoints = move(group.getCurrentPose().pose, LZ_pose);
+        fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
+
+        // execute the planned movement
+        robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
+        plan.trajectory_ = trajectory;
+        resultCode = group.execute(plan); // todo retval unused
+
+        ROS_ERROR_STREAM("plan to box LZ failed"); // todo build a better error check
 
         // open the gripper, adjust rviz and gazebo
         // group.detachObject(i.header.frame_id); fixme
