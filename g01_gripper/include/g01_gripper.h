@@ -20,6 +20,7 @@
 #include "gazebo_ros_link_attacher/Attach.h"
 #include "gazebo_ros_link_attacher/AttachRequest.h"
 #include "gazebo_ros_link_attacher/AttachResponse.h"
+#include <eigen_conversions/eigen_msg.h>
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
@@ -33,13 +34,15 @@ private:
     bool sim;
 
     ros::NodeHandle n;
+    ros::Subscriber gripperStatusSub;
+    ros::Publisher gripperCommandPub;
 
     //gripper
     robotiq_s_model_control::SModel_robot_output command;
     robotiq_s_model_control::SModel_robot_input status;
+    void getGripper(const robotiq_s_model_control::SModel_robot_input& msg);
 
-    ros::Publisher gripperCommandPub;
-    ros::ServiceClient client;
+    ros::ServiceClient attacher,detacher;
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     std::vector<moveit_msgs::CollisionObject> collision_objects;
@@ -47,7 +50,7 @@ private:
 
     //movement
     std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
-    std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 3.14 / 3};
+    std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
@@ -66,6 +69,8 @@ private:
     // gripper
     void gripperClose(int howMuch);
     void gripperOpen();
+    bool isHeld();
+
 };
 
 #endif
