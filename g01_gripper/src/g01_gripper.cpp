@@ -21,18 +21,23 @@ G01Gripper::G01Gripper() : command(), n() {
     //gripper
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
             "/robotiq_hands/l_hand/SModelRobotOutput", 1);
+    gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::getGripper, this);
+
+    attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
+    detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
+
 
     //some basic info
     planFrameId = my_group.getPlanningFrame();
     endEffId = my_group.getEndEffectorLink();
 
+    moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
 
     while (ros::ok() && !finish) {
         gripperOpen();
 
         moveit::planning_interface::MoveGroupInterface::Plan my_plan;
 
-        moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
 
         my_group.setJointValueTarget(home_joint_positions);
 
@@ -65,53 +70,76 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 geometry_msgs::Pose test_pose_2;
                 test_pose_2.position = i.pose.position;
-                //fixme
-                test_pose_2.position.x += 0.01;
-                test_pose_2.position.y += 0.01;
-                test_pose_2.position.z += 0.00;
+                test_pose_2.position.z += 0.1;
+                test_pose_2.position.x += 0.05;
+                test_pose_2.position.y += 0.00;
+                my_group.setGoalPositionTolerance(0.0001);
+
                 double y, p, r;
                 poseToYPR(my_group.getCurrentPose().pose, &y, &p, &r);
                 //todo check
-                test_pose_2.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
+                //test_pose_2.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14, 3.14, 3.14);
+                test_pose_2.orientation = my_group.getCurrentPose().pose.orientation;
 
                 moveit_msgs::RobotTrajectory trajectory;
                 const double jump_threshold = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
                 const double eef_step = 0.01;
                 std::vector<geometry_msgs::Pose> waypoints = move(my_group.getCurrentPose().pose, test_pose_2,
                                                                   my_group);
-
                 my_group.setMaxVelocityScalingFactor(0.1);
-                my_group.setGoalPositionTolerance(0.0001);
-
                 double fraction = my_group.computeCartesianPath(waypoints, eef_step,
                                                                 jump_threshold, trajectory);
-
                 robot_trajectory::RobotTrajectory rt(my_group.getCurrentState()->getRobotModel(),
                                                      PLANNING_GROUP);
                 rt.setRobotTrajectoryMsg(*my_group.getCurrentState(), trajectory);
-
                 my_plan.trajectory_ = trajectory;
-                moveit_msgs::MoveItErrorCodes a = my_group.execute(my_plan);
+                my_group.execute(my_plan);
 
-                gripperClose(155);
-                //  my_group.attachObject(i.header.frame_id, endEffId);
+                double my_x = i.pose.position.x;
+                double r_x = my_group.getCurrentPose().pose.position.x;
+
+                double my_y = i.pose.position.y;
+                double r_y = my_group.getCurrentPose().pose.position.y;
+
+                ROS_INFO_STREAM(my_x << "\n " << r_x << "\n" << my_y << "\n" << r_y);
+                while (fabs(my_x - r_x) > 0.03 || fabs(my_y - r_y) > 0.03) {
+                    geometry_msgs::Pose pose = my_group.getCurrentPose().pose;
+                    pose.position.x += my_x - r_x;
+                    pose.position.y += my_y - r_y;
+
+                    my_group.setPoseTarget(pose);
+                    bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+                    if(!success)
+                        break;
+                    else
+                        my_group.move();
+                    r_x = my_group.getCurrentPose().pose.position.x;
+                    r_y = my_group.getCurrentPose().pose.position.y;
+                }
+                ros::Duration(5).sleep();
+                /*
+                int how_much = 150;
+                    gripperClose(how_much);
+                ROS_INFO_STREAM("CLOSING");
+                while (!isHeld()) {
+                    how_much += 10;
+                    gripperClose(how_much);
+                }//  my_group.attachObject(i.header.frame_id, endEffId);
 
                 long id = std::find(tagnames.begin(), tagnames.end(), i.header.frame_id) - tagnames.begin();
                 if (sim) gazeboAttach(linknames[id][0], linknames[id][1]);
-
-                moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
-
+*/
                 my_group.setJointValueTarget(home_joint_positions);
 
                 bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
                 my_group.move();
                 //fixme
                 //     my_group.detachObject(i.header.frame_id);
-
+/*
                 if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
-                gripperOpen();
+                gripperOpen();*/
             }
-            finish = true;
+        finish = true;
     }
     spinner.stop();
     ros::shutdown();
@@ -241,8 +269,6 @@ std::vector<geometry_msgs::Pose> G01Gripper::move(geometry_msgs::Pose from, geom
         t = double(idx) / n_steps;
         geometry_msgs::Pose intermediate_step;
         intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
-        ROS_INFO_STREAM(intermediate_step.position.x);
-
         intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
         intermediate_step.position.z = ((1 - t) * from.position.z) + (t * to.position.z);
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(from_roll + t * to_add[0], from_pitch + t * to_add[1],
@@ -250,7 +276,6 @@ std::vector<geometry_msgs::Pose> G01Gripper::move(geometry_msgs::Pose from, geom
 
         steps.push_back(intermediate_step);
     }
-    ROS_INFO_STREAM(to.position.x);
     steps.push_back(to);
 
     return steps;
@@ -264,25 +289,37 @@ void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch,
     mat.getEulerYPR(*yaw, *pitch, *roll);
 }
 
-
 bool G01Gripper::gazeboAttach(std::string model2, std::string link2) {
-    ros::ServiceClient client = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     gazebo_ros_link_attacher::AttachRequest req;
     req.model_name_1 = "robot";
     req.link_name_1 = "wrist_3_link";
     req.model_name_2 = model2;
     req.link_name_2 = link2;
     gazebo_ros_link_attacher::AttachResponse res;
-    return client.call(req, res);
+    return attacher.call(req, res);
 }
 
 bool G01Gripper::gazeboDetach(std::string model2, std::string link2) {
-    ros::ServiceClient client2 = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
     gazebo_ros_link_attacher::AttachRequest req;
     req.link_name_1 = "wrist_3_link";
     req.link_name_2 = link2;
     req.model_name_1 = "robot";
     req.model_name_2 = model2;
     gazebo_ros_link_attacher::AttachResponse res;
-    return client2.call(req, res);
+    return detacher.call(req, res);
+}
+
+
+bool G01Gripper::isHeld() {
+    //   if (sim) return true;
+    ROS_INFO_STREAM("CHECK");
+    while (status.gSTA == 0) {
+        ROS_INFO_THROTTLE(5, "Waiting grasping to complete...");
+    }
+    return status.gSTA == 1 || status.gSTA == 2;
+}
+
+
+void G01Gripper::getGripper(const robotiq_s_model_control::SModel_robot_input &msg) {
+    status = msg;
 }
