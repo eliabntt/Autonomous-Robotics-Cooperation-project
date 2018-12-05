@@ -39,9 +39,10 @@ private:
     //gripper
     robotiq_s_model_control::SModel_robot_output command;
     robotiq_s_model_control::SModel_robot_input status;
-    void getGripper(const robotiq_s_model_control::SModel_robot_input& msg);
 
-    ros::ServiceClient attacher,detacher;
+    void getGripper(const robotiq_s_model_control::SModel_robot_input &msg);
+
+    ros::ServiceClient attacher, detacher;
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     std::vector<moveit_msgs::CollisionObject> collision_objects;
@@ -49,26 +50,38 @@ private:
 
     //movement
     std::string PLANNING_GROUP = "manipulator";
-    void moveObjects(moveit::planning_interface::MoveGroupInterface &group, std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
-    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, moveit::planning_interface::MoveGroupInterface &my_group, unsigned long n_steps = 3);
-    std::vector<double> home_joint_positions{-3.14 / 2, -1.86, 1.72788, -1.65, -3.14 / 2, 0};
+
+    void moveObjects(moveit::planning_interface::MoveGroupInterface &group,
+                     std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
+
+    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, unsigned long n_steps = 3);
+
+    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 1.72788, -1.65, -3.1415 / 2, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
     // collisions
-    moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
+    moveit_msgs::CollisionObject
+    addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
+
     moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
 
     // apriltags connection
     ros::Subscriber subGrab, subAvoid;
+
     void grabCB(const g01_perception::PoseStampedArray::ConstPtr &input);
+
     void avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input);
+
     bool gazeboAttach(std::string model2, std::string link2);
+
     bool gazeboDetach(std::string model2, std::string link2);
 
     // gripper
     void gripperClose(int howMuch);
+
     void gripperOpen();
+
     bool isHeld();
 };
 
