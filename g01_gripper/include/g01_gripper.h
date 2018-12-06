@@ -54,7 +54,9 @@ private:
     void moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                      std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
 
-    std::vector<geometry_msgs::Pose> move(geometry_msgs::Pose from, geometry_msgs::Pose to, unsigned long n_steps = 3);
+    bool move(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
+    std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
+                                                   unsigned long n_steps = 3);
 
     std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 1.72788, -1.65, -3.1415 / 2, 0};
 
