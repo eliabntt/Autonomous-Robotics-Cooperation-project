@@ -93,10 +93,11 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         objectPose.position = i.pose.position;
         objectPose.position.x += 0.05;
         objectPose.position.z += 0.3;
-        poseToYPR(group.getCurrentPose().pose, &y, &p, &r);
-        objectPose.orientation = group.getCurrentPose().pose.orientation;
-
-        ROS_INFO_STREAM(group.getCurrentPose().pose.orientation);
+        objectPose.orientation = i.pose.orientation;
+        poseToYPR(objectPose, &y, &p, &r);
+        p += 3.14/2;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r, p, y), objectPose.orientation);
+        ROS_INFO_STREAM( group.getCurrentPose().pose.orientation);
 
         // compute waypoints on path to the target, create a cartesian path on them
         std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, objectPose);
@@ -172,10 +173,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         move(LZ_pose, group);
 
-        ROS_INFO_STREAM(group.getCurrentPose());
-
         // open the gripper, adjust rviz and gazebo
-
         group.detachObject(i.header.frame_id); //fixme
         if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
         gripperOpen();
@@ -317,7 +315,7 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
     double to_add[] = {(to_roll - from_roll) / n_steps,
                        (to_pitch - from_pitch) / n_steps,
                        (to_yaw - from_yaw) / n_steps};
-
+    ROS_INFO_STREAM("makeWaypoints debug: TO_ADD:" << to_add);
     for (int idx = 1; idx < n_steps; idx++) {
         t = double(idx) / n_steps;
         geometry_msgs::Pose intermediate_step;
@@ -328,7 +326,12 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
                                                           from_pitch + t * to_add[1],
                                                           from_yaw + t * to_add[2]),
                               intermediate_step.orientation);
-
+        ROS_INFO_STREAM("makeWaypoints debug: X:" << intermediate_step.position.x);
+        ROS_INFO_STREAM("makeWaypoints debug: Y:" << intermediate_step.position.y);
+        ROS_INFO_STREAM("makeWaypoints debug: Z:" << intermediate_step.position.z);
+        ROS_INFO_STREAM("makeWaypoints debug: R:" << from_roll + t * to_add[0]);
+        ROS_INFO_STREAM("makeWaypoints debug: P:" << from_pitch + t * to_add[1]);
+        ROS_INFO_STREAM("makeWaypoints debug: Y:" << from_roll + t * to_add[0]);
         steps.push_back(intermediate_step);
     }
     steps.push_back(to);
