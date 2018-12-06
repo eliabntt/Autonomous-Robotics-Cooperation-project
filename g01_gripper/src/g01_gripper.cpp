@@ -94,9 +94,9 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         objectPose.position.x += 0.05;
         objectPose.position.z += 0.3;
         poseToYPR(group.getCurrentPose().pose, &y, &p, &r);
-        objectPose.orientation =  group.getCurrentPose().pose.orientation;
+        objectPose.orientation = group.getCurrentPose().pose.orientation;
 
-        ROS_INFO_STREAM( group.getCurrentPose().pose.orientation);
+        ROS_INFO_STREAM(group.getCurrentPose().pose.orientation);
 
         // compute waypoints on path to the target, create a cartesian path on them
         std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, objectPose);
@@ -147,32 +147,36 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             how_much += 10;
             gripperClose(how_much);
         }
-        // group.attachObject(i.header.frame_id, endEffId); fixme
+        group.attachObject(i.header.frame_id, endEffId);
         if (sim) gazeboAttach(linknames[id][0], linknames[id][1]);
 
         // move to LZ
         // plan and execute the movement
-        geometry_msgs::Pose ascent_pose = group.getCurrentPose().pose;
+        geometry_msgs::Pose
+                ascent_pose = group.getCurrentPose().pose;
         ascent_pose.position.z += 0.35;
         move(ascent_pose, group);
 
+
         geometry_msgs::Pose LZ_pose;
-        LZ_pose.position.x = 1.2;
-        LZ_pose.position.y = 1.3;
-        LZ_pose.position.z = 1.4;
+        LZ_pose.position.x = 0.4;
+        LZ_pose.position.y = 1.1;
+        LZ_pose.position.z = 1.2;
 
         if (rotate) { //todo check
-            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14/2, 0, 0);
+            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14 / 2, 0, 0);
             ROS_INFO_STREAM("cylinder will be rotated");
-        }else {
-            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, 0);
+        } else {
+            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, 1);
         }
 
         move(LZ_pose, group);
 
+        ROS_INFO_STREAM(group.getCurrentPose());
+
         // open the gripper, adjust rviz and gazebo
 
-        // group.detachObject(i.header.frame_id); fixme
+        group.detachObject(i.header.frame_id); //fixme
         if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
         gripperOpen();
         removeCollisionBlock(i.header.frame_id);
@@ -283,6 +287,7 @@ moveit_msgs::CollisionObject G01Gripper::removeCollisionBlock(std::string obj_id
     collision_object.operation = collision_object.REMOVE;
     return collision_object;
 }
+
 bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
     std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
@@ -290,7 +295,7 @@ bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interfac
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
-    ROS_INFO_STREAM("planning result: " << fraction*100 <<"%");
+    ROS_INFO_STREAM("planning result: " << fraction * 100 << "%");
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
     plan.trajectory_ = trajectory;
