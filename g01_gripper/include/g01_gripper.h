@@ -58,7 +58,7 @@ private:
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long n_steps = 3);
 
-    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 1.72788, -1.65, -3.1415 / 2, 0};
+    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 3.1415/2, -3.1415/2, -3.1415 / 2, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
