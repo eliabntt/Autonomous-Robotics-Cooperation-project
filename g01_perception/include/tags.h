@@ -50,18 +50,18 @@ inline std::vector<float> getVolume(int tag_id) {
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CYL_HEIGHT);
-    } else if (tag_id < 9) { // tri
-        vol.emplace_back(TRI_SECTION);
-        vol.emplace_back(TRI_SECTION);
-        vol.emplace_back(TRI_HEIGHT);
+    } else if (tag_id < 9) { // tri fixme decide what to do
+        vol.emplace_back(TRI_SECTION); // CUBE_LEN
+        vol.emplace_back(TRI_SECTION); // CUBE_LEN
+        vol.emplace_back(TRI_HEIGHT);  // CUBE_LEN+0.001 (fixes equality thing for cubes)
     } else if (tag_id < 13) { // cube
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
     } else if (tag_id < 16) { // tri
-        vol.emplace_back(TRI_SECTION);
-        vol.emplace_back(TRI_SECTION);
-        vol.emplace_back(TRI_HEIGHT);
+        vol.emplace_back(TRI_SECTION); // CUBE_LEN
+        vol.emplace_back(TRI_SECTION); // CUBE_LEN
+        vol.emplace_back(TRI_HEIGHT);  // CUBE_LEN+0.001 (fixes equality thing for cubes)
     }
     return vol;
 }
