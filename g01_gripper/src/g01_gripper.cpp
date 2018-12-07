@@ -4,6 +4,8 @@
 #include "g01_gripper.h"
 
 std::string planFrameId, endEffId;
+bool cylDone = false, triDone = false, cubeDone = false;
+geometry_msgs::Pose initialPose;
 
 G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better?
@@ -42,6 +44,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
         bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         my_group.move();
+        initialPose = my_group.getCurrentPose().pose;
 
         subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
         subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
@@ -60,10 +63,18 @@ G01Gripper::G01Gripper() : command(), n() {
 
     planning_scene_interface.addCollisionObjects(collision_objects);
 
-    moveObjects(my_group, cylToGrab, true); //fixme // with rotation
-    moveObjects(my_group, cubeToGrab);
-    moveObjects(my_group, triToGrab);
-
+    if (!cylToGrab.empty() && !cylDone) {
+        cylDone = true;
+        moveObjects(my_group, cylToGrab, true); //fixme // with rotation
+    }
+    if (!cubeToGrab.empty() && !cubeDone) {
+        moveObjects(my_group, cubeToGrab);
+        cubeDone = true;
+    }
+    if (!triToGrab.empty() && !triDone) {
+        moveObjects(my_group, triToGrab);
+        triDone = true;
+    }
     spinner.stop();
     ros::shutdown();
 }
@@ -92,12 +103,8 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         geometry_msgs::Pose objectPose;
         objectPose.position = i.pose.position;
         objectPose.position.x += 0.05;
-        objectPose.position.z += 0.3;
-        objectPose.orientation = i.pose.orientation;
-        poseToYPR(objectPose, &y, &p, &r);
-        p += 3.14/2;
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r, p, y), objectPose.orientation);
-        ROS_INFO_STREAM( group.getCurrentPose().pose.orientation);
+        objectPose.position.z += 0.1;
+        objectPose.orientation = initialPose.orientation;
 
         // compute waypoints on path to the target, create a cartesian path on them
         std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, objectPose);
@@ -116,7 +123,6 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         double my_y = i.pose.position.y;
         double r_y = group.getCurrentPose().pose.position.y;
 
-        ROS_INFO_STREAM(my_x << "\n " << r_x << "\n" << my_y << "\n" << r_y);
         while (fabs(my_x - r_x) > 0.03 || fabs(my_y - r_y) > 0.03) {
             geometry_msgs::Pose pose = group.getCurrentPose().pose;
             pose.position.x += my_x - r_x;
@@ -134,7 +140,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         //move with the fingers alongside the obj
         geometry_msgs::Pose pose = group.getCurrentPose().pose;
-        pose.position.z -= 0.1;
+        pose.position.z -= 0.03;
         group.setPoseTarget(pose);
         bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         if (success)
@@ -153,10 +159,12 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         // move to LZ
         // plan and execute the movement
-        geometry_msgs::Pose
-                ascent_pose = group.getCurrentPose().pose;
+        geometry_msgs::Pose ascent_pose = group.getCurrentPose().pose;
         ascent_pose.position.z += 0.35;
-        move(ascent_pose, group);
+        group.setPoseTarget(ascent_pose);
+        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+        if (success)
+            group.move();
 
 
         geometry_msgs::Pose LZ_pose;
@@ -168,7 +176,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14 / 2, 0, 0);
             ROS_INFO_STREAM("cylinder will be rotated");
         } else {
-            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, 1);
+            LZ_pose.orientation = initialPose.orientation;
         }
 
         move(LZ_pose, group);
@@ -178,6 +186,13 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
         gripperOpen();
         removeCollisionBlock(i.header.frame_id);
+
+        ascent_pose = group.getCurrentPose().pose;
+        ascent_pose.position.z += 0.35;
+        group.setPoseTarget(ascent_pose);
+        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+        if (success)
+            group.move();
     }
 }
 
@@ -185,16 +200,22 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
     for (geometry_msgs::PoseStamped item: input->poses) {
         // set position to the center of the object
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z: tune in tags.h
+        ROS_INFO_STREAM((std::find(items.begin(), items.end(), item.header.frame_id) != items.end()));
+        if (!(std::find(items.begin(), items.end(), item.header.frame_id) != items.end())) {
+            if (vol[0] == vol[2]) {
+                cubeToGrab.emplace_back(item);
+            } else if (vol[0] < vol[2]) {
+                cylToGrab.emplace_back(item);
+            } else {
+                //todo fixme
+                item.pose.position.z += vol[2]/2;
+                item.pose.position.y -= vol[1]/2;
+                triToGrab.emplace_back(item);
+            }
+            items.emplace_back(item.header.frame_id);
+        }
+
         item.pose.position.z -= vol[2] / 2;
-
-        //objectsToGrab.push_back(item);
-        if (vol[0] == vol[2])
-            cubeToGrab.emplace_back(item);
-        else if (vol[0] < vol[2])
-            cylToGrab.emplace_back(item);
-        else
-            triToGrab.emplace_back(item);
-
         collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
     ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
@@ -202,11 +223,14 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
 
 void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
     for (geometry_msgs::PoseStamped item: input->poses) {
-        objectsToAvoid.push_back(item);
-
+        if (!(std::find(items.begin(), items.end(), item.header.frame_id) != items.end())) {
+            objectsToAvoid.push_back(item);
+            items.emplace_back(item.header.frame_id);
+        }
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
-        item.pose.position.z -= vol[2] / 2;
 
+
+        item.pose.position.z -= vol[2] / 2;
         collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
 }
@@ -293,12 +317,12 @@ bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interfac
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
-    ROS_INFO_STREAM("planning result: " << fraction * 100 << "%");
+    //   ROS_INFO_STREAM("planning result: " << fraction * 100 << "%");
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
     plan.trajectory_ = trajectory;
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-    ROS_INFO_STREAM("movement result: " << resultCode);
+    //   ROS_INFO_STREAM("movement result: " << resultCode);
     return (resultCode.val == 1);
 }
 
@@ -315,7 +339,7 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
     double to_add[] = {(to_roll - from_roll) / n_steps,
                        (to_pitch - from_pitch) / n_steps,
                        (to_yaw - from_yaw) / n_steps};
-    ROS_INFO_STREAM("makeWaypoints debug: TO_ADD:" << to_add);
+    //  ROS_INFO_STREAM("makeWaypoints debug: TO_ADD:" << to_add);
     for (int idx = 1; idx < n_steps; idx++) {
         t = double(idx) / n_steps;
         geometry_msgs::Pose intermediate_step;
@@ -326,12 +350,12 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
                                                           from_pitch + t * to_add[1],
                                                           from_yaw + t * to_add[2]),
                               intermediate_step.orientation);
-        ROS_INFO_STREAM("makeWaypoints debug: X:" << intermediate_step.position.x);
-        ROS_INFO_STREAM("makeWaypoints debug: Y:" << intermediate_step.position.y);
-        ROS_INFO_STREAM("makeWaypoints debug: Z:" << intermediate_step.position.z);
-        ROS_INFO_STREAM("makeWaypoints debug: R:" << from_roll + t * to_add[0]);
-        ROS_INFO_STREAM("makeWaypoints debug: P:" << from_pitch + t * to_add[1]);
-        ROS_INFO_STREAM("makeWaypoints debug: Y:" << from_roll + t * to_add[0]);
+        /*  ROS_INFO_STREAM("makeWaypoints debug: X:" << intermediate_step.position.x);
+          ROS_INFO_STREAM("makeWaypoints debug: Y:" << intermediate_step.position.y);
+          ROS_INFO_STREAM("makeWaypoints debug: Z:" << intermediate_step.position.z);
+          ROS_INFO_STREAM("makeWaypoints debug: R:" << from_roll + t * to_add[0]);
+          ROS_INFO_STREAM("makeWaypoints debug: P:" << from_pitch + t * to_add[1]);
+          ROS_INFO_STREAM("makeWaypoints debug: Y:" << from_roll + t * to_add[0]);*/
         steps.push_back(intermediate_step);
     }
     steps.push_back(to);

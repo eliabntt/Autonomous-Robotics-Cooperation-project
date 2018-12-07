@@ -46,6 +46,7 @@ private:
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     std::vector<moveit_msgs::CollisionObject> collision_objects;
+    std::vector<std::string> items;
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
 
     //movement
@@ -58,7 +59,7 @@ private:
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long n_steps = 3);
 
-    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 3.1415/2, -3.1415/2, -3.1415 / 2, 0};
+    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 3.1415/2, -3.1415/2, -3.1415 / 1.8, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
