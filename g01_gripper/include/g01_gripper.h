@@ -21,6 +21,7 @@
 #include "gazebo_ros_link_attacher/AttachRequest.h"
 #include "gazebo_ros_link_attacher/AttachResponse.h"
 
+
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
 
@@ -59,7 +60,7 @@ private:
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long n_steps = 3);
 
-    std::vector<double> home_joint_positions{-3.1415 / 2, -1.86, 3.1415/2, -3.1415/2, -3.1415 / 1.8, 0};
+    std::vector<double> home_joint_positions{-3.1415 / 2, -3.1415/2, 3.1415/2, -3.1415/2, -3.1415 / 2, 0};
 
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
