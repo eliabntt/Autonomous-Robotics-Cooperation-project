@@ -143,7 +143,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         double y_ee,p_ee,r_ee;
         poseToYPR(i.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee,&p_ee,&r_ee);
-        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee,p_ee,r-p_ee);
+        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee,p_ee,fabs(r-p_ee));
 
         //todo fixme
         if(i.pose.position.z > 1.06)
@@ -154,22 +154,22 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         move(pose, group);
 
         // close the gripper, adjust rviz and gazebo
-        int how_much = 150;
+        int how_much = 200;
         gripperClose(how_much);
         ROS_INFO_STREAM("CLOSING");
         while (!isHeld()) {
             how_much += 10;
             gripperClose(how_much);
         }
-        group.attachObject(i.header.frame_id, endEffId);
         if (sim) gazeboAttach(linknames[id][0], linknames[id][1]);
+        //fixme
+//         group.attachObject(i.header.frame_id, endEffId);
 
-        // move to LZ
+        // go up to safe altitude
         // plan and execute the movement
         geometry_msgs::Pose ascent_pose = group.getCurrentPose().pose;
         ascent_pose.position.z += 0.35;
         move(ascent_pose, group);
-
 
         geometry_msgs::Pose LZ_pose;
         LZ_pose.position.x = 0.4;
@@ -182,8 +182,6 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         } else {
             LZ_pose.orientation = initialPose.orientation;
         }
-
-        //todo cylinder get angry here
         move(LZ_pose, group);
 
         // open the gripper, adjust rviz and gazebo
@@ -320,12 +318,12 @@ bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interfac
     moveit::planning_interface::MoveGroupInterface::Plan plan;
     moveit_msgs::RobotTrajectory trajectory;
     double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
-    //   ROS_INFO_STREAM("planning result: " << fraction * 100 << "%");
+    ROS_INFO_STREAM("planning result: " << fraction * 100 << "%");
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
     plan.trajectory_ = trajectory;
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-    //   ROS_INFO_STREAM("movement result: " << resultCode);
+    ROS_INFO_STREAM("movement result: " << resultCode);
     return (resultCode.val == 1);
 }
 
