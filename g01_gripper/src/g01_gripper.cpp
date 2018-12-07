@@ -102,8 +102,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // set target above the object
         geometry_msgs::Pose objectPose;
         objectPose.position = i.pose.position;
-        objectPose.position.x += 0.05;
-        objectPose.position.z += 0.1;
+        objectPose.position.z += 0.3;
         objectPose.orientation = initialPose.orientation;
 
         // compute waypoints on path to the target, create a cartesian path on them
@@ -140,11 +139,19 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         //move with the fingers alongside the obj
         geometry_msgs::Pose pose = group.getCurrentPose().pose;
-        pose.position.z -= 0.03;
-        group.setPoseTarget(pose);
-        bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        if (success)
-            group.move();
+        double y,p,r;
+        double y_ee,p_ee,r_ee;
+        poseToYPR(i.pose, &y, &p, &r);
+        poseToYPR(pose, &y_ee,&p_ee,&r_ee);
+        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee,p_ee,r-p_ee);
+
+        //todo fixme
+        if(i.pose.position.z > 1.06)
+            pose.position.z = i.pose.position.z;
+        else
+            pose.position.z = i.pose.position.z * 1.05;
+
+        move(pose, group);
 
         // close the gripper, adjust rviz and gazebo
         int how_much = 150;
@@ -161,10 +168,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // plan and execute the movement
         geometry_msgs::Pose ascent_pose = group.getCurrentPose().pose;
         ascent_pose.position.z += 0.35;
-        group.setPoseTarget(ascent_pose);
-        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        if (success)
-            group.move();
+        move(ascent_pose, group);
 
 
         geometry_msgs::Pose LZ_pose;
@@ -179,6 +183,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             LZ_pose.orientation = initialPose.orientation;
         }
 
+        //todo cylinder get angry here
         move(LZ_pose, group);
 
         // open the gripper, adjust rviz and gazebo
@@ -189,10 +194,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         ascent_pose = group.getCurrentPose().pose;
         ascent_pose.position.z += 0.35;
-        group.setPoseTarget(ascent_pose);
-        success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        if (success)
-            group.move();
+        move(ascent_pose, group);
     }
 }
 
@@ -204,13 +206,14 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
         if (!(std::find(items.begin(), items.end(), item.header.frame_id) != items.end())) {
             if (vol[0] == vol[2]) {
                 cubeToGrab.emplace_back(item);
-            } else if (vol[0] < vol[2]) {
+            } else if (vol[0]*2 == vol[2]) {
                 cylToGrab.emplace_back(item);
             } else {
-                //todo fixme
-                item.pose.position.z += vol[2]/2;
-                item.pose.position.y -= vol[1]/2;
+                vol[1] = vol[0];
+                vol[2] = vol[0];
                 triToGrab.emplace_back(item);
+                item.pose.position.z -= vol[2]/2;
+                item.pose.position.y += vol[1]/2;
             }
             items.emplace_back(item.header.frame_id);
         }
