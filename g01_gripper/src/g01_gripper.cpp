@@ -67,7 +67,11 @@ G01Gripper::G01Gripper() : command(), n() {
     // add collision objects and surrounding walls to the scene
     addCollisionWalls();
     planning_scene_interface.addCollisionObjects(collision_objects);
+    double r,p,y;
+    poseToYPR(my_group.getCurrentPose("base").pose, &y,&p,&r);
+    ROS_INFO_STREAM(r << p << y);
 
+    return;
     ROS_INFO_STREAM("Pick and place starting...");
 
     if (!cylToGrab.empty() && !cylDone) {
@@ -315,6 +319,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
     } else {
         shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl");
 
+
         shape_msgs::Mesh mesh;
         shapes::ShapeMsg mesh_msg;
         shapes::constructMsgFromShape(m, mesh_msg);
@@ -326,14 +331,18 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         collision_object.mesh_poses[0].position = pose.position;
         collision_object.mesh_poses[0].orientation = pose.orientation;
         tf::Quaternion q_orig, q_rot, q_new;
-        double r = 0.5 * -3.1415 / 4, p = 3.1415 / 4, y = 3.1415 / 2;  // Rotate the previous pose by 45* about X
+
+        double y,p,r;
+        poseToYPR(pose, &y, &p, &r);
+        r = 0; p = 0;
+
         q_rot = tf::createQuaternionFromRPY(r, p, y);
-        q_orig = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+        r = 0, p = 0, y = 3.1415 / 2;  // Rotate the previous pose by 45* about X
+        q_orig = tf::createQuaternionFromRPY(r,p,y);
         q_orig.normalize();
 
         q_new = q_rot * q_orig;  // Calculate the new orientation
         q_new.normalize();
-
         quaternionTFToMsg(q_new,
                           collision_object.mesh_poses[0].orientation);  // Stuff the new rotation back into the pose. This requires conversion into a msg type
         collision_object.meshes.push_back(mesh);
