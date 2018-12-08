@@ -198,6 +198,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         pose = group.getCurrentPose().pose;
         pose.position.z += 0.35;
+        pose.orientation = initialPose.orientation; //fixme untested
         move(pose, group);
     }
 }
