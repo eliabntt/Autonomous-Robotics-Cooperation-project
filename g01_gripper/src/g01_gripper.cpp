@@ -37,16 +37,16 @@ G01Gripper::G01Gripper() : command(), n() {
     endEffId = my_group.getEndEffectorLink();
     moveit::core::RobotStatePtr current_state = my_group.getCurrentState();
 
+
     // move to a home position and wait perception module
     ROS_INFO_STREAM("Waiting to receive tags of objects...");
     bool finish = false;
     while (ros::ok() && !finish) {
         gripperOpen();
 
-        moveit::planning_interface::MoveGroupInterface::Plan my_plan; // todo shall take outside in H as general
 
         my_group.setJointValueTarget(HOME_JOINT_POS);
-        bool success = (my_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+        bool success = (my_group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
         my_group.move();
 
         // save pose for later (was handcoded in joints pos)
@@ -69,10 +69,10 @@ G01Gripper::G01Gripper() : command(), n() {
     planning_scene_interface.addCollisionObjects(collision_objects);
 
     ROS_INFO_STREAM("Pick and place starting...");
-    return;
+
     if (!cylToGrab.empty() && !cylDone) {
         cylDone = true;
-        moveObjects(my_group, cylToGrab, true); //fixme // with rotation
+        moveObjects(my_group, cylToGrab, true);
     }
     if (!cubeToGrab.empty() && !cubeDone) {
         moveObjects(my_group, cubeToGrab);
@@ -92,9 +92,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
     group.setMaxVelocityScalingFactor(0.1);
     group.setGoalPositionTolerance(0.0001);
 
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
     long id;
-    double y, p, r; // fixme redefined below? keep this!
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
@@ -127,8 +125,11 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         double my_y = i.pose.position.y;
         double r_y = group.getCurrentPose().pose.position.y;
 
+        //generic pose to be used
+        geometry_msgs::Pose pose = group.getCurrentPose().pose;
+
         while (fabs(my_x - r_x) > 0.03 || fabs(my_y - r_y) > 0.03) {
-            geometry_msgs::Pose pose = group.getCurrentPose().pose;
+            pose = group.getCurrentPose().pose;
             pose.position.x += my_x - r_x;
             pose.position.y += my_y - r_y;
 
@@ -143,9 +144,9 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         }
 
         //move with the fingers alongside the obj
-        geometry_msgs::Pose pose = group.getCurrentPose().pose;
-        double y,p,r; // todo put outside for (above, where there is the same definition)
-        double y_ee,p_ee,r_ee;
+        pose = group.getCurrentPose().pose;
+        double y, p, r;
+        double y_ee, p_ee, r_ee;
         poseToYPR(i.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
         pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
@@ -167,20 +168,20 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             gripperClose(how_much);
         }
         if (sim) gazeboAttach(linknames[id][0], linknames[id][1]);
-        //group.attachObject(i.header.frame_id, endEffId); fixme
+        group.attachObject(i.header.frame_id, endEffId);
 
         // go up to safe altitude
         // plan and execute the movement
-        geometry_msgs::Pose ascent_pose = group.getCurrentPose().pose;
-        ascent_pose.position.z += 0.35;
-        move(ascent_pose, group);
+        pose = group.getCurrentPose().pose;
+        pose.position.z += 0.35;
+        move(pose, group);
 
-        geometry_msgs::Pose LZ_pose; // todo needs to stay in H or impl. box strategy
+        geometry_msgs::Pose LZ_pose; // todo needs to stay in H or impl. box strategy!!
         LZ_pose.position.x = 0.4;
         LZ_pose.position.y = 1.1;
         LZ_pose.position.z = 1.2;
 
-        if (rotate) { //todo check
+        if (rotate) { //todo check and refine
             LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14 / 2, 0, 0);
             ROS_INFO_STREAM("Cylinder will be rotated");
         } else {
@@ -189,14 +190,15 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         move(LZ_pose, group);
 
         // open the gripper, adjust rviz and gazebo
-        group.detachObject(i.header.frame_id); //fixme
+        group.detachObject(i.header.frame_id);
         if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
         gripperOpen();
-        removeCollisionBlock(i.header.frame_id);
+        std::vector<std::string> remove = {i.header.frame_id};
+        planning_scene_interface.removeCollisionObjects(remove);
 
-        ascent_pose = group.getCurrentPose().pose;
-        ascent_pose.position.z += 0.35;
-        move(ascent_pose, group);
+        pose = group.getCurrentPose().pose;
+        pose.position.z += 0.35;
+        move(pose, group);
     }
 }
 
@@ -204,26 +206,25 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
     for (geometry_msgs::PoseStamped item: input->poses) {
         // set position to the center of the object
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
-        ROS_INFO_STREAM((std::find(items.begin(), items.end(), item.header.frame_id) != items.end())); // fixme delete
         // make sure only to add objects once, split by type
         if (!(std::find(items.begin(), items.end(), item.header.frame_id) != items.end())) {
             if (vol[0] == vol[2]) {
                 cubeToGrab.emplace_back(item);
+                item.pose.position.z -= vol[2] / 2;
+                collision_objects.emplace_back(
+                        addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
             } else if (vol[0] * 2 == vol[2]) {
                 cylToGrab.emplace_back(item);
-            } else {/*
-                vol[1] = vol[0];  // fixme subst with barbatrucco in tags.h
-                vol[2] = vol[0];
-                triToGrab.emplace_back(item); //fixme push and then mod?
-                item.pose.position.z -= vol[2]/2; // fixme but this is also vol[0]/2
-                item.pose.position.y += vol[1]/2;*/
+                item.pose.position.z -= vol[2] / 2;
+                collision_objects.emplace_back(
+                        addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
+            } else {
                 triToGrab.emplace_back(item);
+                collision_objects.emplace_back(
+                        addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
             }
             items.emplace_back(item.header.frame_id);
         }
-
-        item.pose.position.z -= vol[2] / 2;
-        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
     }
     ROS_INFO_STREAM("cubes " << cubeToGrab.size() << " cyls " << cylToGrab.size() << " tris " << triToGrab.size());
 }
@@ -236,8 +237,12 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
         }
         std::vector<float> vol = getVolume(item.header.frame_id); // space in x,y,z
 
-        item.pose.position.z -= vol[2] / 2;
-        collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
+        if (vol[0] == vol[2] || vol[0] * 2 == vol[2]) {
+            collision_objects.emplace_back(addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
+        } else {
+            collision_objects.emplace_back(
+                    addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
+        }
     }
 }
 
@@ -264,7 +269,6 @@ void G01Gripper::gripperOpen() {
     gripperCommandPub.publish(command);
 }
 
-//todo probably will need different howMuch based on the object
 void G01Gripper::gripperClose(int howMuch) {
     assert(howMuch > 0);
     command.rACT = 1;
@@ -290,13 +294,14 @@ void G01Gripper::gripperClose(int howMuch) {
 }
 
 moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose pose,
-                                                           float Xlen, float Ylen, float Zlen, std::string obj_id) {
+                                                           float Xlen, float Ylen, float Zlen, std::string obj_id,
+                                                           bool triangle) {
     moveit_msgs::CollisionObject collision_object;
     collision_object.header.frame_id = planFrameId;
     collision_object.id = obj_id;
     collision_object.operation = collision_object.ADD;
 
-    if (Xlen == Zlen || Xlen * 2 == Zlen) {
+    if (!triangle) {
         shape_msgs::SolidPrimitive primitive;
         primitive.type = primitive.BOX;
         primitive.dimensions.resize(3);
@@ -319,18 +324,20 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         collision_object.meshes[0] = mesh;
         collision_object.mesh_poses[0].position = pose.position;
         collision_object.mesh_poses[0].orientation = pose.orientation;
+        tf::Quaternion q_orig, q_rot, q_new;
+        double r = 0.5 * -3.1415 / 4, p = 3.1415 / 4, y = 3.1415 / 2;  // Rotate the previous pose by 45* about X
+        q_rot = tf::createQuaternionFromRPY(r, p, y);
+        q_orig = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+        q_orig.normalize();
+
+        q_new = q_rot * q_orig;  // Calculate the new orientation
+        q_new.normalize();
+
+        quaternionTFToMsg(q_new,
+                          collision_object.mesh_poses[0].orientation);  // Stuff the new rotation back into the pose. This requires conversion into a msg type
         collision_object.meshes.push_back(mesh);
         collision_object.mesh_poses.push_back(collision_object.mesh_poses[0]);
     }
-    return collision_object;
-}
-
-moveit_msgs::CollisionObject G01Gripper::removeCollisionBlock(std::string obj_id) {
-    // todo untested
-    moveit_msgs::CollisionObject collision_object;
-    collision_object.header.frame_id = planFrameId;
-    collision_object.id = obj_id;
-    collision_object.operation = collision_object.REMOVE;
     return collision_object;
 }
 
@@ -338,7 +345,6 @@ bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interfac
     // todo comments
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
-    moveit::planning_interface::MoveGroupInterface::Plan plan;
     moveit_msgs::RobotTrajectory trajectory;
 
     std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
