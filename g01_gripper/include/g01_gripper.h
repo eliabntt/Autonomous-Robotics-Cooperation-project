@@ -52,6 +52,7 @@ private:
 
     // objects to track
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
     std::vector<moveit_msgs::CollisionObject> collision_objects;
     std::vector<std::string> items; // todo rename into old objectsToGrab
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab;
@@ -69,8 +70,7 @@ private:
 
     // collisions
     moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose,
-            float Xlen, float Ylen, float Zlen, std::string obj_id);
-    moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
+            float Xlen, float Ylen, float Zlen, std::string obj_id, bool triangle=false);
     void addCollisionWalls();
 
     // apriltags connection
