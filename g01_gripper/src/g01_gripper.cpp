@@ -3,10 +3,6 @@
 //
 #include "g01_gripper.h"
 
-#include <moveit/move_group_interface/move_group.h>
-#include <moveit/planning_scene_interface/planning_scene_interface.h>
-#include <geometric_shapes/shape_operations.h>
-
 
 std::string planFrameId, endEffId;
 bool cylDone = false, triDone = false, cubeDone = false;
@@ -47,7 +43,8 @@ G01Gripper::G01Gripper() : command(), n() {
 
         my_group.setJointValueTarget(HOME_JOINT_POS);
         bool success = (my_group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        my_group.move();
+        if (success)
+            my_group.move();
 
         // save pose for later (was handcoded in joints pos)
         initialPose = my_group.getCurrentPose().pose;
@@ -67,13 +64,9 @@ G01Gripper::G01Gripper() : command(), n() {
     // add collision objects and surrounding walls to the scene
     addCollisionWalls();
     planning_scene_interface.addCollisionObjects(collision_objects);
-    double r,p,y;
-    poseToYPR(my_group.getCurrentPose("base").pose, &y,&p,&r);
-    ROS_INFO_STREAM(r << p << y);
 
-    return;
+
     ROS_INFO_STREAM("Pick and place starting...");
-
     if (!cylToGrab.empty() && !cylDone) {
         cylDone = true;
         moveObjects(my_group, cylToGrab, true);
@@ -90,6 +83,7 @@ G01Gripper::G01Gripper() : command(), n() {
     ros::shutdown();
 }
 
+// Movement
 void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                              std::vector<geometry_msgs::PoseStamped> objectList, bool rotate) {
     // settings
@@ -130,7 +124,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         double r_y = group.getCurrentPose().pose.position.y;
 
         //generic pose to be used
-        geometry_msgs::Pose pose = group.getCurrentPose().pose;
+        geometry_msgs::Pose pose;
 
         while (fabs(my_x - r_x) > 0.03 || fabs(my_y - r_y) > 0.03) {
             pose = group.getCurrentPose().pose;
@@ -184,12 +178,18 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         LZ_pose.position.x = 0.4;
         LZ_pose.position.y = 1.1;
         LZ_pose.position.z = 1.2;
+        LZ_pose.orientation = initialPose.orientation;
 
         if (rotate) { //todo check and refine
-            LZ_pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(3.14 / 2, 0, 0);
+            r = +3.14 / 4, p = -3.14 / 4, y = +3.14 / 4;
+            tf::Quaternion q_rot = tf::createQuaternionFromRPY(r, p, y);
+            q_rot.normalize();
+            tf::Quaternion q_new = q_rot *
+                                   tf::Quaternion(LZ_pose.orientation.x, LZ_pose.orientation.y, LZ_pose.orientation.z,
+                                                  LZ_pose.orientation.w);  // Calculate the new orientation
+            q_new.normalize();
+            quaternionTFToMsg(q_new, LZ_pose.orientation);
             ROS_INFO_STREAM("Cylinder will be rotated");
-        } else {
-            LZ_pose.orientation = initialPose.orientation;
         }
         move(LZ_pose, group);
 
@@ -201,12 +201,131 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         planning_scene_interface.removeCollisionObjects(remove);
 
         pose = group.getCurrentPose().pose;
+        if (rotate) {
+            pose.position.x -= 0.4;
+            pose.position.y -= 0.4;
+            pose.orientation = initialPose.orientation;
+        }
         pose.position.z += 0.35;
-        pose.orientation = initialPose.orientation; //fixme untested
         move(pose, group);
     }
 }
 
+bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
+    // todo comments
+    const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
+    const double EEF_STEP = 0.01;
+    moveit_msgs::RobotTrajectory trajectory;
+
+    std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
+    double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
+    ROS_INFO_STREAM("Planning result: " << fraction * 100 << "%");
+
+    robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
+    robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
+    plan.trajectory_ = trajectory;
+    moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
+    ROS_INFO_STREAM("Movement result: " << resultCode);
+    return (resultCode.val == 1);
+}
+
+std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
+                                                           unsigned long n_steps) {
+    //divide
+    std::vector<geometry_msgs::Pose> steps;
+    double t = 0;
+    double from_roll, from_pitch, from_yaw;
+    double to_roll, to_pitch, to_yaw;
+    poseToYPR(from, &from_yaw, &from_pitch, &from_roll);
+    poseToYPR(to, &to_yaw, &to_pitch, &to_roll);
+    double to_add[] = {(to_roll - from_roll) / n_steps,
+                       (to_pitch - from_pitch) / n_steps,
+                       (to_yaw - from_yaw) / n_steps};
+    for (int idx = 1; idx < n_steps; idx++) {
+        t = double(idx) / n_steps;
+        geometry_msgs::Pose intermediate_step;
+        intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
+        intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
+        intermediate_step.position.z = ((1 - t) * from.position.z) + (t * to.position.z);
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(from_roll + t * to_add[0],
+                                                          from_pitch + t * to_add[1],
+                                                          from_yaw + t * to_add[2]),
+                              intermediate_step.orientation);
+        steps.push_back(intermediate_step);
+    }
+    steps.push_back(to);
+
+    return steps;
+}
+// Gripper
+void G01Gripper::gripperOpen() {
+    command.rACT = 1;
+    command.rMOD = 0;
+    command.rGTO = 1;
+    command.rATR = 0;
+    command.rGLV = 0;
+    command.rICF = 0;
+    command.rICS = 0;
+    command.rPRA = 0;
+    command.rSPA = 0;
+    command.rFRA = 0;
+    command.rPRB = 0;
+    command.rSPB = 0;
+    command.rFRB = 255;
+    command.rPRC = 0;
+    command.rSPC = 0;
+    command.rFRC = 0;
+    command.rPRS = 0;
+    command.rSPS = 0;
+    command.rFRS = 0;
+    gripperCommandPub.publish(command);
+}
+
+bool G01Gripper::gazeboDetach(std::string name, std::string link) {
+    gazebo_ros_link_attacher::AttachRequest req;
+    req.model_name_1 = "robot";
+    req.link_name_1 = "wrist_3_link";
+    req.model_name_2 = name;
+    req.link_name_2 = link;
+    gazebo_ros_link_attacher::AttachResponse res;
+    return detacher.call(req, res);
+}
+
+void G01Gripper::gripperClose(int howMuch) {
+    assert(howMuch > 0);
+    command.rACT = 1;
+    command.rMOD = 0;
+    command.rGTO = 1;
+    command.rATR = 0;
+    command.rGLV = 0;
+    command.rICF = 0;
+    command.rICS = 0;
+    command.rPRA = (unsigned char) howMuch;
+    command.rSPA = 255;
+    command.rFRA = 150;
+    command.rPRB = 0;
+    command.rSPB = 0;
+    command.rFRB = 0;
+    command.rPRC = 0;
+    command.rSPC = 0;
+    command.rFRC = 0;
+    command.rPRS = 0;
+    command.rSPS = 0;
+    command.rFRS = 0;
+    gripperCommandPub.publish(command);
+}
+
+bool G01Gripper::gazeboAttach(std::string name, std::string link) {
+    gazebo_ros_link_attacher::AttachRequest req;
+    req.model_name_1 = "robot";
+    req.link_name_1 = "wrist_3_link";
+    req.model_name_2 = name;
+    req.link_name_2 = link;
+    gazebo_ros_link_attacher::AttachResponse res;
+    return attacher.call(req, res);
+}
+
+// Collisions
 void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input) {
     for (geometry_msgs::PoseStamped item: input->poses) {
         // set position to the center of the object
@@ -251,53 +370,6 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
     }
 }
 
-void G01Gripper::gripperOpen() {
-    command.rACT = 1;
-    command.rMOD = 0;
-    command.rGTO = 1;
-    command.rATR = 0;
-    command.rGLV = 0;
-    command.rICF = 0;
-    command.rICS = 0;
-    command.rPRA = 0;
-    command.rSPA = 0;
-    command.rFRA = 0;
-    command.rPRB = 0;
-    command.rSPB = 0;
-    command.rFRB = 255;
-    command.rPRC = 0;
-    command.rSPC = 0;
-    command.rFRC = 0;
-    command.rPRS = 0;
-    command.rSPS = 0;
-    command.rFRS = 0;
-    gripperCommandPub.publish(command);
-}
-
-void G01Gripper::gripperClose(int howMuch) {
-    assert(howMuch > 0);
-    command.rACT = 1;
-    command.rMOD = 0;
-    command.rGTO = 1;
-    command.rATR = 0;
-    command.rGLV = 0;
-    command.rICF = 0;
-    command.rICS = 0;
-    command.rPRA = (unsigned char) howMuch;
-    command.rSPA = 255;
-    command.rFRA = 150;
-    command.rPRB = 0;
-    command.rSPB = 0;
-    command.rFRB = 0;
-    command.rPRC = 0;
-    command.rSPC = 0;
-    command.rFRC = 0;
-    command.rPRS = 0;
-    command.rSPS = 0;
-    command.rFRS = 0;
-    gripperCommandPub.publish(command);
-}
-
 moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose pose,
                                                            float Xlen, float Ylen, float Zlen, std::string obj_id,
                                                            bool triangle) {
@@ -325,20 +397,21 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         shapes::constructMsgFromShape(m, mesh_msg);
         mesh = boost::get<shape_msgs::Mesh>(mesh_msg);
 
-        collision_object.meshes.resize(1.7);
+        collision_object.meshes.resize(1.7); //todo check
         collision_object.mesh_poses.resize(1.7);
         collision_object.meshes[0] = mesh;
         collision_object.mesh_poses[0].position = pose.position;
         collision_object.mesh_poses[0].orientation = pose.orientation;
         tf::Quaternion q_orig, q_rot, q_new;
 
-        double y,p,r;
+        double y, p, r;
         poseToYPR(pose, &y, &p, &r);
-        r = 0; p = 0;
+        r = 0;
+        p = 0;
 
         q_rot = tf::createQuaternionFromRPY(r, p, y);
-        r = 0, p = 0, y = 3.1415 / 2;  // Rotate the previous pose by 45* about X
-        q_orig = tf::createQuaternionFromRPY(r,p,y);
+        r = 0, p = 0, y = 3.1415 / 2;  // Rotate the previous pose by 45* about Z because of mesh orientation
+        q_orig = tf::createQuaternionFromRPY(r, p, y);
         q_orig.normalize();
 
         q_new = q_rot * q_orig;  // Calculate the new orientation
@@ -349,105 +422,6 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         collision_object.mesh_poses.push_back(collision_object.mesh_poses[0]);
     }
     return collision_object;
-}
-
-bool G01Gripper::move(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
-    // todo comments
-    const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
-    const double EEF_STEP = 0.01;
-    moveit_msgs::RobotTrajectory trajectory;
-
-    std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
-    double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
-    ROS_INFO_STREAM("Planning result: " << fraction * 100 << "%");
-
-    robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
-    robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
-    plan.trajectory_ = trajectory;
-    moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-    ROS_INFO_STREAM("Movement result: " << resultCode);
-    return (resultCode.val == 1);
-}
-
-std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
-                                                           unsigned long n_steps) {
-    //divide
-    std::vector<geometry_msgs::Pose> steps;
-    double t = 0;
-    double from_roll, from_pitch, from_yaw;
-    double to_roll, to_pitch, to_yaw;
-    // double intermediate_roll, intermediate_pitch, intermediate_yaw;
-    poseToYPR(from, &from_yaw, &from_pitch, &from_roll);
-    poseToYPR(to, &to_yaw, &to_pitch, &to_roll);
-    double to_add[] = {(to_roll - from_roll) / n_steps,
-                       (to_pitch - from_pitch) / n_steps,
-                       (to_yaw - from_yaw) / n_steps};
-    //  ROS_INFO_STREAM("makeWaypoints debug: TO_ADD:" << to_add);
-    for (int idx = 1; idx < n_steps; idx++) {
-        t = double(idx) / n_steps;
-        geometry_msgs::Pose intermediate_step;
-        intermediate_step.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
-        intermediate_step.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
-        intermediate_step.position.z = ((1 - t) * from.position.z) + (t * to.position.z);
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(from_roll + t * to_add[0],
-                                                          from_pitch + t * to_add[1],
-                                                          from_yaw + t * to_add[2]),
-                              intermediate_step.orientation);
-        /*  ROS_INFO_STREAM("makeWaypoints debug: X:" << intermediate_step.position.x);
-          ROS_INFO_STREAM("makeWaypoints debug: Y:" << intermediate_step.position.y);
-          ROS_INFO_STREAM("makeWaypoints debug: Z:" << intermediate_step.position.z);
-          ROS_INFO_STREAM("makeWaypoints debug: R:" << from_roll + t * to_add[0]);
-          ROS_INFO_STREAM("makeWaypoints debug: P:" << from_pitch + t * to_add[1]);
-          ROS_INFO_STREAM("makeWaypoints debug: Y:" << from_roll + t * to_add[0]);*/
-        steps.push_back(intermediate_step);
-    }
-    steps.push_back(to);
-
-    return steps;
-}
-
-void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
-    tf::Quaternion quaternion;
-    quaternion = quaternion.getIdentity();
-    tf::quaternionMsgToTF(pose.orientation, quaternion);
-    tf::Matrix3x3 mat(quaternion);
-    mat.getEulerYPR(*yaw, *pitch, *roll);
-}
-
-bool G01Gripper::gazeboAttach(std::string name, std::string link) {
-    gazebo_ros_link_attacher::AttachRequest req;
-    req.model_name_1 = "robot";
-    req.link_name_1 = "wrist_3_link";
-    req.model_name_2 = name;
-    req.link_name_2 = link;
-    gazebo_ros_link_attacher::AttachResponse res;
-    return attacher.call(req, res);
-}
-
-bool G01Gripper::gazeboDetach(std::string name, std::string link) {
-    gazebo_ros_link_attacher::AttachRequest req;
-    req.model_name_1 = "robot";
-    req.link_name_1 = "wrist_3_link";
-    req.model_name_2 = name;
-    req.link_name_2 = link;
-    gazebo_ros_link_attacher::AttachResponse res;
-    return detacher.call(req, res);
-}
-
-
-bool G01Gripper::isHeld() {
-    //   if (sim) return true; // todo maybe cleaning of info needed
-    ROS_INFO_STREAM("CHECK");
-    while (status.gSTA == 0) {
-        ROS_INFO_THROTTLE(5, "Waiting grasp to complete...");
-    }
-    return status.gSTA == 1 || status.gSTA == 2;
-}
-
-
-void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &msg) {
-    // just save status of the gripper to be globally used
-    status = msg;
 }
 
 void G01Gripper::addCollisionWalls() {
@@ -462,4 +436,26 @@ void G01Gripper::addCollisionWalls() {
     sideWall.position.y = -0.8;
     sideWall.position.z = 1;
     collision_objects.emplace_back(addCollisionBlock(sideWall, 2, 0.1, 2, "side_wall"));
+}
+
+// Utilities
+void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
+    tf::Quaternion quaternion;
+    tf::quaternionMsgToTF(pose.orientation, quaternion);
+    tf::Matrix3x3 mat(quaternion);
+    mat.getEulerYPR(*yaw, *pitch, *roll);
+}
+
+bool G01Gripper::isHeld() {
+    //   if (sim) return true; // todo maybe cleaning of info needed
+    ROS_INFO_STREAM("CHECK");
+    while (status.gSTA == 0) {
+        ROS_INFO_THROTTLE(5, "Waiting grasp to complete...");
+    }
+    return status.gSTA == 1 || status.gSTA == 2;
+}
+
+void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &msg) {
+    // just save status of the gripper to be globally used
+    status = msg;
 }
