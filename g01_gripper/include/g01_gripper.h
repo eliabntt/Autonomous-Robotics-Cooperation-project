@@ -34,60 +34,49 @@ private:
     bool sim;
 
     ros::NodeHandle n;
+
+    // gripper
     ros::Subscriber gripperStatusSub;
     ros::Publisher gripperCommandPub;
-
-    //gripper
     robotiq_s_model_control::SModel_robot_output command;
     robotiq_s_model_control::SModel_robot_input status;
+    void gripperCB(const robotiq_s_model_control::SModel_robot_input &msg);
+    void gripperClose(int howMuch);
+    void gripperOpen(); // todo if command is mostly 0s, init here and set only the relevant on the method
+    bool isHeld();
 
-    void getGripper(const robotiq_s_model_control::SModel_robot_input &msg);
-
+    // gazebo fixes
     ros::ServiceClient attacher, detacher;
+    bool gazeboAttach(std::string name, std::string link);
+    bool gazeboDetach(std::string name, std::string link);
 
+    // objects to track
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     std::vector<moveit_msgs::CollisionObject> collision_objects;
-    std::vector<std::string> items;
-    std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab; //,objectsToGrab;
+    std::vector<std::string> items; // todo rename into old objectsToGrab
+    std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab;
 
-    //movement
+    // manipulator
     std::string PLANNING_GROUP = "manipulator";
+    std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415/2, 3.1415/2, -3.1415/2, -3.1415 / 2, 0};
 
     void moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                      std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
-
     bool move(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long n_steps = 3);
-
-    std::vector<double> home_joint_positions{-3.1415 / 2, -3.1415/2, 3.1415/2, -3.1415/2, -3.1415 / 2, 0};
-
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
     // collisions
-    moveit_msgs::CollisionObject
-    addCollisionBlock(geometry_msgs::Pose pose, float Xlen, float Ylen, float Zlen, std::string obj_id);
-
+    moveit_msgs::CollisionObject addCollisionBlock(geometry_msgs::Pose pose,
+            float Xlen, float Ylen, float Zlen, std::string obj_id);
     moveit_msgs::CollisionObject removeCollisionBlock(std::string obj_id);
     void addCollisionWalls();
 
     // apriltags connection
     ros::Subscriber subGrab, subAvoid;
-
     void grabCB(const g01_perception::PoseStampedArray::ConstPtr &input);
-
     void avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input);
-
-    bool gazeboAttach(std::string model2, std::string link2);
-
-    bool gazeboDetach(std::string model2, std::string link2);
-
-    // gripper
-    void gripperClose(int howMuch);
-
-    void gripperOpen();
-
-    bool isHeld();
 };
 
 #endif
