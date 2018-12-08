@@ -3,6 +3,11 @@
 //
 #include "g01_gripper.h"
 
+#include <moveit/move_group_interface/move_group.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <geometric_shapes/shape_operations.h>
+
+
 std::string planFrameId, endEffId;
 bool cylDone = false, triDone = false, cubeDone = false;
 geometry_msgs::Pose initialPose;
@@ -63,6 +68,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
     planning_scene_interface.addCollisionObjects(collision_objects);
 
+    return;
     if (!cylToGrab.empty() && !cylDone) {
         cylDone = true;
         moveObjects(my_group, cylToGrab, true); //fixme // with rotation
@@ -139,14 +145,14 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         //move with the fingers alongside the obj
         geometry_msgs::Pose pose = group.getCurrentPose().pose;
-        double y,p,r;
-        double y_ee,p_ee,r_ee;
+        double y, p, r;
+        double y_ee, p_ee, r_ee;
         poseToYPR(i.pose, &y, &p, &r);
-        poseToYPR(pose, &y_ee,&p_ee,&r_ee);
-        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee,p_ee,fabs(r-p_ee));
+        poseToYPR(pose, &y_ee, &p_ee, &r_ee);
+        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
 
         //todo fixme
-        if(i.pose.position.z > 1.06)
+        if (i.pose.position.z > 1.06)
             pose.position.z = i.pose.position.z;
         else
             pose.position.z = i.pose.position.z * 1.05;
@@ -204,14 +210,10 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
         if (!(std::find(items.begin(), items.end(), item.header.frame_id) != items.end())) {
             if (vol[0] == vol[2]) {
                 cubeToGrab.emplace_back(item);
-            } else if (vol[0]*2 == vol[2]) {
+            } else if (vol[0] * 2 == vol[2]) {
                 cylToGrab.emplace_back(item);
             } else {
-                vol[1] = vol[0];
-                vol[2] = vol[0];
                 triToGrab.emplace_back(item);
-                item.pose.position.z -= vol[2]/2;
-                item.pose.position.y += vol[1]/2;
             }
             items.emplace_back(item.header.frame_id);
         }
@@ -289,16 +291,34 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
     moveit_msgs::CollisionObject collision_object;
     collision_object.header.frame_id = planFrameId;
     collision_object.id = obj_id;
-    shape_msgs::SolidPrimitive primitive;
-    primitive.type = primitive.BOX;
-    primitive.dimensions.resize(3);
-    primitive.dimensions[0] = Xlen;
-    primitive.dimensions[1] = Ylen;
-    primitive.dimensions[2] = Zlen;
-    geometry_msgs::Pose box_pose = pose;
-    collision_object.primitives.push_back(primitive);
-    collision_object.primitive_poses.push_back(box_pose);
     collision_object.operation = collision_object.ADD;
+
+    if (Xlen == Zlen || Xlen * 2 == Zlen) {
+        shape_msgs::SolidPrimitive primitive;
+        primitive.type = primitive.BOX;
+        primitive.dimensions.resize(3);
+        primitive.dimensions[0] = Xlen;
+        primitive.dimensions[1] = Ylen;
+        primitive.dimensions[2] = Zlen;
+        geometry_msgs::Pose box_pose = pose;
+        collision_object.primitives.push_back(primitive);
+        collision_object.primitive_poses.push_back(box_pose);
+    } else {
+        shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl");
+
+        shape_msgs::Mesh mesh;
+        shapes::ShapeMsg mesh_msg;
+        shapes::constructMsgFromShape(m, mesh_msg);
+        mesh = boost::get<shape_msgs::Mesh>(mesh_msg);
+
+        collision_object.meshes.resize(1.7);
+        collision_object.mesh_poses.resize(1.7);
+        collision_object.meshes[0] = mesh;
+        collision_object.mesh_poses[0].position = pose.position;
+        collision_object.mesh_poses[0].orientation = pose.orientation;
+        collision_object.meshes.push_back(mesh);
+        collision_object.mesh_poses.push_back(collision_object.mesh_poses[0]);
+    }
     return collision_object;
 }
 
@@ -367,6 +387,7 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
 void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
     tf::Quaternion quaternion;
+    quaternion = quaternion.getIdentity();
     tf::quaternionMsgToTF(pose.orientation, quaternion);
     tf::Matrix3x3 mat(quaternion);
     mat.getEulerYPR(*yaw, *pitch, *roll);
