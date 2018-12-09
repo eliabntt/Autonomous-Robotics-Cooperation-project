@@ -25,9 +25,9 @@ public:
     bool isFull();
 
     // bool returns if place is possible, pose contains the actual position
-    bool placeCylinder(std::string name, geometry_msgs::Pose *valid);
-    bool placeCube(std::string name, geometry_msgs::Pose *valid);
-    bool placeTriangle(std::string name, geometry_msgs::Pose *valid);
+    bool placeCylinder(std::string name, geometry_msgs::Pose &valid);
+    bool placeCube(std::string name, geometry_msgs::Pose &valid);
+    bool placeTriangle(std::string name, geometry_msgs::Pose &valid);
     // todo maybe implement clearing of last if place is not successful
 };
 
