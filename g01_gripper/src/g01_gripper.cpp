@@ -321,7 +321,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose.position.y -= 0.4;
             pose.orientation = initialPose.orientation;
         }
-        pose.position.z += 0.35;
+        pose.position.z += 0.6;
 
         // here just need to go home
         if (!moveManipulator(pose, group)) {
