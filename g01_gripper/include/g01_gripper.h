@@ -37,7 +37,7 @@ private:
 
     // manipulator
     std::vector<double> HOME_JOINT_POS{-3.1415 / 2, -3.1415 / 2, 3.1415 / 2, -3.1415 / 2, -3.1415 / 2, 0};
-    void moveObjects(moveit::planning_interface::MoveGroupInterface &group,
+    std::vector<geometry_msgs::PoseStamped> moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                      std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
     bool moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
@@ -54,6 +54,7 @@ private:
     // utilities
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
     void gripperCB(const robotiq_s_model_control::SModel_robot_input &msg);
+    void goHome(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
 
     // members

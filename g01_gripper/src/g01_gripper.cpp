@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by eliabntt on 28/11/18.
 //
@@ -39,12 +41,8 @@ G01Gripper::G01Gripper() : command(), n() {
     ROS_INFO_STREAM("Waiting to receive tags of objects...");
     bool finish = false;
     while (ros::ok() && !finish) {
-        gripperOpen();
 
-        group.setJointValueTarget(HOME_JOINT_POS);
-        bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-        if (success)
-            group.move();
+        goHome(group);
 
         // save pose for later (was hardcoded as joints pos)
         initialPose = group.getCurrentPose().pose;
@@ -67,26 +65,40 @@ G01Gripper::G01Gripper() : command(), n() {
 
 
     ROS_INFO_STREAM("Pick and place starting...");
-    if (!cylToGrab.empty() && !cylDone) {
-        cylDone = true;
-        moveObjects(group, cylToGrab, true);
+    // fixme @filippo see if place this in a function
+    int count = 0;
+    while (!cylToGrab.empty() && count < 5) {
+        cylToGrab = moveObjects(group, cylToGrab, true);
+        count += 1;
     }
-    if (!cubeToGrab.empty() && !cubeDone) {
-        moveObjects(group, cubeToGrab);
-        cubeDone = true;
+    if (!cylToGrab.empty())
+        ROS_ERROR_STREAM("Error, " << cylToGrab.size() << " Hexagon(s) cannot be placed");
+
+    count = 0;
+    while (!cubeToGrab.empty() && count < 5) {
+        cubeToGrab = moveObjects(group, cubeToGrab);
+        count += 1;
     }
-    if (!triToGrab.empty() && !triDone) {
-        moveObjects(group, triToGrab);
-        triDone = true;
+    if (!cubeToGrab.empty())
+        ROS_ERROR_STREAM("Error, " << cubeToGrab.size() << " Cube(s) cannot be placed");
+
+    count = 0;
+    while (!triToGrab.empty() && count < 5) {
+        triToGrab = moveObjects(group, triToGrab);
+        count += 1;
     }
+    if (!triToGrab.empty())
+        ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
+
     spinner.stop();
     ros::shutdown();
 }
 
 // Movement
-void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
-                             std::vector<geometry_msgs::PoseStamped> objectList, bool rotate) {
-    // settings
+std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
+                                                                std::vector<geometry_msgs::PoseStamped> objectList,
+                                                                bool rotate) {
+    // settings //fixme with real ones
     group.setMaxVelocityScalingFactor(0.1);
     group.setGoalPositionTolerance(0.0001);
 
@@ -97,6 +109,10 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
     double objX, objY, curX, curY;
     double y, p, r, y_ee, p_ee, r_ee;
 
+    std::vector<geometry_msgs::PoseStamped> remaining;
+
+    // just to be sure
+    gripperOpen();
     // loop through objects
     for (geometry_msgs::PoseStamped i : objectList) {
         id = std::find(tagnames.begin(), tagnames.end(), i.header.frame_id) - tagnames.begin();
@@ -107,10 +123,13 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         objectPose.position.z += 0.3;
         objectPose.orientation = initialPose.orientation;
 
-        //todo return value to be used for failsafe behaviour
-        moveManipulator(objectPose, group);
+        if (!moveManipulator(objectPose, group)) {
+            goHome(group);
+            remaining.emplace_back(i);
+            continue;
+        }
 
-        // position refinement
+        // position refinement - fixme maybe not needed
         objX = i.pose.position.x;
         objY = i.pose.position.y;
         curX = group.getCurrentPose().pose.position.x;
@@ -134,6 +153,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // move with the fingers alongside the obj
         pose = group.getCurrentPose().pose;
 
+        // get the right position for the fingers
         poseToYPR(i.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
         pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
@@ -144,8 +164,11 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         else
             pose.position.z = i.pose.position.z * 1.05;
 
-        //todo return value to be used for failsafe behaviour
-        moveManipulator(pose, group);
+        if (!moveManipulator(pose, group)) {
+            goHome(group);
+            remaining.emplace_back(i);
+            continue;
+        }
 
         // close the gripper, adjust rviz and gazebo
         int howMuch = 150;
@@ -162,8 +185,17 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // plan and execute the movement
         pose = group.getCurrentPose().pose;
         pose.position.z += 0.35;
-        //todo return value to be used for failsafe behaviour
-        moveManipulator(pose, group);
+
+        // still near the table so safe to open
+        if (!moveManipulator(pose, group)) {
+            // detach object
+            group.detachObject(i.header.frame_id);
+            if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
+
+            goHome(group);
+            remaining.emplace_back(i);
+            continue;
+        }
 
         geometry_msgs::Pose LZ_pose;
         LZ_pose.position.x = 0.4;
@@ -183,12 +215,30 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             ROS_INFO_STREAM("Cylinder will be rotated");
         }
 
-        moveManipulator(LZ_pose, group);
+
+        if (!moveManipulator(LZ_pose, group)) {
+            // try to go back down (less to be in a safe position)
+            pose = group.getCurrentPose().pose;
+            pose.position.z -= 0.3;
+            moveManipulator(pose, group);
+
+            // detach object
+            group.detachObject(i.header.frame_id);
+            if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
+
+            goHome(group);
+            remaining.emplace_back(i);
+            continue;
+        }
 
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.4;
-        //todo return value to be used for failsafe behaviour
-        moveManipulator(pose, group);
+
+        // let the piece fall and go home so no need to set it as remaining - I am already over the LZ
+        if (!moveManipulator(pose, group)) {
+            goHome(group);
+            continue;
+        }
 
 
         // open the gripper, adjust rviz and gazebo
@@ -206,14 +256,19 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             pose.orientation = initialPose.orientation;
         }
         pose.position.z += 0.35;
-        //todo return value to be used for failsafe behaviour
-        moveManipulator(pose, group);
+
+        // here just need to go home
+        if (!moveManipulator(pose, group)) {
+            goHome(group);
+            continue;
+        }
     }
+
+    return remaining;
 }
 
 bool
 G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
-    // todo comments
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
@@ -224,12 +279,16 @@ G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_in
     std::vector<std::vector<geometry_msgs::Pose>> waypoint_trials;
     moveit_msgs::RobotTrajectory trajectory_temp;
 
-    std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
+    // retry with different number of intermediate step
+    // if the planning is better than success_threshold then execute the movement
+    // if the planning is better of min_threshold retry with another number of intermediate step
+    // if the planning does not succeed return false
     std::vector<unsigned long> steps_vector = {3, 1, 2, 4, 5};
     while (iteration < max_iterations) {
-        waypoints = makeWaypoints(group.getCurrentPose().pose, destination, steps_vector[iteration]);
-        fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory_temp);
-        if (fraction > success_threshold) {
+        fraction = group.computeCartesianPath(
+                makeWaypoints(group.getCurrentPose().pose, destination, steps_vector[iteration]), EEF_STEP, JUMP_THRESH,
+                trajectory_temp);
+        if (fraction >= success_threshold) {
             best_fraction = fraction;
             trajectory = trajectory_temp;
             break;
@@ -248,6 +307,7 @@ G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_in
     plan.trajectory_ = trajectory;
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
     ROS_INFO_STREAM("Movement result: " << resultCode);
+    // return true only if the movement is correct -  most of the times since bad planning removed before
     return (resultCode.val == 1);
 }
 
@@ -310,8 +370,8 @@ bool G01Gripper::gazeboDetach(std::string name, std::string link) {
     gazebo_ros_link_attacher::AttachRequest req;
     req.model_name_1 = "robot";
     req.link_name_1 = "wrist_3_link";
-    req.model_name_2 = name;
-    req.link_name_2 = link;
+    req.model_name_2 = std::move(name);
+    req.link_name_2 = std::move(link);
     gazebo_ros_link_attacher::AttachResponse res;
     return detacher.call(req, res);
 }
@@ -344,8 +404,8 @@ bool G01Gripper::gazeboAttach(std::string name, std::string link) {
     gazebo_ros_link_attacher::AttachRequest req;
     req.model_name_1 = "robot";
     req.link_name_1 = "wrist_3_link";
-    req.model_name_2 = name;
-    req.link_name_2 = link;
+    req.model_name_2 = std::move(name);
+    req.link_name_2 = std::move(link);
     gazebo_ros_link_attacher::AttachResponse res;
     return attacher.call(req, res);
 }
@@ -515,4 +575,12 @@ bool G01Gripper::isHeld(int howMuch) {
 void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &msg) {
     // just save status of the gripper to be globally used
     status = msg;
+}
+
+void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
+    gripperOpen();
+    group.setJointValueTarget(HOME_JOINT_POS);
+    bool success = (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    if (success)
+        group.move();
 }
