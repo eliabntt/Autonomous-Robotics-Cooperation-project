@@ -11,12 +11,16 @@ G01Gripper::G01Gripper() : command(), n() {
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
-    //todo implement better for wrong inputs(see hw1)
-    sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
+    if (n.hasParam("sim")) {
+        if (!n.getParam("sim", sim)) {
+            ROS_WARN_STREAM("Not valid 'sim' parameter's value. Setting 'sim' to 'true'.");
+            sim = true;
+        }
+    }
 
     // manipulator
-    //todo fail-safe if robot_manipulator not found
     moveit::planning_interface::MoveGroupInterface group(PLANNING_GROUP);
+
 
     // gripper
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
@@ -134,7 +138,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
         pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
 
-        //todo fixme
+        //todo fixme needed for real
         if (i.pose.position.z > 1.06)
             pose.position.z = i.pose.position.z;
         else
@@ -168,10 +172,10 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         LZ_pose.orientation = initialPose.orientation;
 
         // calculate the new orientation
-        if (rotate) { //todo check and refine
+        if (rotate) { //todo check and refine if general save in h qRot
             r = +3.14 / 4, p = -3.14 / 4, y = +3.14 / 4;
             tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
-            qRot.normalize(); // todo if general save in H
+            qRot.normalize();
             tf::Quaternion qFinal = qRot * tf::Quaternion(LZ_pose.orientation.x, LZ_pose.orientation.y,
                                                           LZ_pose.orientation.z, LZ_pose.orientation.w);
             qFinal.normalize();
@@ -397,7 +401,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
                                                            bool isTriangle) {
     moveit_msgs::CollisionObject co;
     co.header.frame_id = planFrameId;
-    co.id = objectId;
+    co.id = std::move(objectId);
     co.operation = co.ADD;
 
     if (!isTriangle) {
@@ -419,8 +423,8 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         shapes::constructMsgFromShape(m, mesh_msg);
         mesh = boost::get<shape_msgs::Mesh>(mesh_msg);
 
-        co.meshes.resize(1.7); //todo check
-        co.mesh_poses.resize(1.7);
+        co.meshes.resize((unsigned long) 1.7); //todo check
+        co.mesh_poses.resize((unsigned long) 1.7);
         co.meshes[0] = mesh;
         co.mesh_poses[0].position = pose.position;
         co.mesh_poses[0].orientation = pose.orientation;
