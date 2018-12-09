@@ -1,22 +1,20 @@
-# Homework 2 - MoveIt
-N.B. Bisogna fare il pull di `g01_perception` e ricompilarlo per poter ottenere i messaggi che verranno utilizzati all'interno di questo homework.
+# Homework 2 - UR10 + Gripper
+N.B. Bisogna fare il pull di `g01_perception` e ricompilarlo per poter ottenere i messaggi che verranno utilizzati all'interno di questo homework. Sono messaggi da noi creati, un array di *pose_stamped* dove nell'header principale troviamo il frame di riferimento(*/world*) mentre nell'header di ciascuna *pose_stamped* l'id del pezzo di cui abbiamo posizione e orientamento.
 
 ## Aspetti principali
-Verr‡ lanciata la parte di percezione che pubblicher‡ due topic separati uno per gli oggetti che devono essere trasportati, uno per gli oggetti che devono essere evitati.
-Dopo l'inizializzazione il robot si porter‡ in una posizione zero con il gripper aperto a quel punto inizializzer‡ la scena inserendo gli oggetti di collisione e due muri perimetrali.
+Verr√† lanciata la parte di percezione che pubblicher√† due topic separati uno per gli oggetti che devono essere trasportati, uno per gli oggetti che devono essere evitati.
 
-Gli ottagoni sono stati modellati per comodit‡ come parallelepipedi. 
+Per ciascun oggetto abbiamo a disposizione una tripletta di valori rappresentanti le sue dimensioni e quindi possiamo distinguere tra cubi, parallelepipedi e prismi.
 
-Una volta ottenuto la lista degli oggetti da spostare si procede partendo dagli ottagoni per poi procedere con i cubi e i prismi triangolari sulla zona finale dove verranno rilasciati.
+Dopo l'inizializzazione il robot si porter√† in una posizione zero con il gripper aperto; a quel punto inizializzer√† la scena inserendo gli oggetti di collisione e due muri perimetrali.
 
-La posizione zero Ë data in angoli per ciascun giunto mentre le traiettorie dei movimenti generali vengono calcolate su punti cartesiani intermedi cosÏ da riuscire a forzare per quanto possibile il movimento lungo una linea minimizzando le perdite di tempo per quanto possibile.
+I parallelepipedi a base esagonale sono stati modellati per comodit√† con una base quadrata essendo loro larghi al pi√π come il cubo. 
 
-In simulazione Ë richiesta una particolare routine per poter visualizzare in Gazebo i movimenti degli oggetti.
+Una volta ottenuto la lista degli oggetti da spostare si procede partendo dai parallelepipedi, cio√® gli oggetti pi√π ingombranti, per poi procedere con i cubi e infine con i prismi triangolari trasportandoli tutti per il momento sopra la zona finale dove verranno rilasciati.
 
+La posizione zero √® data in angoli per ciascun giunto mentre le traiettorie dei movimenti nella routine *pick and place* vengono calcolate su punti cartesiani intermedi cosƒõ da riuscire a forzare per quanto possibile il movimento lungo una linea, minimizzando quindi le perdite di tempo per quanto possibile.
 
-
-## Modalit‡  di funzionamento
-
+## Modalit√† di funzionamento (in simulazione)
 
 ```
 roslaunch challenge_arena challenge.launch sim:=true
@@ -45,9 +43,11 @@ roslaunch ur10_platform_challenge_moveit_config moveit_rviz.launch sim:=true
 ```
 ### Note aggiuntive
 
-Una seconda configurazione del launch file permette di lanciare direttamente la fase di percezione dal programma di *pick and place*. Abbiamo preferito mantenere separato in quanto *g01_perception* verr‡ lanciato in una scheda esterna e non nel calcolatore principale.
+Una seconda configurazione del launch file permette di lanciare direttamente la fase di percezione dal programma di *pick and place*. Abbiamo preferito mantenere separato in quanto *g01_perception* verr≈ï lanciato in una scheda esterna e non nel calcolatore principale.
 
-Il programma Ë stato sviluppato nella sua interezza su una classe separata incapsulando per quanto possibile le varie procedure ripetitive all'interno di funzioni separate dove possibile.
+Il programma ƒç stato sviluppato nella sua interezza su una classe separata incapsulando per quanto possibile le varie procedure ripetitive all'interno di funzioni separate dove possibile.
 
-Il planning viene ripetuto nel caso non si ottenga un risultato soddisfacente alla prima iterazione modificando il numero di punti intermedi. Se si ottiene un risultato abbastanza alto si esegue immediatamente, altrimenti si ripete il *planning* e si esegue solo se la percentuale di successo Ë comunque sopra una certa soglia. 
-Nel caso di fallimento totale si abortisce il tentativo tornando alla posizione zero. Si riprover‡ in seguito una volta che sono stati spostati gli altri pezzi.
+Il planning viene ripetuto nel caso non si ottenga un risultato soddisfacente alla prima iterazione modificando il numero di punti intermedi. Se si ottiene un risultato abbastanza alto si esegue immediatamente, altrimenti si ripete il *planning* e si esegue solo se la percentuale di successo ƒç comunque sopra una certa soglia. 
+Nel caso di fallimento totale si abortisce il tentativo tornando alla posizione zero. Si riprover≈ï in seguito una volta che sono stati spostati gli altri pezzi.
+
+In simulazione √® richiesta una particolare routine per poter visualizzare in Gazebo i movimenti degli oggetti.
