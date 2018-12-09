@@ -16,6 +16,9 @@
 #include <gazebo_ros_link_attacher/AttachResponse.h>
 #include "g01_perception/PoseStampedArray.h"
 #include "../../g01_perception/include/tags.h"
+#include <random>
+#include <chrono>
+
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
@@ -57,6 +60,8 @@ private:
     bool sim;
     ros::NodeHandle n;
     std::string PLANNING_GROUP = "manipulator";
+
+    std::string planFrameId, endEffId; // fixme these should go in H
 
     // subscriber
     ros::Subscriber gripperStatusSub;

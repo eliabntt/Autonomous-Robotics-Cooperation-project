@@ -3,7 +3,6 @@
 //
 #include "g01_gripper.h"
 
-std::string planFrameId, endEffId; // fixme these should go in H
 bool cylDone = false, triDone = false, cubeDone = false;
 geometry_msgs::Pose initialPose;
 
@@ -212,10 +211,31 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
+    double success_threshold = 0.8;
+    double fraction = 0.0, best_fraction = 0.0;
+    int iteration = 0, best_index = 0, max_iterations = 15;
+    std::vector<std::vector<geometry_msgs::Pose>> waypoint_trials;
 
-    std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
-    double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory);
-    ROS_INFO_STREAM("Planning result: " << fraction * 100 << "%");
+    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<unsigned long> distribution(1, 10);
+
+    while(iteration < max_iterations && fraction < success_threshold){
+        if (iteration == 0) {
+            waypoint_trials.emplace_back(makeWaypoints(group.getCurrentPose().pose, destination));
+        } else {
+            waypoint_trials.emplace_back(makeWaypoints(group.getCurrentPose().pose, destination, distribution(generator)));
+        }
+        fraction = group.computeCartesianPath(waypoint_trials[iteration], EEF_STEP, JUMP_THRESH, trajectory);
+        if (fraction > best_fraction) {
+            best_index = iteration;
+            best_fraction = fraction;
+        }
+        ROS_INFO_STREAM("Planning result: " << fraction * 100 << "%");
+        iteration++;
+    }
+
+    fraction = group.computeCartesianPath(waypoint_trials[best_index], EEF_STEP, JUMP_THRESH, trajectory);
+    ROS_INFO_STREAM("Best planning result: " << fraction * 100 << "%");
 
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
