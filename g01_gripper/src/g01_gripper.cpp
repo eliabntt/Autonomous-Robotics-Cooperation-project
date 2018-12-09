@@ -132,7 +132,6 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         poseToYPR(i.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
-        // fixme create a better orientation maybe r/p = 0;
         pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
 
         //todo fixme
@@ -145,10 +144,10 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         moveManipulator(pose, group);
 
         // close the gripper, adjust rviz and gazebo
-        int howMuch = 200;
+        int howMuch = 150;
         gripperClose(howMuch);
         ROS_INFO_STREAM("Closing the gripper");
-        while (!isHeld()) {
+        while (!isHeld(howMuch)) {
             howMuch += 10;
             gripperClose(howMuch);
         }
@@ -162,7 +161,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         //todo return value to be used for failsafe behaviour
         moveManipulator(pose, group);
 
-        geometry_msgs::Pose LZ_pose; // todo needs to stay in H or impl. box strategy!!
+        geometry_msgs::Pose LZ_pose;
         LZ_pose.position.x = 0.4;
         LZ_pose.position.y = 1.1;
         LZ_pose.position.z = pose.position.z;
@@ -438,7 +437,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         // rotate the previous pose by 45* about Z because of mesh orientation
         tf::Quaternion qOriginal, qRotation, qFinal;
         qRotation = tf::createQuaternionFromRPY(r, p, y);
-        r = 0, p = 0, y = 3.1415 / 2; // fixme r=0, p=0 should not be needed
+        r = 0, p = 0, y = 3.1415 / 2;
         qOriginal = tf::createQuaternionFromRPY(r, p, y);
         qOriginal.normalize();
 
@@ -476,11 +475,41 @@ void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch,
     mat.getEulerYPR(*yaw, *pitch, *roll);
 }
 
-bool G01Gripper::isHeld() {
+// fixme
+bool G01Gripper::isHeld(int howMuch) {
     // check if object is held by gripper's fingers
-    while (status.gSTA == 0)
-        ROS_INFO_THROTTLE(5, "Waiting grasp to complete...");
-    return status.gSTA == 1 || status.gSTA == 2;
+    if (sim) return true;
+
+    int precA = -1;
+    int precB = -1;
+    int precC = -1;
+    ros::Duration(1).sleep();;
+    // all three in the same position but equal to howMuch
+    if ((int) status.gPOA >= howMuch &&
+        (int) status.gPOB == (int) status.gPOC &&
+        (int) status.gPOB == (int) status.gPOA)
+        return false;
+
+
+    // all fingers in a position != from the previous
+    while ((int) status.gPOA != precA && (int) status.gPOB != precB && (int) status.gPOC != precC) {
+        precA = status.gPOA;
+        precB = status.gPOB;
+        precC = status.gPOC;
+        ros::Duration(0.2).sleep();
+    }
+    return true;
+
+
+    /*
+     * alternative method not working on simulation
+     *
+     * while(status.gSTA == 0) {
+     *   ros::Duration(0.2).sleep();
+     *   }
+     * return status.gSTA == 1 || status.gSTA == 2;
+     * if return = false(statu.gSTA == 3) -> chiudi di più
+     */
 }
 
 void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &msg) {
