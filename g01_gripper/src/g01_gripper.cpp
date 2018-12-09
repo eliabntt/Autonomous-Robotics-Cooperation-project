@@ -79,13 +79,21 @@ G01Gripper::G01Gripper() : command(), n() {
 
     ROS_INFO_STREAM("Pick and place starting...");
 
+    // ObjectBox takes care of occupancy things
+    geometry_msgs::Pose poseLZ; // todo tune, should be center of mass of marttino
+    poseLZ.position.x = 0.4;
+    poseLZ.position.y = 1.1;
+    poseLZ.position.z = 10;// useless
+    poseLZ.orientation = initialPose.orientation;
+    ObjectBox box(poseLZ);
+
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
 
     // move cylinders (hexagons)
     int count = 0;
     while (!cylToGrab.empty() && count < 5) {
-        cylToGrab = moveObjects(group, cylToGrab, true);
+        cylToGrab = moveObjects(group, cylToGrab, box, true);
         count += 1;
     }
     if (!cylToGrab.empty())
@@ -94,7 +102,7 @@ G01Gripper::G01Gripper() : command(), n() {
     // move cubes
     count = 0;
     while (!cubeToGrab.empty() && count < 5) {
-        cubeToGrab = moveObjects(group, cubeToGrab);
+        cubeToGrab = moveObjects(group, cubeToGrab, box);
         count += 1;
     }
     if (!cubeToGrab.empty())
@@ -103,7 +111,7 @@ G01Gripper::G01Gripper() : command(), n() {
     // move prisms
     count = 0;
     while (!triToGrab.empty() && count < 5) {
-        triToGrab = moveObjects(group, triToGrab);
+        triToGrab = moveObjects(group, triToGrab, box);
         count += 1;
     }
     if (!triToGrab.empty())
@@ -117,7 +125,7 @@ G01Gripper::G01Gripper() : command(), n() {
 // Movement
 std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
-                                                                bool rotate) {
+                                                                ObjectBox box, bool rotate) {
     // settings //fixme with real ones
     group.setMaxVelocityScalingFactor(0.1);
     group.setGoalPositionTolerance(0.0001);
@@ -240,28 +248,33 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        // go to landing zone
-        geometry_msgs::Pose poseLZ;
-        poseLZ.position.x = 0.4;
-        poseLZ.position.y = 1.1;
-        poseLZ.position.z = pose.position.z;
-        poseLZ.orientation = initialPose.orientation;
+        // go to destination point
+        bool canPlace;
+        geometry_msgs::Pose destPose;
+        if(rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
+            canPlace = box.placeCylinder(obj.header.frame_id, &destPose); // fixme broken inside here
+        else
+            canPlace = box.placeCube(obj.header.frame_id, &destPose);
+
+        ROS_INFO_STREAM("Place: " << canPlace << " pose: x: " << destPose.position.x << " y: " << destPose.position.y << " z: " << destPose.position.z);
 
         // calculate the new orientation of the "wrist"
         if (rotate) {
             r = 0, p = -3.14 / 3, y = 0;
             tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
             qRot.normalize();
-            tf::Quaternion qFinal = qRot * tf::Quaternion(poseLZ.orientation.x, poseLZ.orientation.y,
-                                                          poseLZ.orientation.z, poseLZ.orientation.w);
+            tf::Quaternion qFinal = qRot * tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
+                                                          destPose.orientation.z, destPose.orientation.w);
             qFinal.normalize();
-            tf::quaternionTFToMsg(qFinal, poseLZ.orientation);
+            tf::quaternionTFToMsg(qFinal, destPose.orientation);
             ROS_INFO_STREAM("Cylinder will be rotated");
         }
 
-        // move or safely recover
-        if (!moveManipulator(poseLZ, group)) {
-            // try to go back down (probably a safer position)
+        if (!canPlace)
+            ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
+
+        if (!moveManipulator(destPose, group)) {
+            // try to go back down (less to be in a safe position)
             pose = group.getCurrentPose().pose;
             pose.position.z -= 0.3;
             moveManipulator(pose, group);
