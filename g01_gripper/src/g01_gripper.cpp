@@ -15,6 +15,7 @@ G01Gripper::G01Gripper() : command(), n() {
     sim = n.hasParam("sim") ? n.getParam("sim", sim) : true;
 
     // manipulator
+    //todo fail-safe if robot_manipulator not found
     moveit::planning_interface::MoveGroupInterface group(PLANNING_GROUP);
 
     // gripper
@@ -29,7 +30,6 @@ G01Gripper::G01Gripper() : command(), n() {
     // some basic info
     planFrameId = group.getPlanningFrame();
     endEffId = group.getEndEffectorLink();
-    moveit::core::RobotStatePtr current_state = group.getCurrentState(); // fixme never used
 
     // move to a home position and wait perception module
     ROS_INFO_STREAM("Waiting to receive tags of objects...");
@@ -107,14 +107,8 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         objectPose.position.z += 0.3;
         objectPose.orientation = initialPose.orientation;
 
-        // compute waypoints on path to the target, create a cartesian path on them
-        std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, objectPose);
-        double fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory); // todo retval use
-
-        // execute the planned movement
-        robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
-        plan.trajectory_ = trajectory;
-        moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan); // todo retval unused
+        //todo return value to be used for failsafe behaviour
+        moveManipulator(objectPose, group);
 
         // position refinement
         objX = i.pose.position.x;
@@ -149,6 +143,8 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             pose.position.z = i.pose.position.z;
         else
             pose.position.z = i.pose.position.z * 1.05;
+
+        //todo return value to be used for failsafe behaviour
         moveManipulator(pose, group);
 
         // close the gripper, adjust rviz and gazebo
@@ -166,12 +162,13 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
         // plan and execute the movement
         pose = group.getCurrentPose().pose;
         pose.position.z += 0.35;
+        //todo return value to be used for failsafe behaviour
         moveManipulator(pose, group);
 
         geometry_msgs::Pose LZ_pose; // todo needs to stay in H or impl. box strategy!!
         LZ_pose.position.x = 0.4;
         LZ_pose.position.y = 1.1;
-        LZ_pose.position.z = 1.2;
+        LZ_pose.position.z = pose.position.z;
         LZ_pose.orientation = initialPose.orientation;
 
         // calculate the new orientation
@@ -185,7 +182,14 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             tf::quaternionTFToMsg(qFinal, LZ_pose.orientation);
             ROS_INFO_STREAM("Cylinder will be rotated");
         }
+
         moveManipulator(LZ_pose, group);
+
+        pose = group.getCurrentPose().pose;
+        pose.position.z -= 0.4;
+        //todo return value to be used for failsafe behaviour
+        moveManipulator(pose, group);
+
 
         // open the gripper, adjust rviz and gazebo
         group.detachObject(i.header.frame_id);
@@ -202,40 +206,46 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
             pose.orientation = initialPose.orientation;
         }
         pose.position.z += 0.35;
+        //todo return value to be used for failsafe behaviour
         moveManipulator(pose, group);
     }
 }
 
-bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
+bool
+G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
     // todo comments
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
-    double success_threshold = 0.8;
-    double fraction = 0.0, best_fraction = 0.0;
-    int iteration = 0, best_index = 0, max_iterations = 15;
-    std::vector<std::vector<geometry_msgs::Pose>> waypoint_trials;
 
+    //fixme if we do a list of x values 1,2,4,5,6,... is not better?
     std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
     std::uniform_int_distribution<unsigned long> distribution(1, 10);
 
-    while(iteration < max_iterations && fraction < success_threshold){
-        if (iteration == 0) {
-            waypoint_trials.emplace_back(makeWaypoints(group.getCurrentPose().pose, destination));
-        } else {
-            waypoint_trials.emplace_back(makeWaypoints(group.getCurrentPose().pose, destination, distribution(generator)));
-        }
-        fraction = group.computeCartesianPath(waypoint_trials[iteration], EEF_STEP, JUMP_THRESH, trajectory);
-        if (fraction > best_fraction) {
-            best_index = iteration;
+    double min_threshold = 0.4, success_threshold = 0.8;
+    double fraction, best_fraction = 0.0;
+    int iteration = 0, max_iterations = 5;
+    std::vector<std::vector<geometry_msgs::Pose>> waypoint_trials;
+    moveit_msgs::RobotTrajectory trajectory_temp;
+
+    std::vector<geometry_msgs::Pose> waipoints = makeWaypoints(group.getCurrentPose().pose, destination);
+    while (iteration < max_iterations) {
+        if (iteration > 0)
+            waipoints = makeWaypoints(group.getCurrentPose().pose, destination, distribution(generator));
+        fraction = group.computeCartesianPath(waipoints, EEF_STEP, JUMP_THRESH, trajectory_temp);
+        if (fraction > success_threshold) {
+            best_fraction = fraction;
+            trajectory = trajectory_temp;
+            break;
+        } else if (fraction > min_threshold && best_fraction < fraction) {
+            trajectory = trajectory_temp;
             best_fraction = fraction;
         }
-        ROS_INFO_STREAM("Planning result: " << fraction * 100 << "%");
         iteration++;
     }
 
-    fraction = group.computeCartesianPath(waypoint_trials[best_index], EEF_STEP, JUMP_THRESH, trajectory);
-    ROS_INFO_STREAM("Best planning result: " << fraction * 100 << "%");
+    if (best_fraction < min_threshold)
+        return false;
 
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
@@ -257,8 +267,8 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
     // step measures to add
     double step[] = {(Rto - Rfrom) / nSteps,
-                       (Pto - Pfrom) / nSteps,
-                       (Yto - Yfrom) / nSteps};
+                     (Pto - Pfrom) / nSteps,
+                     (Yto - Yfrom) / nSteps};
 
     for (int idx = 1; idx < nSteps; idx++) {
         t = double(idx) / nSteps;
