@@ -87,10 +87,6 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
     group.setGoalPositionTolerance(0.0001);
 
     long id;
-    const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
-    const double EEF_STEP = 0.01;
-    moveit_msgs::RobotTrajectory trajectory;
-    robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
 
     // generic pose and values to be used below
     geometry_msgs::Pose pose;
@@ -136,6 +132,7 @@ void G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &gro
 
         poseToYPR(i.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
+        // fixme create a better orientation maybe r/p = 0;
         pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
 
         //todo fixme
