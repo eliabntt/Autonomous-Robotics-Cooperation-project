@@ -1,22 +1,30 @@
 # Homework 2 - UR10 + Gripper
-N.B. Bisogna fare il pull di `g01_perception` e ricompilarlo per poter ottenere i messaggi che verranno utilizzati all'interno di questo homework. Sono messaggi da noi creati, un array di *pose_stamped* dove nell'header principale troviamo il frame di riferimento(*/world*) mentre nell'header di ciascuna *pose_stamped* l'id del pezzo di cui abbiamo posizione e orientamento.
+
+Questo homework per funzionare necessita della versione più aggiornata del primo homework `g01_perception`.
 
 ## Aspetti principali
-Verrà lanciata la parte di percezione che pubblicherà due topic separati uno per gli oggetti che devono essere trasportati, uno per gli oggetti che devono essere evitati.
 
-Per ciascun oggetto abbiamo a disposizione una tripletta di valori rappresentanti le sue dimensioni e quindi possiamo distinguere tra cubi, parallelepipedi e prismi.
+Verrà dapprima lanciata la parte di percezione che pubblicherà due topic separati: uno per gli oggetti che devono essere trasportati, uno per gli oggetti che devono essere evitati.
+Sono stati creati messaggi _custom_ per la comunicazione del nome dei tag insieme alla pose, e quindi ora i topic `/tags_to_grab|avoid` pubblicano un array di PoseStamped.
+L'header principale del messaggio contiene il frame di riferimento delle letture, `/world`, e l'header di ogni oggetto PoseStamped contiene il nome del tag nel `frame_id`.
 
-Dopo l'inizializzazione il robot si porterà in una posizione zero con il gripper aperto; a quel punto inizializzerà la scena inserendo gli oggetti di collisione e due muri perimetrali.
+Quando pronto, il robot si porterà in posizione "zero" con il gripper aperto;
+il programma rimane poi in attesa di ricevere messaggi dai topic al più per 5 secondi, poi termina.
 
-I parallelepipedi a base esagonale sono stati modellati per comodità con una base quadrata essendo loro larghi al più come il cubo. 
+La ricezione è un elemento bloccante: senza oggetti sul tavolo non si raggiunge il secondo step del programma;
+solo a quel punto viene inizializzata la scena inserendo gli oggetti di collisione e due muri perimetrali.
+
+A ciascun oggetto viene associata una tripletta di valori rappresentanti le sue dimensioni e quindi possiamo distinguere tra cubi, parallelepipedi e prismi.
+I parallelepipedi a base esagonale sono stati modellati per comodità con una base quadrata essendo loro larghi al più come il cubo.
+I prismi a sezione triangolare sono stati modellati tramite la rispettiva mesh.
 
 Una volta ottenuto la lista degli oggetti da spostare si procede partendo dai parallelepipedi, cioè gli oggetti più ingombranti, per poi procedere con i cubi e infine con i prismi triangolari trasportandoli tutti per il momento sopra la zona finale dove verranno rilasciati.
 
-La posizione zero è data in angoli per ciascun giunto mentre le traiettorie dei movimenti nella routine *pick and place* vengono calcolate su punti cartesiani intermedi cosě da riuscire a forzare per quanto possibile il movimento lungo una linea, minimizzando quindi le perdite di tempo per quanto possibile.
-
-La percezione degli oggetti è bloccante, senza oggetti sul tavolo non si raggiunge il secondo step del programma. Rimaniamo in attesa al più per 5 secondi, poi il programma termina.
+Solo la posizione "zero" è data in angoli per ciascun giunto, le traiettorie dei movimenti nella routine *pick and place* vengono calcolate su punti cartesiani intermedi così da cercare di forzare un movimento lineare, minimizzando quindi le perdite di tempo per quanto possibile.
 
 ## Modalità di funzionamento (in simulazione)
+
+In terminali separati lanciare: la challenge_arena in Gazebo, il pianificatore per il manipolatore, il modulo apriltag, il modulo perception dell'homework precedente, questo modulo.
 
 ```
 roslaunch challenge_arena challenge.launch sim:=true
@@ -38,18 +46,21 @@ roslaunch g01_perception discover.launch [ids:="[[frame_id],]"] forever:=true
 catkin_make && roslaunch g01_gripper grip.launch
 ```
 
-
-Non necessario:
+Per vedere la scena in Rviz (non strettamente necessario)
 ```
 roslaunch ur10_platform_challenge_moveit_config moveit_rviz.launch sim:=true
 ```
+
 ### Note aggiuntive
 
-Una seconda configurazione del launch file permette di lanciare direttamente la fase di percezione dal programma di *pick and place*. Abbiamo preferito mantenere separato in quanto *g01_perception* verrŕ lanciato in una scheda esterna e non nel calcolatore principale.
+Una secondo launch file permette di lanciare direttamente la fase di percezione (modulo perception) dal programma di *pick and place*.
+Abbiamo però preferito usare i due in modo separato in quanto *g01_perception* viene poi lanciato in una scheda esterna e non nel calcolatore principale.
 
-Il programma č stato sviluppato nella sua interezza su una classe separata incapsulando per quanto possibile le varie procedure ripetitive all'interno di funzioni separate dove possibile.
+Il programma è stato sviluppato su una classe separata, incapsulando le varie procedure ripetitive all'interno di funzioni separate dove possibile.
 
-Il planning viene ripetuto nel caso non si ottenga un risultato soddisfacente alla prima iterazione modificando il numero di punti intermedi. Se si ottiene un risultato abbastanza alto si esegue immediatamente, altrimenti si ripete il *planning* e si esegue solo se la percentuale di successo č comunque sopra una certa soglia. 
-Nel caso di fallimento totale si abortisce il tentativo tornando alla posizione zero. Si riproverŕ in seguito una volta che sono stati spostati gli altri pezzi.
+Il planning viene ripetuto nel caso non si ottenga un risultato soddisfacente alla prima iterazione, modificando il numero di punti intermedi.
+Se si ottiene un risultato abbastanza alto si esegue immediatamente, altrimenti si ripete il *planning* e si esegue solo se la percentuale di successo è comunque sopra una certa soglia.
+Nel caso di fallimento totale si abortisce il tentativo tornando alla posizione zero.
+Si riproverà la presa in seguito, dopo aver spostato gli altri pezzi.
 
-In simulazione è richiesta una particolare routine per poter visualizzare in Gazebo i movimenti degli oggetti.
+Per la fase di presa dell'oggetto, in simulazione è richiesto l'agganciamento (e lo sganciamento) manuale dell'oggetto al gripper tramite link fittizio, eseguito con una chiamata a un servizio esposto da Gazebo.
