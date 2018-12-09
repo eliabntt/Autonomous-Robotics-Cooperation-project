@@ -175,6 +175,9 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         if (!moveManipulator(pose, group)) {
             goHome(group);
+            // I need the new position of my object
+            i.pose.position = group.getCurrentPose().pose.position;
+            i.pose.position.z -= 0.05;
             remaining.emplace_back(i);
             continue;
         }
@@ -201,6 +204,9 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
 
             goHome(group);
+
+            i.pose.position = group.getCurrentPose().pose.position;
+            i.pose.position.z -= 0.05;
             remaining.emplace_back(i);
             continue;
         }
@@ -214,7 +220,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // calculate the new orientation
         if (rotate) { //todo check and refine if general save in h qRot
-            r = +3.14 / 4, p = -3.14 / 4, y = +3.14 / 4;
+            r = 0, p = -3.14 / 3, y = 0;
             tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
             qRot.normalize();
             tf::Quaternion qFinal = qRot * tf::Quaternion(LZ_pose.orientation.x, LZ_pose.orientation.y,
@@ -235,6 +241,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             group.detachObject(i.header.frame_id);
             if (sim) gazeboDetach(linknames[id][0], linknames[id][1]);
 
+            i.pose.position = group.getCurrentPose().pose.position;
+            i.pose.position.z -= 0.05;
             goHome(group);
             remaining.emplace_back(i);
             continue;
