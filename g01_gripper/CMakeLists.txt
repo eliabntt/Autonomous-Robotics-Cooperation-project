@@ -129,7 +129,7 @@ include_directories(${catkin_INCLUDE_DIRS} include)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/grip.cpp src/g01_gripper.cpp)
+add_executable(${PROJECT_NAME} src/grip.cpp src/g01_gripper.cpp src/ObjectBox.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
