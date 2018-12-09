@@ -214,21 +214,17 @@ G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_in
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
 
-    //fixme if we do a list of x values 1,2,4,5,6,... is not better?
-    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
-    std::uniform_int_distribution<unsigned long> distribution(1, 10);
-
     double min_threshold = 0.4, success_threshold = 0.8;
     double fraction, best_fraction = 0.0;
     int iteration = 0, max_iterations = 5;
     std::vector<std::vector<geometry_msgs::Pose>> waypoint_trials;
     moveit_msgs::RobotTrajectory trajectory_temp;
 
-    std::vector<geometry_msgs::Pose> waipoints = makeWaypoints(group.getCurrentPose().pose, destination);
+    std::vector<geometry_msgs::Pose> waypoints = makeWaypoints(group.getCurrentPose().pose, destination);
+    std::vector<unsigned long> steps_vector = {3, 1, 2, 4, 5};
     while (iteration < max_iterations) {
-        if (iteration > 0)
-            waipoints = makeWaypoints(group.getCurrentPose().pose, destination, distribution(generator));
-        fraction = group.computeCartesianPath(waipoints, EEF_STEP, JUMP_THRESH, trajectory_temp);
+        waypoints = makeWaypoints(group.getCurrentPose().pose, destination, steps_vector[iteration]);
+        fraction = group.computeCartesianPath(waypoints, EEF_STEP, JUMP_THRESH, trajectory_temp);
         if (fraction > success_threshold) {
             best_fraction = fraction;
             trajectory = trajectory_temp;
