@@ -14,6 +14,8 @@ Una volta ottenuto la lista degli oggetti da spostare si procede partendo dai pa
 
 La posizione zero è data in angoli per ciascun giunto mentre le traiettorie dei movimenti nella routine *pick and place* vengono calcolate su punti cartesiani intermedi cosě da riuscire a forzare per quanto possibile il movimento lungo una linea, minimizzando quindi le perdite di tempo per quanto possibile.
 
+La percezione degli oggetti è bloccante, senza oggetti sul tavolo non si raggiunge il secondo step del programma. Rimaniamo in attesa al più per 5 secondi, poi il programma termina.
+
 ## Modalità di funzionamento (in simulazione)
 
 ```

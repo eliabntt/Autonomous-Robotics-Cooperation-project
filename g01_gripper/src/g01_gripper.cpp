@@ -5,11 +5,10 @@
 //
 #include "g01_gripper.h"
 
-bool cylDone = false, triDone = false, cubeDone = false;
 geometry_msgs::Pose initialPose;
 
 G01Gripper::G01Gripper() : command(), n() {
-    //fixme maybe 4 better?
+    //fixme maybe 4 better
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
@@ -23,6 +22,7 @@ G01Gripper::G01Gripper() : command(), n() {
     // manipulator
     moveit::planning_interface::MoveGroupInterface group(PLANNING_GROUP);
 
+    double begin = ros::Time::now().toSec();
 
     // gripper
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
@@ -44,12 +44,20 @@ G01Gripper::G01Gripper() : command(), n() {
 
         goHome(group);
 
-        // save pose for later (was hardcoded as joints pos)
+        // save pose for later (was hardcoded as joints agles)
         initialPose = group.getCurrentPose().pose;
 
         // subscribe to receive tags poses
         subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
         subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
+
+        if (ros::Time::now().toSec() - begin > 5)
+        {
+            subGrab.shutdown();
+            subAvoid.shutdown();
+            ros::shutdown();
+            return;
+        }
 
         if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
             subGrab.shutdown();
@@ -113,6 +121,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
     // just to be sure
     gripperOpen();
+
     // loop through objects
     for (geometry_msgs::PoseStamped i : objectList) {
         id = std::find(tagnames.begin(), tagnames.end(), i.header.frame_id) - tagnames.begin();
@@ -182,7 +191,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         group.attachObject(i.header.frame_id, endEffId);
 
         // go up to safe altitude
-        // plan and execute the movement
         pose = group.getCurrentPose().pose;
         pose.position.z += 0.35;
 
@@ -197,6 +205,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
+        // go to landing zone
         geometry_msgs::Pose LZ_pose;
         LZ_pose.position.x = 0.4;
         LZ_pose.position.y = 1.1;
@@ -231,6 +240,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
+        // approach the lz from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.4;
 
@@ -239,7 +249,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             goHome(group);
             continue;
         }
-
 
         // open the gripper, adjust rviz and gazebo
         group.detachObject(i.header.frame_id);
@@ -267,8 +276,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     return remaining;
 }
 
-bool
-G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
+bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
+                                 moveit::planning_interface::MoveGroupInterface &group) {
     const double JUMP_THRESH = (sim ? 0.0 : 0.1);//fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory trajectory;
@@ -306,7 +315,7 @@ G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_in
     robotTraj.setRobotTrajectoryMsg(*group.getCurrentState(), trajectory);
     plan.trajectory_ = trajectory;
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-    ROS_INFO_STREAM("Movement result: " << resultCode);
+    // ROS_INFO_STREAM("Movement result: " << resultCode);
     // return true only if the movement is correct -  most of the times since bad planning removed before
     return (resultCode.val == 1);
 }
