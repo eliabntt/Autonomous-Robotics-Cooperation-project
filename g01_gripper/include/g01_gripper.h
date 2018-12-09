@@ -54,14 +54,14 @@ private:
     // utilities
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
     void gripperCB(const robotiq_s_model_control::SModel_robot_input &msg);
-    bool isHeld();
+    bool isHeld(int howMuch);
 
     // members
     bool sim;
     ros::NodeHandle n;
     std::string PLANNING_GROUP = "manipulator";
 
-    std::string planFrameId, endEffId; // fixme these should go in H
+    std::string planFrameId, endEffId;
 
     // subscriber
     ros::Subscriber gripperStatusSub;
