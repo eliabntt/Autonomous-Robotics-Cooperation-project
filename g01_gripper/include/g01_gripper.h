@@ -1,6 +1,7 @@
 //
 // Created by eliabntt on 28/11/18.
 //
+#include <utility>
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometric_shapes/shape_operations.h>
@@ -16,16 +17,12 @@
 #include <gazebo_ros_link_attacher/AttachResponse.h>
 #include "g01_perception/PoseStampedArray.h"
 #include "../../g01_perception/include/tags.h"
-#include <random>
-#include <chrono>
-
 
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
 
 class G01Gripper {
 public:
-    //Default constructor
     G01Gripper();
 
 private:
@@ -36,7 +33,6 @@ private:
     bool gazeboDetach(std::string name, std::string link);
 
     // manipulator
-    std::vector<double> HOME_JOINT_POS{-3.1415 / 2, -3.1415 / 2, 3.1415 / 2, -3.1415 / 2, -3.1415 / 2, 0};
     std::vector<geometry_msgs::PoseStamped> moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                      std::vector<geometry_msgs::PoseStamped> objectList, bool rotate = false);
     bool moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
@@ -57,11 +53,14 @@ private:
     void goHome(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
 
-    // members
+    // MEMBERS
     bool sim;
     ros::NodeHandle n;
-    std::string PLANNING_GROUP = "manipulator";
 
+    // manipulator
+    std::string PLANNING_GROUP = "manipulator";
+    std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415 / 2, 3.1415 / 2, -3.1415 / 2, -3.1415 / 2, 0};
+    geometry_msgs::Pose initialPose;
     std::string planFrameId, endEffId;
 
     // subscriber
@@ -75,9 +74,9 @@ private:
     robotiq_s_model_control::SModel_robot_output command;
 
     // objects to track
-    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    moveit::planning_interface::PlanningSceneInterface planningSceneIF;
     moveit::planning_interface::MoveGroupInterface::Plan plan;
-    std::vector<moveit_msgs::CollisionObject> collision_objects;
+    std::vector<moveit_msgs::CollisionObject> collObjects;
     std::vector<std::string> grabObjNames;
     std::vector<geometry_msgs::PoseStamped> objectsToAvoid, cylToGrab, cubeToGrab, triToGrab;
 };
