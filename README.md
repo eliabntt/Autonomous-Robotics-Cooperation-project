@@ -12,7 +12,7 @@ Si assume che ROS sia installato e correttamente configurato.
 Si ipotizza che un workspace sia inizializzato in `~/ros_ws` per brevità nei comandi successivi.
 
 ```bash
-cd ~/ros_ws/src/G01
+cd ~/ros_ws/src/G01/
 git init
 git remote add origin https://[USER]@bitbucket.org/iaslab-unipd/g01-bonetto-dal-zovo-rigotto.git
 git pull origin master

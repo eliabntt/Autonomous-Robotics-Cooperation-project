@@ -5,11 +5,11 @@
     <arg name="forever" default="true" doc="if the node has to run forever"/>
 
     <group ns="/ur10">
-        <!--<node name="g01_perception" pkg="g01_perception" type="g01_perception" output="log">
+        <node name="g01_perception" pkg="g01_perception" type="g01_perception" output="log">
             <param name="sim" value="$(arg sim)"/>
             <param name="forever" value="true"/>
             <param name="ids" value="$(arg ids)"/>
-        </node> -->
+        </node>
         <node name="g01_gripper" pkg="g01_gripper" type="g01_gripper" output="screen">
             <param name="sim" value="$(arg sim)"/>
         </node>
