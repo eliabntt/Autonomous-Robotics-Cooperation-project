@@ -9,10 +9,12 @@ G01Gripper::G01Gripper() : command(), n() {
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
-    if (n.hasParam("sim") && (!n.getParam("sim", sim))) {
+    ros::NodeHandle nh("~");
+    if (nh.hasParam("sim") && (!nh.getParam("sim", sim))) {
         ROS_WARN_STREAM("Invalid value for 'sim' parameter. Setting 'sim' to 'true'.");
         sim = true;
     }
+    ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
 
     // manipulator
     moveit::planning_interface::MoveGroupInterface group(PLANNING_GROUP);
@@ -30,9 +32,13 @@ G01Gripper::G01Gripper() : command(), n() {
     planFrameId = group.getPlanningFrame();
     endEffId = group.getEndEffectorLink();
 
-    // SAFETY FIRST! add surrounding walls to the scene
-    addCollisionWalls();
-    planningSceneIF.addCollisionObjects(collObjects);
+    // SAFETY FIRST! add surrounding walls to the scene only in real scenario
+    // (assume manipulator is somewhere over the table, while in sim it starts horizontal
+    // and it traverses the walls so that planner constantly fails)
+    if (!sim) {
+        addCollisionWalls();
+        planningSceneIF.addCollisionObjects(collObjects);
+    }
 
     // move to a home position and wait for perception module
     ROS_INFO_STREAM("Waiting to receive tags of objects...");
@@ -67,6 +73,8 @@ G01Gripper::G01Gripper() : command(), n() {
     }
 
     // add objects as collision items (elaborated in callbacks)
+    // also add walls if in simulation (manipulator already moved to home)
+    if (sim) addCollisionWalls();
     planningSceneIF.addCollisionObjects(collObjects);
 
     ROS_INFO_STREAM("Pick and place starting...");
@@ -106,15 +114,15 @@ G01Gripper::G01Gripper() : command(), n() {
 }
 
 // Movement
-std::vector <geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
-                                                                 std::vector <geometry_msgs::PoseStamped> objectList,
-                                                                 bool rotate) {
+std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
+                                                                std::vector<geometry_msgs::PoseStamped> objectList,
+                                                                bool rotate) {
     // settings //fixme with real ones
     group.setMaxVelocityScalingFactor(0.1);
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
-    std::vector <geometry_msgs::PoseStamped> remaining;
+    std::vector<geometry_msgs::PoseStamped> remaining;
 
     // generic poses and values to be used below
     geometry_msgs::Pose objectPose, pose;
@@ -277,7 +285,7 @@ std::vector <geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::plannin
         gripperOpen();
 
         // remove the corresponding collision object from the scene
-        std::vector <std::string> toRemove = {obj.header.frame_id};
+        std::vector<std::string> toRemove = {obj.header.frame_id};
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
@@ -344,7 +352,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
 }
 
 std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
-                                                            unsigned long nSteps) {
+                                                           unsigned long nSteps) {
     // construct intermediate waypoints in path between the two poses
     std::vector<geometry_msgs::Pose> steps;
     double t = 0;
