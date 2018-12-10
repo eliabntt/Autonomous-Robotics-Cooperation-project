@@ -1,7 +1,0 @@
-Detected frames, w.r.t. base reference frame:
-tag id: 10
-frame id: blue_cube_2
-    size: 0.052
-    orientation: x = -0.0135337  y = 0.0125501  z = 0.718545  w = 0.695236
-    position: x = -0.0483635  y = -0.75617  z = 0.0920165
-

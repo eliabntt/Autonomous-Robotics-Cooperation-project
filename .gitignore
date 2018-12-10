@@ -1,4 +1,4 @@
-CMakeLists.txt
+/CMakeLists.txt
 
 .idea
 apriltags_ros
@@ -14,3 +14,4 @@ robotiq
 universal_robot
 ur10_platform_challenge_moveit_config
 ur_modern_driver
+output.txt
