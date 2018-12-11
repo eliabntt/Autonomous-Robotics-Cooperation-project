@@ -472,7 +472,21 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
                 collObjects.emplace_back(
                         addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
             } else {
+                // pose correction for triangle prisms
+                // to center the point the gripper points to
+                double y, p, r;
+                poseToYPR(item.pose, &y, &p, &r);
+
+                if (y > 2 || y < 1.6) {
+                    if (item.pose.position.y > 0)
+                        item.pose.position.y += vol[2] / 4;
+                    else
+                        item.pose.position.y -= vol[2] / 4;
+                }
+                item.pose.position.x += vol[0] / 4;
+
                 triToGrab.emplace_back(item);
+                item.pose.position.z -= vol[2] / 8;
                 collObjects.emplace_back(
                         addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
             }
@@ -493,9 +507,22 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
         if (vol[0] == vol[2] || vol[0] * 2 == vol[2])
             collObjects.emplace_back(
                     addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
-        else
+        else {
+            // pose correction for triangle prisms
+            double y, p, r;
+            poseToYPR(item.pose, &y, &p, &r);
+
+            if (y > 2 || y < 1.6) {
+                if (item.pose.position.y > 0)
+                    item.pose.position.y += vol[2] / 4;
+                else
+                    item.pose.position.y -= vol[2] / 4;
+            }
+            item.pose.position.x += vol[0] / 4;
+            item.pose.position.z -= vol[2] / 8;
             collObjects.emplace_back(
                     addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
+        }
     }
     ROS_INFO_STREAM("Avoid objects " << objectsToAvoid.size());
 }
@@ -523,7 +550,8 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         co.primitive_poses.push_back(pose);
     } else {
         // use a mesh to add a triangle-like shape
-        shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl");
+        shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl",
+                                                         Eigen::Vector3d(1.1, 1.1, 1.1));
 
         shape_msgs::Mesh mesh;
         shapes::ShapeMsg meshMsg;
@@ -531,8 +559,8 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         mesh = boost::get<shape_msgs::Mesh>(meshMsg);
 
         // resize the mesh and place on the pose
-        co.meshes.resize((unsigned long) 1.7); //todo check
-        co.mesh_poses.resize((unsigned long) 1.7);
+        co.meshes.resize(1);
+        co.mesh_poses.resize(1);
         co.meshes[0] = mesh;
         co.mesh_poses[0].position = pose.position;
         co.mesh_poses[0].orientation = pose.orientation;
