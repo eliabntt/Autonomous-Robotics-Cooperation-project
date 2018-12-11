@@ -109,6 +109,7 @@ G01Gripper::G01Gripper() : command(), n() {
     if (!triToGrab.empty())
         ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
 
+    goHome(group);
     spinner.stop();
     ros::shutdown();
 }
@@ -272,8 +273,10 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         pose.position.z -= 0.4;
 
         // let the piece fall or go home:
-        // no need to set it as remaining (already over the LZ)
+        // no need to set it as remaining (already over the LZ and I cannot go down)
         if (!moveManipulator(pose, group)) {
+            group.detachObject(obj.header.frame_id);
+            if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
             goHome(group);
             continue;
         }
@@ -584,6 +587,8 @@ bool G01Gripper::isHeld(int howMuch) {
     // check if object is held by gripper's fingers
     if (sim) return true;
 
+    return true; // fixme test on real one
+    /*
     ros::Duration(1).sleep();
 
     // all three in the same position but equal to howMuch
@@ -602,14 +607,13 @@ bool G01Gripper::isHeld(int howMuch) {
     }
     return true;
 
-    /*
-     * alternative method not working on simulation
-     *
-     * while(status.gSTA == 0)
-     *   ros::Duration(0.2).sleep();
-     * return status.gSTA == 1 || status.gSTA == 2;
-     * return = false -> (status.gSTA == 3) -> close more
-     */
+    //alternative method not working on simulation
+
+    while(status.gSTA == 0)
+    ros::Duration(0.2).sleep();
+    return status.gSTA == 1 || status.gSTA == 2;
+    return = false -> (status.gSTA == 3) -> close more
+    */
 }
 
 void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &msg) {
