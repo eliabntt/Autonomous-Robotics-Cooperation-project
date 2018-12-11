@@ -32,7 +32,6 @@ const std::vector<std::vector<std::string>> linknames = {
         {"red_triangle_2", "red_triangle_2_link"},
         {"red_triangle_3", "red_triangle_3_link"}};
 
-// todo tune here
 const float CUBE_LEN = 0.098; // length of cube
 const float CYL_HEIGHT = 2 * CUBE_LEN; // height of cylinder, twice the cube
 const float TRI_SECTION = CUBE_LEN * sqrt(2); // largest base of triangle: L*sqrt(2) (hyp of half cube)
@@ -50,18 +49,18 @@ inline std::vector<float> getVolume(int tag_id) {
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CYL_HEIGHT);
-    } else if (tag_id < 9) { // tri fixme decide what to do
-        vol.emplace_back(TRI_SECTION); // CUBE_LEN
-        vol.emplace_back(TRI_SECTION); // CUBE_LEN
-        vol.emplace_back(TRI_HEIGHT);  // CUBE_LEN+0.001 (fixes equality thing for cubes)
+    } else if (tag_id < 9) { // tri
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_HEIGHT);
     } else if (tag_id < 13) { // cube
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
         vol.emplace_back(CUBE_LEN);
     } else if (tag_id < 16) { // tri
-        vol.emplace_back(TRI_SECTION); // CUBE_LEN
-        vol.emplace_back(TRI_SECTION); // CUBE_LEN
-        vol.emplace_back(TRI_HEIGHT);  // CUBE_LEN+0.001 (fixes equality thing for cubes)
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_SECTION);
+        vol.emplace_back(TRI_HEIGHT);
     }
     return vol;
 }

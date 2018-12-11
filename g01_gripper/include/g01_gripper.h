@@ -28,7 +28,7 @@ public:
 private:
     // gripper
     void gripperClose(int howMuch);
-    void gripperOpen(); // todo if command is mostly 0s, init here and set only the relevant on the method
+    void gripperOpen();
     bool gazeboAttach(std::string name, std::string link);
     bool gazeboDetach(std::string name, std::string link);
 

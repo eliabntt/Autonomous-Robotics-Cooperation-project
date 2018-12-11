@@ -15,8 +15,8 @@ La ricezione è un elemento bloccante: senza oggetti sul tavolo non si raggiunge
 solo a quel punto viene inizializzata la scena inserendo gli oggetti di collisione.
 
 I muri perimetrali in simulazione vengono inizializzati solo *dopo* che il robot si è portato in posizione "zero" in quanto
-la posizione di partenza sarebbe in collisione con lo stesso. In caso di robot reale vengono invece inizializzati immediatamente
-per evitare comportamenti scomposti del braccio stesso.
+la posizione di partenza sarebbe in collisione con uno di essi. In caso di robot reale vengono invece inizializzati immediatamente
+per evitare comportamenti scomposti del braccio stesso nel primo spostamento verso la posizione "zero".
 
 A ciascun oggetto viene associata una tripletta di valori rappresentanti le sue dimensioni e quindi possiamo distinguere tra cubi, parallelepipedi e prismi.
 I parallelepipedi a base esagonale sono stati modellati per comodità con una base quadrata essendo loro larghi al più come il cubo.
@@ -27,7 +27,6 @@ per poi procedere con i cubi e infine con i prismi triangolari trasportandoli tu
 
 Solo la posizione "zero" è data in angoli per ciascun giunto, le traiettorie dei movimenti nella routine *pick and place* vengono
 calcolate su punti cartesiani intermedi così da cercare di forzare un movimento lineare, minimizzando quindi le perdite di tempo per quanto possibile.
-
 
 ## Modalità di funzionamento (in simulazione)
 
@@ -83,6 +82,6 @@ Il controllo della chiusura delle dita è attualmente in fase di sperimentazione
 a quanto sarebbe riscontrabile nel robot reale. Attualmente quindi in simulazione le dita vengono considerate come
 correttamente chiuse, il caso reale verrà testato in seguito.
 
-Per il modello della scatola il lavoro attualmente è in un branch separato in attesa di più dettagli su *marrtino* in modo da
-poterlo esprimere parametricamente in base alla posizione raggiunta dal robot. Un'idea aggiuntiva sarebbe quella di utilizzare una posizione data in
-giunti sopra la LZ e poi aggiustare la discesa finale.
+La modellazione della scatola posta sopra *marrtino* è attualmente in un branch separato in attesa di maggiori dettagli costruttivi, in modo da
+esprimere parametricamente la destinazione degli oggetti in base alla posizione raggiunta dal robot.
+Un'idea aggiuntiva potrebbe essere quella di utilizzare una posizione data in giunti sopra la zona di scarico e poi aggiustare la discesa finale.

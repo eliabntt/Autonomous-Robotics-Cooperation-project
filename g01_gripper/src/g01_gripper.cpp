@@ -582,7 +582,6 @@ void G01Gripper::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch,
     mat.getEulerYPR(*yaw, *pitch, *roll);
 }
 
-// fixme
 bool G01Gripper::isHeld(int howMuch) {
     // check if object is held by gripper's fingers
     if (sim) return true;

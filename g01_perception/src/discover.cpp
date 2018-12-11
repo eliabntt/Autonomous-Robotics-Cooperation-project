@@ -48,15 +48,13 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
     tf2_ros::TransformListener tfListener(tfBuffer);
 
     try {
-	//todo test
         return tfBuffer.lookupTransform(to, from, ros::Time(0), ros::Duration(10)); //Time(0) = latest
     } catch (tf2::TransformException &exception) {
         ROS_WARN_STREAM(exception.what());
 
         // return an identity transform as a fallback
         isIdentity = true;
-        //todo test
-	return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));
+    	return tfBuffer.lookupTransform(from, from, ros::Time(0), ros::Duration(10));
     }
 }
 
@@ -206,7 +204,6 @@ int main(int argc, char *argv[]) {
     // in single-shot mode, a single spinOnce call won't work, so
     // repeat it until first detection message arrives, then stop;
     // in forever mode, rate will be maintained
-    //todo test
     ros::Rate rate(100); // expressed in Hz
     while (ros::ok()) {
         ros::spinOnce();
