@@ -141,7 +141,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // set target above the object
         objectPose.position = obj.pose.position;
-        objectPose.position.z += 0.3;
+        objectPose.position.z += 0.4;
         objectPose.orientation = initialPose.orientation;
 
         // move or go back home
@@ -386,9 +386,9 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
         intermedStep.position.x = ((1 - t) * from.position.x) + (t * to.position.x);
         intermedStep.position.y = ((1 - t) * from.position.y) + (t * to.position.y);
         intermedStep.position.z = ((1 - t) * from.position.z) + (t * to.position.z);
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(Rfrom + t * step[0],
-                                                          Pfrom + t * step[1],
-                                                          Yfrom + t * step[2]),
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(Rfrom + idx * step[0],
+                                                          Pfrom + idx * step[1],
+                                                          Yfrom + idx * step[2]),
                               intermedStep.orientation);
         steps.push_back(intermedStep);
     }
