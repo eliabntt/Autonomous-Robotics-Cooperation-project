@@ -127,6 +127,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
     // generic poses and values to be used below
     geometry_msgs::Pose objectPose, pose;
+    tf::Quaternion qObj, qEE;
     double objX, objY, curX, curY;
     double y, p, r, y_ee, p_ee, r_ee;
     long index;
@@ -172,34 +173,38 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // move with the fingers alongside the obj
-        pose = group.getCurrentPose().pose;
-        poseToYPR(obj.pose, &y, &p, &r);
-
         // get the right position for the fingers
+
+        // end effector pose
+        pose = group.getCurrentPose().pose;
+        qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
 
-        tf::Quaternion object, qEE;
-
-        object = tf::Quaternion(obj.pose.orientation.x, obj.pose.orientation.y, obj.pose.orientation.z,
-                                   obj.pose.orientation.w);
-        object = object * tf::createQuaternionFromRPY(3.14 / 4, 0, 0);
-        tf::quaternionTFToMsg(object, obj.pose.orientation);
+        // rotation of pi/4 over roll of the object orientation
+        // makes z axis perpendicular to table
+        qObj = tf::Quaternion(obj.pose.orientation.x, obj.pose.orientation.y,
+                              obj.pose.orientation.z, obj.pose.orientation.w);
+        qObj = qObj * tf::createQuaternionFromRPY(3.14 / 4, 0, 0);
+        tf::quaternionTFToMsg(qObj, obj.pose.orientation);
         poseToYPR(obj.pose, &y, &p, &r);
 
-        qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+        // end effector orientation correction
+
+        ROS_INFO_STREAM("+y+p " << y+p_ee);
+        ROS_INFO_STREAM("+y-p " << y-p_ee);
+        ROS_INFO_STREAM("-y+p " << -y+p_ee);
+        ROS_INFO_STREAM("-y-p " << -y-p_ee);
 
         double diff;
-        if ((p_ee - y ) > 3.14/2 || (y-p_ee) < -3.14/2){
+        if ((p_ee - y) > 3.14 / 2 || (y - p_ee) < -3.14 / 2)
             diff = -(y - p_ee) + 3.1415;
-        }
         else
             diff = -(y - p_ee);
-
-        tf::quaternionTFToMsg(qEE*tf::createQuaternionFromRPY(diff, 0, 0),pose.orientation);
+        tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(diff, 0, 0), pose.orientation);
 
         // get the right altitude for gripper:
         // anti squish countermeasure
-        if (obj.pose.position.z > 1.06)
+        if (obj.pose.position.z > 1.1)
             pose.position.z = obj.pose.position.z; // cylinders
         else
             pose.position.z = obj.pose.position.z * 1.05;
@@ -215,7 +220,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        continue;
+        continue; // fixme remove after testing
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
         int howMuch = 150;
@@ -590,13 +595,13 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
 
         // rotate the previous pose by 45* about Z because of mesh orientation
         tf::Quaternion qOriginal, qRotation, qFinal;
-        qRotation = tf::createQuaternionFromRPY(r, p, y);
-        r = 0, p = 0, y = 3.1415 / 2;
         qOriginal = tf::createQuaternionFromRPY(r, p, y);
-        qOriginal.normalize();
+        r = 0, p = 0, y = 3.1415 / 2;
+        qRotation = tf::createQuaternionFromRPY(r, p, y);
+        qRotation.normalize();
 
         // calculate the new orientation
-        qFinal = qRotation * qOriginal;
+        qFinal = qOriginal * qRotation;
         qFinal.normalize();
 
         // store the new rotation back into the pose. (requires conversion into a msg type)
