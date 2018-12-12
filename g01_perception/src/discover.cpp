@@ -10,11 +10,12 @@
 #include "tf2_ros/transform_listener.h"
 #include "g01_perception/PoseStampedArray.h"
 #include "../include/tags.h"
+#include <tf/tf.h>
 
 std::vector<std::string> params;
 
 bool forever = false, sim = true, isIdentity = false;
-ros::Publisher pubGrab, pubAvoid;
+ros::Publisher pubGrab, pubAvoid, cacca;
 std::fstream outputFile;
 
 bool fileInit() {
@@ -58,14 +59,22 @@ geometry_msgs::TransformStamped transform(const std::string from, const std::str
     }
 }
 
-apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag) {
+apriltags_ros::AprilTagDetection addOffset(apriltags_ros::AprilTagDetection tag, bool triang = false) {
     // no offset in real measurements
     if (!sim)
         return tag;
-
-    // offset to use when referring to camera_frame
+    if(triang)
+        {
+        tf::Quaternion object;
+        object = tf::Quaternion(tag.pose.pose.orientation.x, tag.pose.pose.orientation.y, tag.pose.pose.orientation.z,
+                                   tag.pose.pose.orientation.w);
+        object = object * tf::createQuaternionFromRPY(3.14 / 4, 0, 0);
+        tf::quaternionTFToMsg(object, tag.pose.pose.orientation);
+        tag.pose.pose.position.z += 0.06;
+        }
     tag.pose.pose.position.x = tag.pose.pose.position.x - 0.01;
     tag.pose.pose.position.y = tag.pose.pose.position.y - 0.03;
+    // offset to use when referring to camera_frame
     return tag;
 }
 
@@ -101,11 +110,18 @@ void detectionsCallback(const apriltags_ros::AprilTagDetectionArray::ConstPtr &i
     for (apriltags_ros::AprilTagDetection tag : input->detections) {
 
         // add offset (sim case is handled into the method)
-        tag = addOffset(tag);
+        if ((tag.id >= 6 && tag.id < 9) || (tag.id >= 13))
+            tag = addOffset(tag, true);
+        else 
+            tag = addOffset(tag);
 
         //transform pose w.r.t world (only if lookup was successful)
         if (!isIdentity)
 		tf2::doTransform(tag.pose.pose, tag.pose.pose, camBaseTransform);
+        if ((tag.id >= 6 && tag.id < 9) || (tag.id >= 13))
+            {tag.pose.pose.position.z += 0.06;
+            tag.pose.pose.position.x -= 0.02;
+            }
 
         int idt = tag.id;
         geometry_msgs::PoseStamped ps = tag.pose;
