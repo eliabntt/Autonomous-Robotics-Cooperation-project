@@ -640,7 +640,7 @@ bool G01Gripper::isHeld(int howMuch) {
     // check if object is held by gripper's fingers
     if (sim) return true;
 
-    return true; // fixme test on real one
+    return true; // fixme test on real one (come concordato con Elisa)
     /*
     ros::Duration(1).sleep();
 
