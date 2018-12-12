@@ -210,7 +210,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
-        int howMuch = 150;
+        int howMuch = 100;
         gripperClose(howMuch);
         ROS_INFO_STREAM("Closing the gripper");
         while (!isHeld(howMuch)) {
