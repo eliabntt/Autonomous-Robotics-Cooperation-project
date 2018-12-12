@@ -188,7 +188,14 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
 
-        tf::quaternionTFToMsg(qEE*tf::createQuaternionFromRPY(p_ee - y, 0, 0),pose.orientation);
+        double diff;
+        if ((p_ee - y ) > 3.14/2 || (y-p_ee) < -3.14/2){
+            diff = -(y - p_ee) + 3.1415;
+        }
+        else
+            diff = -(y - p_ee);
+
+        tf::quaternionTFToMsg(qEE*tf::createQuaternionFromRPY(diff, 0, 0),pose.orientation);
 
         // get the right altitude for gripper:
         // anti squish countermeasure
@@ -208,6 +215,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
+        continue;
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
         int howMuch = 150;
