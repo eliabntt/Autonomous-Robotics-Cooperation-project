@@ -379,6 +379,20 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
     poseToYPR(from, &Yfrom, &Pfrom, &Rfrom);
     poseToYPR(to, &Yto, &Pto, &Rto);
 
+    double diffR, diffP, diffY;
+
+    diffR = (Rto - Rfrom);
+    while(diffR > 3.14)
+        diffR = diffR - 3.14;
+
+    diffP = (Pto - Pfrom);
+    while(diffP > 3.14)
+        diffP = diffP - 3.14;
+
+    diffY = (Yto - Yfrom);
+    while(diffR > 3.14)
+        diffR = diffY - 3.14;
+
     // step measures to add
     double step[] = {(Rto - Rfrom) / nSteps,
                      (Pto - Pfrom) / nSteps,
