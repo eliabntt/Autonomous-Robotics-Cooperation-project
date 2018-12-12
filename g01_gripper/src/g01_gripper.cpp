@@ -173,11 +173,22 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // move with the fingers alongside the obj
         pose = group.getCurrentPose().pose;
+        poseToYPR(obj.pose, &y, &p, &r);
 
         // get the right position for the fingers
-        poseToYPR(obj.pose, &y, &p, &r);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
-        pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(r_ee, p_ee, fabs(r - p_ee));
+
+        tf::Quaternion object, qEE;
+
+        object = tf::Quaternion(obj.pose.orientation.x, obj.pose.orientation.y, obj.pose.orientation.z,
+                                   obj.pose.orientation.w);
+        object = object * tf::createQuaternionFromRPY(3.14 / 4, 0, 0);
+        tf::quaternionTFToMsg(object, obj.pose.orientation);
+        poseToYPR(obj.pose, &y, &p, &r);
+
+        qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+
+        tf::quaternionTFToMsg(qEE*tf::createQuaternionFromRPY(p_ee - y, 0, 0),pose.orientation);
 
         // get the right altitude for gripper:
         // anti squish countermeasure
