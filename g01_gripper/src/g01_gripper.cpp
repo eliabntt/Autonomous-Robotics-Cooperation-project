@@ -182,32 +182,24 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // rotation of pi/4 over roll of the object orientation
         // makes z axis perpendicular to table
-        qObj = tf::Quaternion(obj.pose.orientation.x, obj.pose.orientation.y,
-                              obj.pose.orientation.z, obj.pose.orientation.w);
-        qObj = qObj * tf::createQuaternionFromRPY(3.14 / 4, 0, 0);
-        tf::quaternionTFToMsg(qObj, obj.pose.orientation);
         poseToYPR(obj.pose, &y, &p, &r);
 
         // end effector orientation correction
-
-        ROS_INFO_STREAM("+y+p " << y+p_ee);
-        ROS_INFO_STREAM("+y-p " << y-p_ee);
-        ROS_INFO_STREAM("-y+p " << -y+p_ee);
-        ROS_INFO_STREAM("-y-p " << -y-p_ee);
-
-        double diff;
-        if ((p_ee - y) > 3.14 / 2 || (y - p_ee) < -3.14 / 2)
-            diff = -(y - p_ee) + 3.1415;
+        double diff, diff_abs;
+        diff_abs = std::min(fabs(r + p_ee), fabs(r - p_ee));
+        if (fabs(y + p_ee) == diff_abs)
+            diff = y + p_ee;
         else
-            diff = -(y - p_ee);
-        tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(diff, 0, 0), pose.orientation);
+            diff = y - p_ee;
+
+        tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(-diff, 0, 0), pose.orientation);
 
         // get the right altitude for gripper:
         // anti squish countermeasure
-        if (obj.pose.position.z > 1.1)
+        if (obj.pose.position.z > 1.2)
             pose.position.z = obj.pose.position.z; // cylinders
         else
-            pose.position.z = obj.pose.position.z * 1.05;
+            pose.position.z = obj.pose.position.z * 1.1;
 
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
@@ -220,7 +212,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        continue; // fixme remove after testing
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
         int howMuch = 150;
@@ -498,19 +489,18 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
             } else {
                 // pose correction for triangle prisms
                 // to center the point the gripper points to
-                double y, p, r;
-                poseToYPR(item.pose, &y, &p, &r);
+                tf::Vector3 translation(0,-0.03,0);
+                tf::Transform P(tf::createIdentityQuaternion(),translation);
 
-                if (y > 2 || y < 1.6) {
-                    if (item.pose.position.y > 0)
-                        item.pose.position.y += vol[2] / 4;
-                    else
-                        item.pose.position.y -= vol[2] / 4;
-                }
-                item.pose.position.x += vol[0] / 4;
+                tf::Transform initial;
+                tf::poseMsgToTF(item.pose, initial);
+                tf::Transform final;
+                final = initial * P;
+                tf::poseTFToMsg(final, item.pose);
+
+                item.pose.position.z -= vol[2] / 4;
 
                 triToGrab.emplace_back(item);
-                item.pose.position.z -= vol[2] / 8;
                 collObjects.emplace_back(
                         addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
             }
@@ -533,17 +523,16 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
                     addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
         else {
             // pose correction for triangle prisms
-            double y, p, r;
-            poseToYPR(item.pose, &y, &p, &r);
+            tf::Vector3 translation(0,-0.03,0);
+            tf::Transform P(tf::createIdentityQuaternion(),translation);
 
-            if (y > 2 || y < 1.6) {
-                if (item.pose.position.y > 0)
-                    item.pose.position.y += vol[2] / 4;
-                else
-                    item.pose.position.y -= vol[2] / 4;
-            }
-            item.pose.position.x += vol[0] / 4;
-            item.pose.position.z -= vol[2] / 8;
+            tf::Transform initial;
+            tf::poseMsgToTF(item.pose, initial);
+            tf::Transform final;
+            final = initial * P;
+            tf::poseTFToMsg(final, item.pose);
+
+            item.pose.position.z -= vol[2] / 4;
             collObjects.emplace_back(
                     addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id, true));
         }
@@ -574,8 +563,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         co.primitive_poses.push_back(pose);
     } else {
         // use a mesh to add a triangle-like shape
-        shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl",
-                                                         Eigen::Vector3d(1.1, 1.1, 1.1));
+        shapes::Mesh *m = shapes::createMeshFromResource("package://challenge_arena/meshes/triangle_centered.stl");
 
         shape_msgs::Mesh mesh;
         shapes::ShapeMsg meshMsg;
