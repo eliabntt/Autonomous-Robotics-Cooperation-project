@@ -144,6 +144,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         objectPose.position = obj.pose.position;
         objectPose.position.z += 0.4;
         objectPose.orientation = initialPose.orientation;
+        poseToYPR(obj.pose, &y, &p, &r);
 
         // move or go back home
         if (!moveManipulator(objectPose, group)) {
@@ -172,26 +173,21 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             curY = group.getCurrentPose().pose.position.y;
         }
 
-        // move with the fingers alongside the obj
-        // get the right position for the fingers
-
         // end effector pose
         pose = group.getCurrentPose().pose;
         qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
 
-        // rotation of pi/4 over roll of the object orientation
-        // makes z axis perpendicular to table
-        poseToYPR(obj.pose, &y, &p, &r);
 
         // end effector orientation correction
-        double diff, diff_abs;
-        diff_abs = std::min(fabs(r + p_ee), fabs(r - p_ee));
-        if (fabs(y + p_ee) == diff_abs)
+        // to get the right position for the fingers
+        double diff, diffAbs;
+        diffAbs = std::min(fabs(r + p_ee), fabs(r - p_ee));
+        if (fabs(y + p_ee) == diffAbs)
             diff = y + p_ee;
         else
             diff = y - p_ee;
-
+        // apply correction to pose.orientation
         tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(-diff, 0, 0), pose.orientation);
 
         // get the right altitude for gripper:
@@ -376,22 +372,28 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
     double t = 0;
     double Rfrom, Pfrom, Yfrom;
     double Rto, Pto, Yto;
+    double Rdiff, Pdiff, Ydiff;
     poseToYPR(from, &Yfrom, &Pfrom, &Rfrom);
     poseToYPR(to, &Yto, &Pto, &Rto);
 
-    double diffR, diffP, diffY;
+    // remove extra rotations of the gripper
+    Rdiff = (Rto - Rfrom);
+    while (Rdiff > 3.14)
+        Rdiff -= 3.14;
+    while (Rdiff < -3.14)
+        Rdiff += 3.14;
 
-    diffR = (Rto - Rfrom);
-    while(diffR > 3.14)
-        diffR = diffR - 3.14;
+    Pdiff = (Pto - Pfrom);
+    while (Pdiff > 3.14)
+        Pdiff -= 3.14;
+    while (Pdiff < -3.14)
+        Pdiff += 3.14;
 
-    diffP = (Pto - Pfrom);
-    while(diffP > 3.14)
-        diffP = diffP - 3.14;
-
-    diffY = (Yto - Yfrom);
-    while(diffR > 3.14)
-        diffR = diffY - 3.14;
+    Ydiff = (Yto - Yfrom);
+    while (Ydiff > 3.14)
+        Ydiff -= 3.14;
+    while (Ydiff < -3.14)
+        Ydiff += 3.14;
 
     // step measures to add
     double step[] = {(Rto - Rfrom) / nSteps,
@@ -503,12 +505,11 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
             } else {
                 // pose correction for triangle prisms
                 // to center the point the gripper points to
-                tf::Vector3 translation(0,-0.03,0);
-                tf::Transform P(tf::createIdentityQuaternion(),translation);
+                tf::Vector3 translation(0, -0.03, 0);
+                tf::Transform P(tf::createIdentityQuaternion(), translation);
 
-                tf::Transform initial;
+                tf::Transform initial, final;
                 tf::poseMsgToTF(item.pose, initial);
-                tf::Transform final;
                 final = initial * P;
                 tf::poseTFToMsg(final, item.pose);
 
@@ -537,12 +538,11 @@ void G01Gripper::avoidCB(const g01_perception::PoseStampedArray::ConstPtr &input
                     addCollisionBlock(item.pose, vol[0], vol[1], vol[2], item.header.frame_id));
         else {
             // pose correction for triangle prisms
-            tf::Vector3 translation(0,-0.03,0);
-            tf::Transform P(tf::createIdentityQuaternion(),translation);
+            tf::Vector3 translation(0, -0.03, 0);
+            tf::Transform P(tf::createIdentityQuaternion(), translation);
 
-            tf::Transform initial;
+            tf::Transform initial, final;
             tf::poseMsgToTF(item.pose, initial);
-            tf::Transform final;
             final = initial * P;
             tf::poseTFToMsg(final, item.pose);
 
