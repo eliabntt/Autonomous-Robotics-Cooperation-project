@@ -52,7 +52,7 @@ bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
             free[second] = false;
             names.at(first) = name;
             names.at(second) = name;
-//            ROS_INFO_STREAM("Pose x: " << pose->position.x << " y: " << pose->position.y << " z: " << pose->position.z);
+            //ROS_INFO_STREAM("Pose x: " << pose->position.x << " y: " << pose->position.y << " z: " << pose->position.z);
             return true;
         } else {
             first += 2;
@@ -69,6 +69,7 @@ bool ObjectBox::placeCube(std::string name, geometry_msgs::Pose &pose) {
         if (free[i]) {
             pose = poses[i];
             free[i] = false;
+            names.at(i) = name;
             return true;
         }
     return false;

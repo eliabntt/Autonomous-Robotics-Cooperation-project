@@ -52,6 +52,7 @@ private:
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
     void gripperCB(const robotiq_s_model_control::SModel_robot_input &msg);
     void goHome(moveit::planning_interface::MoveGroupInterface &group);
+    void goOverLZ(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
 
     // MEMBERS
@@ -60,8 +61,11 @@ private:
 
     // manipulator
     std::string PLANNING_GROUP = "manipulator";
-    std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415 / 2, 3.1415 / 2, -3.1415 / 2, -3.1415 / 2, 0};
-    geometry_msgs::Pose initialPose;
+
+    // joints' angles for fixed points  base         shoulder       elbow         wr1          wr2          wr3
+    std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415 / 2,   3.1415 / 2,   -3.1415 / 2, -3.1415 / 2, 0};
+    std::vector<double> LZ_JOINT_POS   {-3.1415,     -3.1415 / 2.8, 3.1415 / 2.8, -3.1415 / 2, -3.1415 / 2, 0};
+    geometry_msgs::Pose initialPose; // not in joints here
     std::string planFrameId, endEffId;
 
     // subscriber
