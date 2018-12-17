@@ -186,7 +186,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
 
-
         // end effector orientation correction
         // to get the right position for the fingers
         double diff, diffAbs;
@@ -248,15 +247,21 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        // go to destination point
+        // move fast to a point near the landing zone
+        goOverLZ(group); // todo check problems in movement
+
+        // retrieve and go to destination point
         bool canPlace;
         geometry_msgs::Pose destPose;
         if(rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
-            canPlace = box.placeCylinder(obj.header.frame_id, &destPose); // fixme broken inside here
+            canPlace = box.placeCylinder(obj.header.frame_id, destPose);
         else
-            canPlace = box.placeCube(obj.header.frame_id, &destPose);
+            canPlace = box.placeCube(obj.header.frame_id, destPose);
 
         ROS_INFO_STREAM("Place: " << canPlace << " pose: x: " << destPose.position.x << " y: " << destPose.position.y << " z: " << destPose.position.z);
+
+        if (!canPlace)
+            ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
 
         // calculate the new orientation of the "wrist"
         if (rotate) {
@@ -269,9 +274,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             tf::quaternionTFToMsg(qFinal, destPose.orientation);
             ROS_INFO_STREAM("Cylinder will be rotated");
         }
-
-        if (!canPlace)
-            ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
 
         if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
@@ -316,11 +318,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
-        if (rotate) {
+        /*if (rotate) {
             pose.position.x -= 0.4;
             pose.position.y -= 0.4;
             pose.orientation = initialPose.orientation;
-        }
+        }*/
         pose.position.z += 0.6;
 
         // here just need to go home
@@ -693,6 +695,13 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
 
     // set joint values and move
     group.setJointValueTarget(HOME_JOINT_POS);
+    if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
+        group.move();
+}
+
+void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
+    // set joint values and move
+    group.setJointValueTarget(LZ_JOINT_POS);
     if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
         group.move();
 }
