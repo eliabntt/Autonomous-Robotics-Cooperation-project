@@ -12,9 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
     roslib
     cmake_modules
     geometry_msgs
-    moveit_ros_planning_interface
-    tf2
-    robotiq_s_model_control
+        move_base_msgs
+        actionlib
 )
 
 ## System dependencies are found with CMake's conventions
