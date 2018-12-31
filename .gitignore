@@ -9,7 +9,7 @@ common-sensors
 gazebo-pkgs
 gazebo_ros_link_attacher
 general-message-pkgs
-marrtino_navigation
+marrtino
 robotiq
 universal_robot
 ur10_platform_challenge_moveit_config
