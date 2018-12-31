@@ -26,8 +26,8 @@ int main(int argc, char** argv){
     goal.target_pose.header.frame_id = "world";
     goal.target_pose.header.stamp = ros::Time::now();
 
-    goal.target_pose.pose.position.x =  -1;
-    goal.target_pose.pose.position.y =  1;
+    goal.target_pose.pose.position.x =  3.7;
+    goal.target_pose.pose.position.y =  0.38;
     goal.target_pose.pose.orientation.w = 1.0;
 
     ROS_INFO("Sending goal");
