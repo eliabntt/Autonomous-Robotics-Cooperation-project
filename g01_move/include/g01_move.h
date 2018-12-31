@@ -3,8 +3,6 @@
 //
 #include <utility>
 #include <ros/ros.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometric_shapes/shape_operations.h>
 
 #ifndef G01_MOVE_G01_MOVE_H
 #define G01_MOVE_G01_MOVE_H
