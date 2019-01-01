@@ -5,15 +5,18 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Path1
-        - /Map2
+        - /TF1
+        - /TF1/Frames1
+        - /PoseArray1
       Splitter Ratio: 0.766570628
-    Tree Height: 372
+    Tree Height: 475
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
     Expanded:
       - /2D Pose Estimate1
+      - /2D Nav Goal1
+      - /Publish Point1
     Name: Tool Properties
     Splitter Ratio: 0.588679016
   - Class: rviz/Views
@@ -25,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: PointCloud2
 Visualization Manager:
   Class: ""
   Displays:
@@ -47,91 +50,198 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Alpha: 0.699999988
-      Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
+    - Class: rviz/TF
       Enabled: true
-      Name: Map
-      Topic: /marrtino/map
-      Unreliable: false
-      Use Timestamp: false
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 25; 255; 0
-      Enabled: true
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Path
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /marrtino/move_base/DWAPlannerROS/global_plan
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.100000001
-      Class: rviz/PoseWithCovariance
-      Color: 255; 25; 0
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
+      Frame Timeout: 15
+      Frames:
+        All Enabled: false
+        bar_support:
+          Value: false
+        base:
+          Value: false
+        base_link:
           Value: true
-        Position:
-          Alpha: 0.300000012
-          Color: 204; 51; 204
-          Scale: 1
+        blue_cube_1:
+          Value: false
+        blue_cube_2:
+          Value: false
+        blue_cube_3:
+          Value: false
+        blue_cube_4:
+          Value: false
+        camera_depth_frame:
+          Value: false
+        camera_depth_optical_frame:
+          Value: false
+        camera_ir_frame:
+          Value: false
+        camera_ir_optical_frame:
+          Value: false
+        camera_link:
+          Value: false
+        camera_rgb_frame:
+          Value: false
+        camera_rgb_optical_frame:
           Value: true
-        Value: true
-      Enabled: true
-      Head Length: 0.300000012
-      Head Radius: 0.100000001
-      Name: PoseWithCovariance
-      Shaft Length: 1
-      Shaft Radius: 0.0500000007
-      Shape: Arrow
-      Topic: /marrtino/amcl_pose
-      Unreliable: false
-      Value: true
-    - Alpha: 1
-      Buffer Length: 1
-      Class: rviz/Path
-      Color: 255; 0; 0
-      Enabled: true
-      Head Diameter: 0.300000012
-      Head Length: 0.200000003
-      Length: 0.300000012
-      Line Style: Lines
-      Line Width: 0.0299999993
-      Name: Path
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Pose Color: 255; 85; 255
-      Pose Style: None
-      Radius: 0.0299999993
-      Shaft Diameter: 0.100000001
-      Shaft Length: 0.100000001
-      Topic: /marrtino/move_base/DWAPlannerROS/local_plan
-      Unreliable: false
+        cube1_frame:
+          Value: false
+        cube2_frame:
+          Value: false
+        cube3_frame:
+          Value: false
+        cube4_frame:
+          Value: false
+        cyl1_frame:
+          Value: false
+        cyl2_frame:
+          Value: false
+        ee_link:
+          Value: false
+        forearm_link:
+          Value: false
+        kinect_support:
+          Value: false
+        l_finger_1_link_0:
+          Value: false
+        l_finger_1_link_1:
+          Value: false
+        l_finger_1_link_2:
+          Value: false
+        l_finger_1_link_3:
+          Value: false
+        l_finger_2_link_0:
+          Value: false
+        l_finger_2_link_1:
+          Value: false
+        l_finger_2_link_2:
+          Value: false
+        l_finger_2_link_3:
+          Value: false
+        l_finger_middle_link_0:
+          Value: false
+        l_finger_middle_link_1:
+          Value: false
+        l_finger_middle_link_2:
+          Value: false
+        l_finger_middle_link_3:
+          Value: false
+        l_palm:
+          Value: false
+        map:
+          Value: false
+        red_triangle_1:
+          Value: false
+        red_triangle_2:
+          Value: false
+        red_triangle_3:
+          Value: false
+        shoulder_link:
+          Value: false
+        support_link:
+          Value: false
+        table_link:
+          Value: false
+        tool0:
+          Value: false
+        triangle1_frame:
+          Value: false
+        triangle2_frame:
+          Value: false
+        triangle3_frame:
+          Value: false
+        upper_arm_link:
+          Value: false
+        world:
+          Value: false
+        wrist_1_link:
+          Value: false
+        wrist_2_link:
+          Value: false
+        wrist_3_link:
+          Value: false
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        world:
+          map:
+            {}
+          table_link:
+            base_link:
+              base:
+                {}
+              kinect_support:
+                bar_support:
+                  {}
+                camera_rgb_frame:
+                  camera_depth_frame:
+                    camera_depth_optical_frame:
+                      {}
+                  camera_ir_frame:
+                    camera_ir_optical_frame:
+                      {}
+                  camera_link:
+                    {}
+                  camera_rgb_optical_frame:
+                    blue_cube_1:
+                      {}
+                    blue_cube_2:
+                      {}
+                    blue_cube_3:
+                      {}
+                    blue_cube_4:
+                      {}
+                    cube1_frame:
+                      {}
+                    cube2_frame:
+                      {}
+                    cube3_frame:
+                      {}
+                    cube4_frame:
+                      {}
+                    cyl2_frame:
+                      {}
+                    red_triangle_1:
+                      {}
+                    red_triangle_2:
+                      {}
+                    red_triangle_3:
+                      {}
+                    triangle1_frame:
+                      {}
+                    triangle2_frame:
+                      {}
+                    triangle3_frame:
+                      {}
+              shoulder_link:
+                upper_arm_link:
+                  forearm_link:
+                    wrist_1_link:
+                      wrist_2_link:
+                        wrist_3_link:
+                          ee_link:
+                            support_link:
+                              l_palm:
+                                l_finger_1_link_0:
+                                  l_finger_1_link_1:
+                                    l_finger_1_link_2:
+                                      l_finger_1_link_3:
+                                        {}
+                                l_finger_2_link_0:
+                                  l_finger_2_link_1:
+                                    l_finger_2_link_2:
+                                      l_finger_2_link_3:
+                                        {}
+                                l_finger_middle_link_0:
+                                  l_finger_middle_link_1:
+                                    l_finger_middle_link_2:
+                                      l_finger_middle_link_3:
+                                        {}
+                          tool0:
+                            {}
+      Update Interval: 0
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -141,43 +251,49 @@ Visualization Manager:
         Value: true
       Axis: Z
       Channel Name: intensity
-      Class: rviz/LaserScan
+      Class: rviz/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: Intensity
+      Color Transformer: RGB8
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 0.0596733093
+      Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: LaserScan
+      Name: PointCloud2
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.00999999978
       Style: Flat Squares
-      Topic: /marrtino/scan
+      Topic: /camera/depth/points
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Alpha: 0.699999988
-      Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
+    - Alpha: 1
+      Arrow Length: 0.300000012
+      Axes Length: 0.300000012
+      Axes Radius: 0.00999999978
+      Class: rviz/PoseArray
+      Color: 255; 25; 0
       Enabled: true
-      Name: Map
-      Topic: /marrtino/move_base/local_costmap/costmap
+      Head Length: 0.0700000003
+      Head Radius: 0.0299999993
+      Name: PoseArray
+      Shaft Length: 0.230000004
+      Shaft Radius: 0.00999999978
+      Shape: Axes
+      Topic: /tags_to_grab
       Unreliable: false
-      Use Timestamp: false
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: marrtino_map
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -188,9 +304,9 @@ Visualization Manager:
     - Class: rviz/FocusCamera
     - Class: rviz/Measure
     - Class: rviz/SetInitialPose
-      Topic: marrtino/initialpose
+      Topic: /initialpose
     - Class: rviz/SetGoal
-      Topic: /marrtino/move_base_simple/goal
+      Topic: /move_base_simple/goal
     - Class: rviz/PublishPoint
       Single click: true
       Topic: /clicked_point
@@ -198,7 +314,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.64258742
+      Distance: 2.84606361
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -213,10 +329,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.09479678
+      Pitch: 1.43979645
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.435392737
+      Yaw: 0.575392604
     Saved: ~
 Window Geometry:
   Displays:
@@ -224,7 +340,7 @@ Window Geometry:
   Height: 756
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000016a0000026afc0200000008fb0000001200530065006c0065006300740069006f006e0000000028000001320000006100fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000028000000610000006100fffffffb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000008f00000203000000d700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000026afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007301000000280000026a000000ad00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004fc0000003efc0100000002fb0000000800540069006d00650100000000000004fc0000030000fffffffb0000000800540069006d00650100000000000004500000000000000000000002770000026a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000016a0000026afc0200000008fb0000001200530065006c0065006300740069006f006e0000000028000001320000006100fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000002540000011a00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c00610079007301000000280000026a000000d700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f0000026afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a0056006900650077007301000000280000026a000000ad00fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004fc0000003efc0100000002fb0000000800540069006d00650100000000000004fc0000030000fffffffb0000000800540069006d00650100000000000004500000000000000000000002770000026a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
