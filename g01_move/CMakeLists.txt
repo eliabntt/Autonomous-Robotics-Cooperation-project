@@ -12,8 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
     roslib
     cmake_modules
     geometry_msgs
-        move_base_msgs
-        actionlib
+    move_base_msgs
+    actionlib
+    tf2
 )
 
 ## System dependencies are found with CMake's conventions
