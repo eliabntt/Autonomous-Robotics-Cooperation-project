@@ -1,5 +1,13 @@
-global_frame: odom
+global_frame: map
 rolling_window: true
+static_map: false
+planner_frequency: 1.0
+planner_patiente: 5.0
+
+inflation_layer:
+  cost_scaling_factor:  3  # exponential rate at which the obstacle cost drops off (default: 10)
+  inflation_radius:     0.1  # max distance from an obstacle at which costs are incurred for planning paths
+
 
 plugins:
   - {name: obstacle_layer,                  type: "costmap_2d::ObstacleLayer"}
