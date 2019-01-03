@@ -8,6 +8,8 @@ Panels:
         - /Path1
         - /Path2
         - /Map2
+        - /Polygon1
+        - /Path3
       Splitter Ratio: 0.766570628
     Tree Height: 372
   - Class: rviz/Selection
@@ -149,7 +151,7 @@ Visualization Manager:
       Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 999999
+      Max Intensity: 6.05082962e-35
       Min Color: 0; 0; 0
       Min Intensity: 0
       Name: LaserScan
@@ -171,6 +173,47 @@ Visualization Manager:
       Enabled: true
       Name: Map
       Topic: /marrtino/move_base/local_costmap/costmap
+      Unreliable: false
+      Use Timestamp: false
+      Value: true
+    - Alpha: 1
+      Class: rviz/Polygon
+      Color: 25; 255; 0
+      Enabled: true
+      Name: Polygon
+      Topic: /marrtino/move_base/global_costmap/footprint
+      Unreliable: false
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 255; 0; 0
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Lines
+      Line Width: 0.0299999993
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /marrtino/move_base/NavfnROS/plan
+      Unreliable: false
+      Value: true
+    - Alpha: 0.600000024
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /marrtino/move_base/global_costmap/costmap
       Unreliable: false
       Use Timestamp: false
       Value: true
@@ -199,7 +242,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.51230979
+      Distance: 4.86280394
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -214,10 +257,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.26479661
+      Pitch: 0.904796958
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.545392811
+      Yaw: 1.13539243
     Saved: ~
 Window Geometry:
   Displays:
