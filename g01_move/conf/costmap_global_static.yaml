@@ -4,7 +4,8 @@ track_unknown_space: true
 cost_factor: 0.55
 neutral_cost: 66
 lethal_cost: 253
+static_map: true
 
 plugins:
-  - {name: static_layer,                  type: "costmap_2d::StaticLayer"}
-  - {name: inflation_layer,               type: "costmap_2d::InflationLayer"}
+- {name: static_layer,                  type: "costmap_2d::StaticLayer"}
+- {name: inflation_layer,               type: "costmap_2d::InflationLayer"}
