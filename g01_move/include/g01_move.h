@@ -33,12 +33,12 @@ private:
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
 
-    // corridor part todo constants to tune/set
+    // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;
-    int loadWallDistance,corrWallDistance;
-    double minSpeed = 0, maxSpeed;
+    double loadWallDistance = 1.0, corrWallDistance = 1.0;
     geometry_msgs::Twist moveCommand;
+    bool isManualModeDone = false;
 
     void wallFollower(bool forward);
     void forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
