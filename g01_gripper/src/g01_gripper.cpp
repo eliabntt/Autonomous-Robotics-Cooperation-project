@@ -24,6 +24,9 @@ G01Gripper::G01Gripper() : command(), n() {
             "/robotiq_hands/l_hand/SModelRobotOutput", 1);
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
+    //marrtino pose
+    marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Gripper::marrPoseCallback, this);
+
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
@@ -79,13 +82,14 @@ G01Gripper::G01Gripper() : command(), n() {
 
     ROS_INFO_STREAM("Pick and place starting...");
 
-    // ObjectBox takes care of occupancy things
+    /* ObjectBox takes care of occupancy things
     geometry_msgs::Pose poseLZ; // todo tune, should be center of mass of marttino
     poseLZ.position.x = 0.4;
     poseLZ.position.y = 1.1;
     poseLZ.position.z = 10;// useless
     poseLZ.orientation = initialPose.orientation;
-    ObjectBox box(poseLZ);
+    */
+    ObjectBox box(LZPose);
 
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
@@ -704,4 +708,9 @@ void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group)
     group.setJointValueTarget(LZ_JOINT_POS);
     if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
         group.move();
+}
+
+void G01Gripper::marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL) {
+    //ROS_INFO_STREAM("Marrtino Pose: " << msgAMCL->pose.pose.position);
+    LZPose = msgAMCL->pose.pose;
 }
