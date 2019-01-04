@@ -93,9 +93,9 @@ void G01Move::wallFollower(bool forward) { // todo tests needed here
     // initialize topics
     velPub = n.advertise<geometry_msgs::Twist>("/marrtino/cmd_vel", 1000);
     if (forward)
-        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 1000, &G01Move::forwardCallback, this);
+        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::forwardCallback, this);
     else
-        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 1000, &G01Move::backwardCallback, this);
+        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::backwardCallback, this);
     spinner.start();
 }
 
@@ -104,56 +104,58 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     if(isManualModeDone) return;
 
     // select values from the whole range
-    int size = (int) msg->intensities.size();
-    int howMuch = 25; // angle span to consider
-    double val, minDx = msg->ranges[0], maxDx = msg->ranges[0],
-            minSx = msg->ranges[size - 1], maxSx = msg->ranges[size - 1];
+    size = (int) msg->intensities.size();
+    minDx = msg->ranges[0];
+    maxDx = msg->ranges[0];
+    minSx = msg->ranges[size - 1];
+    maxSx = msg->ranges[size - 1];
 
     // scan and save min and max for both sides
     // scan direction is right to left
-    for (int i = 0; i < howMuch; i++) {
+    for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
     }
-    for (int i = size - 1; i > size - 1 - howMuch; i--) {
+    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
         if (val < minSx) minSx = val;
         if (val > maxSx) maxSx = val;
     }
 
-    // thresholds on left-right difference
-    double threshMin = 0.015, threshMax = 0.11;
-
     // distance from front wall
-    double forwardDist = msg->ranges[size / 2];
-    ROS_INFO_STREAM("FW " << forwardDist << "DX " << minDx << "SX " << minSx);
+    forwardDist = msg->ranges[size / 2];
 
     if (forwardDist > loadWallDistance) {
-        // todo also consider range saturation (inf returned)
         // we need to move forward
-        moveCommand.linear.x = 0.15;
+        moveCommand.linear.x = defaultVel;
+
         val = fabs(minSx - minDx);
+        ROS_INFO_STREAM("FW " << forwardDist << " DX " << minDx << " SX " << minSx << " DIFF " << val);
         if ((val > threshMin) && (val < threshMax)) {
             // significant difference but not
             // too high or we are after the corridor
-            if (minSx < minDx) {
-                // turn right
+            if (minSx < minDx && minDx > lateralMinDist) {
+                // turn right, there is space
                 ROS_INFO_STREAM("GO DX");
                 moveCommand.angular.z = -0.02;
-            } else {
-                // turn left
+            } else if (minSx > minDx && minSx > lateralMinDist) {
+                // turn left, there is space
                 ROS_INFO_STREAM("GO SX");
                 moveCommand.angular.z = +0.02;
+            } else {
+                ROS_INFO_STREAM("AVANTI SAVOIA");
+                moveCommand.angular.z = 0.0;
             }
         } else {
-            ROS_INFO_STREAM("AVANTI SAVOIA");
+            ROS_INFO_STREAM("AVANTI SAVOIA!!!");
             moveCommand.angular.z = 0.0;
         }
         velPub.publish(moveCommand);
     } else {
         // stop marrtino
         moveCommand.linear.x = 0.0;
+        moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
         isManualModeDone = true;
     }

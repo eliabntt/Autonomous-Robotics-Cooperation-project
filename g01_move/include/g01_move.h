@@ -36,7 +36,12 @@ private:
     // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;
-    double loadWallDistance = 1.0, corrWallDistance = 1.0;
+    double loadWallDistance = 1.05, corrWallDistance = 1.05;
+    double defaultVel = 0.15, maxVel = 0.18, lateralMinDist = 0.219,
+        threshMin = 0.018, threshMax = 0.08;
+
+    double val, minDx, maxDx, minSx, maxSx, forwardDist;
+    int size,  howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool isManualModeDone = false;
 
