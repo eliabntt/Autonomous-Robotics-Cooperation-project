@@ -10,6 +10,7 @@ G01Move::G01Move() : n(), spinner(2) {
         sim = true;
     }
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
+    marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
 
     // spin a thread by default
     // wait for the action server to come up
@@ -236,4 +237,9 @@ void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 
     if (false)
         spinner.stop();*/
+}
+
+void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL) {
+    //ROS_INFO_STREAM("Marrtino Pose: " << msgAMCL->pose.pose.position);
+    marrPose = msgAMCL->pose.pose;
 }
