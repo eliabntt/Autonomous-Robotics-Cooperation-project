@@ -5,6 +5,7 @@
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <move_base_msgs/MoveBaseGoal.h>
 #include <tf/transform_datatypes.h>
@@ -27,6 +28,11 @@ private:
 
     // interesting poses
     move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, loadPoint, unloadPoint;
+
+    //Pose subscription stuff
+    geometry_msgs::Pose marrPose;
+    ros::Subscriber marrPoseSub;
+    void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL);
 
     // plan-based moving methods
     bool moveToGoal(MoveBaseClient &client, move_base_msgs::MoveBaseGoal goal);
