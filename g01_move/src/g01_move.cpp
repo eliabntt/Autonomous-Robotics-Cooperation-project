@@ -11,6 +11,8 @@ G01Move::G01Move() : n(), spinner(2) {
     }
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
+    scannerSubBis = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::averageLR, this);
+    velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
 
     nearCorridor.target_pose.pose.position.x = 0.0;
     nearCorridor.target_pose.pose.position.y = -1.5;
@@ -70,16 +72,12 @@ G01Move::G01Move() : n(), spinner(2) {
 bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     spinner.start();
     // wait for the action server to come up
+    // MUST leave this to false otherwise spinner will (probably) create conflicts
     MoveBaseClient client("marrtino/move_base", false);
-
-    scannerSubBis = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::averageLR, this);
-
-    velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
 
     while (!client.waitForServer(ros::Duration(5.0)))
         ROS_INFO("Waiting for the move_base action server to come up");
 
-    //fixme don't know if necessary ros::ServiceClient clear_maps_client = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
     bool backed = false;
     bool rotated = false;
     geometry_msgs::Pose currPose = marrPose;
@@ -98,7 +96,8 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         }
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             ROS_INFO_STREAM("Move successful");
-            break;
+            spinner.stop();
+            return true;
         } else if (!rotated) {
             recoverManual(true);
             rotated = true;
@@ -109,10 +108,10 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             currPose = marrPose;
         } else {
             ROS_ERROR_STREAM("Error, robot failed moving");
-            break;
+            spinner.stop();
+            return false;
         }
     }
-    spinner.stop();
 }
 
 void G01Move::recoverManual(bool rot) {
@@ -340,6 +339,5 @@ void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 }
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
-    //ROS_INFO_STREAM("Marrtino Pose: " << msgAMCL->pose.pose.position);
     marrPose = msgAMCL->pose.pose;
 }
