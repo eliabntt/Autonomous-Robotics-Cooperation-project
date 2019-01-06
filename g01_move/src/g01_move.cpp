@@ -16,7 +16,7 @@ G01Move::G01Move() : n(), spinner(2) {
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
 
     nearCorridor.target_pose.pose.position.x = 0.0;
-    nearCorridor.target_pose.pose.position.y = -1.9;
+    nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
 
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, +3.14 / 3), nearCorridor.target_pose.pose.orientation);
@@ -93,27 +93,29 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
         client.sendGoal(goal);
 
         client.waitForResult();
-        if (currPose.position.x != marrPose.position.x) {
-            ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
-            backed = false;
-            rotated = false;
-        }
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             ROS_INFO_STREAM("Move successful");
             spinner.stop();
             return true;
-        } else if (!rotated) {
-            recoverManual(inside, true);
-            rotated = true;
-            currPose = marrPose;
-        } else if (!backed) {
-            recoverManual(inside);
-            backed = true;
-            currPose = marrPose;
         } else {
-            ROS_ERROR_STREAM("Error, robot failed moving");
-            spinner.stop();
-            return false;
+            if (currPose.position.x != marrPose.position.x) {
+                ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
+                backed = false;
+                rotated = false;
+            }
+            if (!rotated) {
+                recoverManual(inside, true);
+                rotated = true;
+                currPose = marrPose;
+            } else if (!backed) {
+                recoverManual(inside);
+                backed = true;
+                currPose = marrPose;
+            } else {
+                ROS_ERROR_STREAM("Error, robot failed moving");
+                spinner.stop();
+                return false;
+            }
         }
     }
 }
@@ -124,7 +126,7 @@ void G01Move::recoverManual(bool inside, bool rot) {
     //resetting previous moveCommand settings
     //todo refine
     moveCommand.linear.x = 0;
-    moveCommand.linear.z = 0;
+    moveCommand.angular.z = 0;
     double defZ = 0.4, defX = 0.1;
 
     //todo weight with respect where I have to go(if my goal is left rotate left)
@@ -162,33 +164,47 @@ void G01Move::recoverManual(bool inside, bool rot) {
         while (fabs(fy - y) > 0.1 || fabs(marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y) > 0.1
                || fabs(marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) > 0.02) {
 
-            ROS_INFO_STREAM("Force rotating" << (fy - y));
-            //what I have
+            moveCommand.linear.x = 0;
+            moveCommand.angular.z = 0;
+            ROS_INFO_STREAM("Manual approach " << (fy - y));
+
+            //check my orientation w.r.t. expected one
             if (fy - y > 0.1)
-                moveCommand.angular.z = 0.2;
+                moveCommand.angular.z = 0.3;
             else if (fy - y < -0.1)
-                moveCommand.angular.z = -0.2;
+                moveCommand.angular.z = -0.3;
 
             //compensate for difference in x coordinate(I may end up with right orientation but not centered)
-            if (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x < 0.02)
-                moveCommand.angular.z += 0.3;
-            else if (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x > 0.02)
-                moveCommand.angular.z += -0.3;
+            if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) < -0.05)
+                moveCommand.angular.z += 0.4;
+            else if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x > 0.05))
+                moveCommand.angular.z += -0.4;
+            else if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) > 0) {
+                moveCommand.angular.z = 0.05;
+            } else
+                moveCommand.angular.z = -0.05;
 
             if (marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y < 0) {
-                if (minDx > 0.1) {
-                    moveCommand.linear.x = 0.1;
+                if (avgR > 0.25) {
+                    moveCommand.linear.x = 0.2;
                 } else {
+                    // I am too near the wall
+                    moveCommand.angular.z += 0.1;
                     moveCommand.linear.x = 0.05;
                 }
             }
+            ROS_INFO_STREAM("x " << (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x));
+            ROS_INFO_STREAM("z " << moveCommand.angular.z);
             velPub.publish(moveCommand);
-            ros::Duration(0.05).sleep();
+            ros::Duration(0.1).sleep();
             G01Move::poseToYPR(marrPoseOdom, &y, &p, &r);
             G01Move::poseToYPR(corridorEntrance.target_pose.pose, &fy, &fp, &fr);
 
         }
-
+        moveCommand.linear.x = 0;
+        moveCommand.angular.z = 0;
+        velPub.publish(moveCommand);
+        ros::Duration(0.1).sleep();
     }
 }
 
