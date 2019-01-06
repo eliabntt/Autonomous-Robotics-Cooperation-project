@@ -12,18 +12,17 @@ G01Move::G01Move() : n(), spinner(2) {
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
 
-    // spin a thread by default
-    // wait for the action server to come up
-    MoveBaseClient client("marrtino/move_base", true);
-    while (!client.waitForServer(ros::Duration(5.0)))
-        ROS_INFO("Waiting for the move_base action server to come up");
-
-    // define poses to reach todo reinsert after tests
-    /*nearCorridor.target_pose.pose.position.x = 0.0;
+    nearCorridor.target_pose.pose.position.x = 0.0;
     nearCorridor.target_pose.pose.position.y = -1.5;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, -3.14 / 2), nearCorridor.target_pose.pose.orientation);
-    corridorEntrance.target_pose.pose.position.x = 0.55;
+
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, +3.14 / 2), nearCorridor.target_pose.pose.orientation);
+    // ROS_INFO_STREAM(nearCorridor.target_pose.pose.orientation);
+
+    moveToGoal(nearCorridor);
+
+    // define poses to reach todo reinsert after tests
+    /*corridorEntrance.target_pose.pose.position.x = 0.55;
     corridorEntrance.target_pose.pose.position.y = -1.4;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
@@ -42,7 +41,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // wall follower
     // velocities publisher initialization
-    wallFollower(true);
+    // wallFollower(true);
 
     // rotation
     //move_base_msgs::MoveBaseGoal curpos = corridorEntrance;
@@ -68,18 +67,87 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::shutdown();
 }
 
-bool G01Move::moveToGoal(MoveBaseClient &client, move_base_msgs::MoveBaseGoal goal) {
-    // update pose timestamp and send to che robot
-    goal.target_pose.header.frame_id = "world";
-    goal.target_pose.header.stamp = ros::Time::now();
+bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
+    spinner.start();
+    // wait for the action server to come up
+    MoveBaseClient client("marrtino/move_base", false);
 
-    ROS_INFO("Sending goal");
-    client.sendGoal(goal);
+    scannerSubBis = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::averageLR, this);
 
-    client.waitForResult();
-    return (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED);
+    velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
+
+    while (!client.waitForServer(ros::Duration(5.0)))
+        ROS_INFO("Waiting for the move_base action server to come up");
+
+    //fixme don't know if necessary ros::ServiceClient clear_maps_client = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
+    bool backed = false;
+    bool rotated = false;
+    geometry_msgs::Pose currPose = marrPose;
+    while (true) {
+        goal.target_pose.header.frame_id = "marrtino_map";
+        goal.target_pose.header.stamp = ros::Time::now();
+
+        ROS_INFO("Sending goal");
+        client.sendGoal(goal);
+
+        client.waitForResult();
+        if (currPose.position.x != marrPose.position.x) {
+            ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
+            backed = false;
+            rotated = false;
+        }
+        if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+            ROS_INFO_STREAM("Move successful");
+            break;
+        } else if (!rotated) {
+            recoverManual(true);
+            rotated = true;
+            currPose = marrPose;
+        } else if (!backed) {
+            recoverManual();
+            backed = true;
+            currPose = marrPose;
+        } else {
+            ROS_ERROR_STREAM("Error, robot failed moving");
+            break;
+        }
+    }
+    spinner.stop();
 }
 
+void G01Move::recoverManual(bool rot) {
+    // initialize topics
+
+    //resetting previous moveCommand settings
+    //todo refine
+    moveCommand.linear.x = 0;
+    moveCommand.linear.z = 0;
+    double defZ = 0.7, defX = 0.2;
+    //todo add rotation and check for forward distance
+    if (rot) {
+        ROS_INFO_STREAM("Backing up rotating");
+        if (forwardDist > 0.3)
+            moveCommand.linear.x = defX;
+        if (avgL > avgR) {
+            moveCommand.angular.z = defZ;
+            if (minSx < 0.05)
+                moveCommand.linear.x = -defX;
+        } else {
+            moveCommand.angular.z = -defZ;
+            if (minDx < 0.05)
+                moveCommand.linear.x = -defX;
+        }
+    } else {
+        ROS_INFO_STREAM("Backing up linear");
+        if (avgL > avgR)
+            moveCommand.angular.z = defZ;
+        else
+            moveCommand.angular.z = -defZ;
+        moveCommand.linear.x = -defX;
+    }
+    velPub.publish(moveCommand);
+    ros::Duration(2).sleep();
+}
 
 bool G01Move::inPlaceCW90(move_base_msgs::MoveBaseGoal &pos) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, -3.14 / 2), pos.target_pose.pose.orientation);
@@ -92,7 +160,6 @@ bool G01Move::inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos) {
 void G01Move::wallFollower(bool forward) { // todo tests needed here
     ROS_INFO_STREAM("INTO WALL");
     // initialize topics
-    velPub = n.advertise<geometry_msgs::Twist>("/marrtino/cmd_vel", 1000);
     if (forward)
         scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::forwardCallback, this);
     else
@@ -100,9 +167,42 @@ void G01Move::wallFollower(bool forward) { // todo tests needed here
     spinner.start();
 }
 
+void G01Move::averageLR(const sensor_msgs::LaserScan::ConstPtr &msg) {
+    // do not consider movements when not in the right zone
+    if (isManualModeDone) return;
+
+    // select values from the whole range
+    size = (int) msg->intensities.size();
+    minDx = msg->ranges[0];
+    maxDx = msg->ranges[0];
+    minSx = msg->ranges[size - 1];
+    maxSx = msg->ranges[size - 1];
+    avgR = 0;
+    avgL = 0;
+    for (int i = 0; i < howMuchDataToUse; i++) {
+        val = msg->ranges[i];
+        if (val < minDx) minDx = val;
+        if (val > maxDx) maxDx = val;
+        avgR += val;
+    }
+    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
+        val = msg->ranges[i];
+        if (val < minSx) minSx = val;
+        if (val > maxSx) maxSx = val;
+        avgL += val;
+    }
+
+    avgR /= howMuchDataToUse;
+    avgL /= howMuchDataToUse;
+
+    // distance from front wall
+    forwardDist = msg->ranges[size / 2];
+
+}
+
 void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // do not consider movements when not in the right zone
-    if(isManualModeDone) return;
+    if (isManualModeDone) return;
 
     // select values from the whole range
     size = (int) msg->intensities.size();
@@ -239,7 +339,7 @@ void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
         spinner.stop();*/
 }
 
-void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL) {
+void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
     //ROS_INFO_STREAM("Marrtino Pose: " << msgAMCL->pose.pose.position);
     marrPose = msgAMCL->pose.pose;
 }
