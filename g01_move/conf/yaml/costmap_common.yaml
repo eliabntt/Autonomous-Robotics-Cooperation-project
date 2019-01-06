@@ -1,22 +1,27 @@
 footprint: [[-0.13, -0.21], [-0.13, 0.21], [0.13,0.21],[0.13, -0.21]]
-footprint_padding: 0.001
+footprint_padding: 0.02
 
-robot_base_frame: base_footprint
-update_frequency: 5.0
+robot_base_frame: marrtino_base_footprint
+update_frequency: 4.0
 publish_frequency: 3.0
-transform_tolerance: 0.5
+transform_tolerance: 0.05
 
 resolution: 0.01
 
 obstacle_range: 2.5
 raytrace_range: 3.0
 
+#map_type: costmap
+
 static_layer:
   map_topic: map
   subscribe_to_updates: true
+  enabled: true
 
 obstacle_layer:
   observation_sources:  laser
+  track_unknown_space: true
+  combination_method: 1
   laser:
     data_type: LaserScan
     topic: scan
@@ -29,3 +34,4 @@ obstacle_layer:
 inflation_layer:
   cost_scaling_factor:  2.58  # exponential rate at which the obstacle cost drops off (default: 10)
   inflation_radius:     0.75  # max distance from an obstacle at which costs are incurred for planning paths
+
