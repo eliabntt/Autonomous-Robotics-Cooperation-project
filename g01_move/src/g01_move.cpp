@@ -11,23 +11,27 @@ G01Move::G01Move() : n(), spinner(2) {
     }
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
+    marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100, &G01Move::subPoseOdomCallback, this);
     scannerSubBis = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::averageLR, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
 
     nearCorridor.target_pose.pose.position.x = 0.0;
-    nearCorridor.target_pose.pose.position.y = -1.5;
+    nearCorridor.target_pose.pose.position.y = -1.9;
     nearCorridor.target_pose.pose.position.z = 0.0;
 
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, +3.14 / 2), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, +3.14 / 3), nearCorridor.target_pose.pose.orientation);
     // ROS_INFO_STREAM(nearCorridor.target_pose.pose.orientation);
 
     moveToGoal(nearCorridor);
 
-    // define poses to reach todo reinsert after tests
-    /*corridorEntrance.target_pose.pose.position.x = 0.55;
-    corridorEntrance.target_pose.pose.position.y = -1.4;
+
+    corridorEntrance.target_pose.pose.position.x = 0.5;
+    corridorEntrance.target_pose.pose.position.y = -1;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
+    moveToGoal(corridorEntrance, true);
+
+    /*
     loadPoint.target_pose.pose.position.x = 0.55;
     loadPoint.target_pose.pose.position.y = 1.6; // dist to go over is 3 mt
     loadPoint.target_pose.pose.position.z = 0.0;
@@ -69,7 +73,7 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::shutdown();
 }
 
-bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
+bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
     spinner.start();
     // wait for the action server to come up
     // MUST leave this to false otherwise spinner will (probably) create conflicts
@@ -99,11 +103,11 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             spinner.stop();
             return true;
         } else if (!rotated) {
-            recoverManual(true);
+            recoverManual(inside, true);
             rotated = true;
             currPose = marrPose;
         } else if (!backed) {
-            recoverManual();
+            recoverManual(inside);
             backed = true;
             currPose = marrPose;
         } else {
@@ -114,38 +118,78 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     }
 }
 
-void G01Move::recoverManual(bool rot) {
+void G01Move::recoverManual(bool inside, bool rot) {
     // initialize topics
 
     //resetting previous moveCommand settings
     //todo refine
     moveCommand.linear.x = 0;
     moveCommand.linear.z = 0;
-    double defZ = 0.7, defX = 0.2;
-    //todo add rotation and check for forward distance
-    if (rot) {
-        ROS_INFO_STREAM("Backing up rotating");
-        if (forwardDist > 0.3)
+    double defZ = 0.4, defX = 0.1;
+
+    //todo weight with respect where I have to go(if my goal is left rotate left)
+    if (!inside) {
+        if (rot) {
+            ROS_INFO_STREAM("Backing up rotating");
             moveCommand.linear.x = defX;
-        if (avgL > avgR) {
-            moveCommand.angular.z = defZ;
-            if (minSx < 0.05)
-                moveCommand.linear.x = -defX;
+            if (avgL > avgR) {
+                moveCommand.angular.z = defZ;
+                if (minSx < 0.15)
+                    moveCommand.linear.x = -defX;
+            } else {
+                moveCommand.angular.z = -defZ;
+                if (minDx < 0.15)
+                    moveCommand.linear.x = -defX;
+            }
+
         } else {
-            moveCommand.angular.z = -defZ;
-            if (minDx < 0.05)
-                moveCommand.linear.x = -defX;
+            ROS_INFO_STREAM("Backing up linear");
+            if (avgL > avgR)
+                moveCommand.angular.z = defZ;
+            else
+                moveCommand.angular.z = -defZ;
+            moveCommand.linear.x = -defX;
         }
+
+        velPub.publish(moveCommand);
+        ros::Duration(2).sleep();
     } else {
-        ROS_INFO_STREAM("Backing up linear");
-        if (avgL > avgR)
-            moveCommand.angular.z = defZ;
-        else
-            moveCommand.angular.z = -defZ;
-        moveCommand.linear.x = -defX;
+        ROS_INFO_STREAM("Going inside");
+        double r, p, y, fr, fp, fy;
+        G01Move::poseToYPR(marrPoseOdom, &y, &p, &r);
+        G01Move::poseToYPR(corridorEntrance.target_pose.pose, &fy, &fp, &fr);
+        //if I am not aligned or I am far from goal(I'm doing fine tuning here)
+        while (fabs(fy - y) > 0.1 || fabs(marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y) > 0.1
+               || fabs(marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) > 0.02) {
+
+            ROS_INFO_STREAM("Force rotating" << (fy - y));
+            //what I have
+            if (fy - y > 0.1)
+                moveCommand.angular.z = 0.2;
+            else if (fy - y < -0.1)
+                moveCommand.angular.z = -0.2;
+
+            //compensate for difference in x coordinate(I may end up with right orientation but not centered)
+            if (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x < 0.02)
+                moveCommand.angular.z += 0.3;
+            else if (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x > 0.02)
+                moveCommand.angular.z += -0.3;
+
+            if (marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y < 0) {
+                if (minDx > 0.1) {
+                    moveCommand.linear.x = 0.1;
+                } else {
+                    moveCommand.linear.x = 0.05;
+                }
+            }
+            velPub.publish(moveCommand);
+            ros::Duration(0.05).sleep();
+            G01Move::poseToYPR(marrPoseOdom, &y, &p, &r);
+            G01Move::poseToYPR(corridorEntrance.target_pose.pose, &fy, &fp, &fr);
+
+        }
+
     }
-    velPub.publish(moveCommand);
-    ros::Duration(2).sleep();
 }
 
 bool G01Move::inPlaceCW90(move_base_msgs::MoveBaseGoal &pos) {
@@ -340,4 +384,17 @@ void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
     marrPose = msgAMCL->pose.pose;
+}
+
+
+void G01Move::subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
+    marrPoseOdom = msgOdom->pose.pose;
+}
+
+
+void G01Move::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
+    tf::Quaternion quaternion;
+    tf::quaternionMsgToTF(pose.orientation, quaternion);
+    tf::Matrix3x3 mat(quaternion);
+    mat.getEulerYPR(*yaw, *pitch, *roll);
 }

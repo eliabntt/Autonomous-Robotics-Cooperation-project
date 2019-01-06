@@ -6,6 +6,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <move_base_msgs/MoveBaseAction.h>
 #include <move_base_msgs/MoveBaseGoal.h>
 #include <tf/transform_datatypes.h>
@@ -31,12 +32,15 @@ private:
     move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, loadPoint, unloadPoint;
 
     //Pose subscription stuff
-    geometry_msgs::Pose marrPose;
+    geometry_msgs::Pose marrPose, marrPoseOdom;
     ros::Subscriber marrPoseSub;
+    ros::Subscriber marrPoseOdomSub;
+
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL);
+    void subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr& msgOdom);
 
     // plan-based moving methods
-    bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
+    bool moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside = false);
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
 
@@ -55,11 +59,13 @@ private:
     geometry_msgs::Twist moveCommand;
     bool isManualModeDone = false;
 
-    void recoverManual(bool rot = false);
+    void recoverManual(bool inside, bool rot = false);
     void wallFollower(bool forward);
     void forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
     void backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
     void averageLR(const sensor_msgs::LaserScan::ConstPtr &msg);
+
+    void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
     /* fixme useful resources
     http://www.theconstructsim.com/ros-projects-exploring-ros-using-2-wheeled-robot-part-1/
