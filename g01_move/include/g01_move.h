@@ -10,6 +10,7 @@
 #include <move_base_msgs/MoveBaseGoal.h>
 #include <tf/transform_datatypes.h>
 #include <sensor_msgs/LaserScan.h>
+#include <std_srvs/Empty.h>
 
 #ifndef G01_MOVE_G01_MOVE_H
 #define G01_MOVE_G01_MOVE_H
@@ -35,25 +36,30 @@ private:
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL);
 
     // plan-based moving methods
-    bool moveToGoal(MoveBaseClient &client, move_base_msgs::MoveBaseGoal goal);
+    bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
 
     // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;
+
+    ros::Subscriber scannerSubBis;
+
     double loadWallDistance = 1.05, corrWallDistance = 1.05;
     double defaultVel = 0.15, maxVel = 0.18, lateralMinDist = 0.219,
         threshMin = 0.018, threshMax = 0.08;
 
-    double val, minDx, maxDx, minSx, maxSx, forwardDist;
+    double val, minDx, maxDx, minSx, maxSx, forwardDist, avgL, avgR;
     int size,  howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool isManualModeDone = false;
 
+    void recoverManual(bool rot = false);
     void wallFollower(bool forward);
     void forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
     void backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
+    void averageLR(const sensor_msgs::LaserScan::ConstPtr &msg);
 
     /* fixme useful resources
     http://www.theconstructsim.com/ros-projects-exploring-ros-using-2-wheeled-robot-part-1/
