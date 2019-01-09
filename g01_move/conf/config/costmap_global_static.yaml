@@ -1,0 +1,10 @@
+global_frame: marrtino_map
+
+rolling_window: false
+track_unknown_space: true
+static_map: true
+update_frequency: 1.0
+
+plugins:
+  - {name: static_layer,                  type: "costmap_2d::StaticLayer"}
+  - {name: inflation_layer,               type: "costmap_2d::InflationLayer"}
