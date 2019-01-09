@@ -1,12 +1,13 @@
 #/bin/sh uninstall.sh
-cd ../marrtino/marrtino_navigation/config
+cd ../marrtino/marrtino_navigation/
+
 #delete current config
-rm *
+rm config -rf
+rm launch -rf
+rm maps -rf
+
 #write backed up ones
-cp ../back/config/* ./
-#delete and restore move_base
-cd ../launch
-rm move_base.launch
-cp ../back/launch/* ./
+cp ./back/* ./ -r
+
 #delete back
-rm ../back -rf
+rm ./back -rf
