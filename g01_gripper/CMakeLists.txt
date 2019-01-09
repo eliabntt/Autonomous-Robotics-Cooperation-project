@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
     geometry_msgs
     moveit_ros_planning_interface
     tf2
+    tf
     robotiq_s_model_control
 )
 

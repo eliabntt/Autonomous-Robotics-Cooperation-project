@@ -25,7 +25,7 @@ G01Gripper::G01Gripper() : command(), n() {
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
     //marrtino pose
-    marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Gripper::marrPoseCallback, this);
+    marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
 
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
@@ -705,12 +705,17 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
 
 void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
     // set joint values and move
-    group.setJointValueTarget(LZ_JOINT_POS);
-    if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
-        group.move();
+    ROS_INFO_STREAM("Moving to LZ");
+    moveManipulator(LZPose, group);
 }
 
 void G01Gripper::marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL) {
-    //ROS_INFO_STREAM("Marrtino Pose: " << msgAMCL->pose.pose.position);
-    LZPose = msgAMCL->pose.pose;
+    geometry_msgs::PoseWithCovarianceStamped LZPoseStamped;
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tf2_listener(tfBuffer);
+    geometry_msgs::TransformStamped odom_to_world;
+    odom_to_world = tfBuffer.lookupTransform("marrtino_odom", "world", ros::Time(0), ros::Duration(1.0) );
+    tf2::doTransform(*msgAMCL, LZPoseStamped, odom_to_world);
+    LZPose = LZPoseStamped.pose.pose;
+    LZPose.position.z += 0.5;
 }
