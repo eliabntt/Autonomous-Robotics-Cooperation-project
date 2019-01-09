@@ -18,36 +18,24 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.0;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, +3.14 / 3), nearCorridor.target_pose.pose.orientation);
-    // ROS_INFO_STREAM(nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
 
     moveToGoal(nearCorridor);
 
-
-    corridorEntrance.target_pose.pose.position.x = 0.5;
-    corridorEntrance.target_pose.pose.position.y = -1;
+    corridorEntrance.target_pose.pose.position.x = 0.6;
+    corridorEntrance.target_pose.pose.position.y = -1.1;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
-    moveToGoal(corridorEntrance, true);
-
-    /*
-    loadPoint.target_pose.pose.position.x = 0.55;
-    loadPoint.target_pose.pose.position.y = 1.6; // dist to go over is 3 mt
-    loadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
-    unloadPoint.target_pose.pose.position.x = -1.65;
-    unloadPoint.target_pose.pose.position.y = -0.4;
-    unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);*/
-
-    // move to the entrance of the corridor
-    //bool success = moveToGoal(client, nearCorridor);
-    //success = moveToGoal(client, corridorEntrance);
+    moveToGoal(corridorEntrance);
 
     // wall follower
-    // velocities publisher initialization
-    // wallFollower(true);
+    wallFollower(true);
+
+    /*
+    unloadPoint.target_pose.pose.position.x = -1.65;
+    unloadPoint.target_pose.pose.position.y = -0.5;
+    unloadPoint.target_pose.pose.position.z = 0.0;
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);*/
 
     // rotation
     //move_base_msgs::MoveBaseGoal curpos = corridorEntrance;
@@ -73,7 +61,23 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::shutdown();
 }
 
-bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
+void G01Move::changePadding(bool increase) {
+    ROS_INFO_STREAM((increase ? "RECOVERY: increasing padding" : "RESTORING padding"));
+    dynamic_reconfigure::ReconfigureRequest srv_req;
+    dynamic_reconfigure::ReconfigureResponse srv_resp;
+    dynamic_reconfigure::DoubleParameter double_param;
+    dynamic_reconfigure::Config conf;
+    double_param.name = "footprint_padding";
+    //fixme
+    double_param.value = (increase ? -0.005 : 0.02);
+    conf.doubles.push_back(double_param);
+    srv_req.config = conf;
+    ros::service::call("/marrtino/move_base/local_costmap/set_parameters", srv_req, srv_resp);
+    ros::Duration(0.1).sleep();
+}
+
+
+bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     spinner.start();
     // wait for the action server to come up
     // MUST leave this to false otherwise spinner will (probably) create conflicts
@@ -84,6 +88,8 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
 
     bool backed = false;
     bool rotated = false;
+
+    bool padded = true;
     geometry_msgs::Pose currPose = marrPose;
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
@@ -91,7 +97,10 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
 
         ROS_INFO("Sending goal");
         client.sendGoal(goal);
-
+        /*if (padded) {
+            ros::Duration(1).sleep();
+            changePadding(false);
+        }*/
         client.waitForResult();
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             ROS_INFO_STREAM("Move successful");
@@ -102,13 +111,17 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
                 ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
                 backed = false;
                 rotated = false;
+              //  padded = false;
             }
-            if (!rotated) {
-                recoverManual(inside, true);
+            if (!padded) {
+            //    changePadding(true);
+                padded = true;
+            } else if (!rotated) {
+                recoverManual(true);
                 rotated = true;
                 currPose = marrPose;
             } else if (!backed) {
-                recoverManual(inside);
+                recoverManual();
                 backed = true;
                 currPose = marrPose;
             } else {
@@ -120,7 +133,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal, bool inside) {
     }
 }
 
-void G01Move::recoverManual(bool inside, bool rot) {
+void G01Move::recoverManual(bool rot) {
     // initialize topics
 
     //resetting previous moveCommand settings
@@ -129,83 +142,34 @@ void G01Move::recoverManual(bool inside, bool rot) {
     moveCommand.angular.z = 0;
     double defZ = 0.4, defX = 0.1;
 
-    //todo weight with respect where I have to go(if my goal is left rotate left)
-    if (!inside) {
-        if (rot) {
-            ROS_INFO_STREAM("Backing up rotating");
-            moveCommand.linear.x = defX;
-            if (avgL > avgR) {
-                moveCommand.angular.z = defZ;
-                if (minSx < 0.15)
-                    moveCommand.linear.x = -defX;
-            } else {
+    if (rot) {
+        ROS_INFO_STREAM("Backing up rotating");
+        moveCommand.linear.x = defX;
+        if (avgL > avgR) {
+            moveCommand.angular.z = defZ;
+            if (avgR < 0.22) {
+                moveCommand.linear.x = -defX;
                 moveCommand.angular.z = -defZ;
-                if (minDx < 0.15)
-                    moveCommand.linear.x = -defX;
             }
-
         } else {
-            ROS_INFO_STREAM("Backing up linear");
-            if (avgL > avgR)
+            moveCommand.angular.z = -defZ;
+            if (avgL < 0.22) {
+                moveCommand.linear.x = -defX;
                 moveCommand.angular.z = defZ;
-            else
-                moveCommand.angular.z = -defZ;
-            moveCommand.linear.x = -defX;
-        }
-
-        velPub.publish(moveCommand);
-        ros::Duration(2).sleep();
-    } else {
-        ROS_INFO_STREAM("Going inside");
-        double r, p, y, fr, fp, fy;
-        G01Move::poseToYPR(marrPoseOdom, &y, &p, &r);
-        G01Move::poseToYPR(corridorEntrance.target_pose.pose, &fy, &fp, &fr);
-        //if I am not aligned or I am far from goal(I'm doing fine tuning here)
-        while (fabs(fy - y) > 0.1 || fabs(marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y) > 0.1
-               || fabs(marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) > 0.02) {
-
-            moveCommand.linear.x = 0;
-            moveCommand.angular.z = 0;
-            ROS_INFO_STREAM("Manual approach " << (fy - y));
-
-            //check my orientation w.r.t. expected one
-            if (fy - y > 0.1)
-                moveCommand.angular.z = 0.3;
-            else if (fy - y < -0.1)
-                moveCommand.angular.z = -0.3;
-
-            //compensate for difference in x coordinate(I may end up with right orientation but not centered)
-            if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) < -0.05)
-                moveCommand.angular.z += 0.4;
-            else if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x > 0.05))
-                moveCommand.angular.z += -0.4;
-            else if ((marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x) > 0) {
-                moveCommand.angular.z = 0.05;
-            } else
-                moveCommand.angular.z = -0.05;
-
-            if (marrPoseOdom.position.y - corridorEntrance.target_pose.pose.position.y < 0) {
-                if (avgR > 0.25) {
-                    moveCommand.linear.x = 0.2;
-                } else {
-                    // I am too near the wall
-                    moveCommand.angular.z += 0.1;
-                    moveCommand.linear.x = 0.05;
-                }
             }
-            ROS_INFO_STREAM("x " << (marrPoseOdom.position.x - corridorEntrance.target_pose.pose.position.x));
-            ROS_INFO_STREAM("z " << moveCommand.angular.z);
-            velPub.publish(moveCommand);
-            ros::Duration(0.1).sleep();
-            G01Move::poseToYPR(marrPoseOdom, &y, &p, &r);
-            G01Move::poseToYPR(corridorEntrance.target_pose.pose, &fy, &fp, &fr);
-
         }
-        moveCommand.linear.x = 0;
-        moveCommand.angular.z = 0;
-        velPub.publish(moveCommand);
-        ros::Duration(0.1).sleep();
+
+    } else {
+        ROS_INFO_STREAM("Backing up linear");
+        if (avgL > avgR)
+            moveCommand.angular.z = defZ;
+        else
+            moveCommand.angular.z = -defZ;
+        moveCommand.linear.x = -defX;
     }
+
+    velPub.publish(moveCommand);
+    ros::Duration(2).sleep();
 }
 
 bool G01Move::inPlaceCW90(move_base_msgs::MoveBaseGoal &pos) {
@@ -405,12 +369,4 @@ void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::Co
 
 void G01Move::subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
     marrPoseOdom = msgOdom->pose.pose;
-}
-
-
-void G01Move::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
-    tf::Quaternion quaternion;
-    tf::quaternionMsgToTF(pose.orientation, quaternion);
-    tf::Matrix3x3 mat(quaternion);
-    mat.getEulerYPR(*yaw, *pitch, *roll);
 }
