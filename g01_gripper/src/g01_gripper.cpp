@@ -358,8 +358,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     // if the planning does not finally succeed return false
     for (unsigned long steps:stepsVector) {
         fraction = group.computeCartesianPath(
-                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, false);
-e
+                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, false);//fixme this is a bad thing but.. "debug purposes"
         if (fraction >= succThr) {
             // very good plan
             bestFraction = fraction;
@@ -374,7 +373,7 @@ e
 
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr){
-        ROS_INFO_STREAM("PLANNING FAILED");
+        ROS_INFO_STREAM("PLANNING FAILED: results under minimal threshold");
         return false;
     }
 
