@@ -12,52 +12,39 @@ G01Move::G01Move() : n(), spinner(2) {
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
     marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100, &G01Move::subPoseOdomCallback, this);
-    scannerSubBis = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::averageLR, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
+    spinner.start();
 
     nearCorridor.target_pose.pose.position.x = 0.0;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
-
-    moveToGoal(nearCorridor);
+    //bool success = moveToGoal(nearCorridor); // fixme corridor debug
 
     corridorEntrance.target_pose.pose.position.x = 0.6;
     corridorEntrance.target_pose.pose.position.y = -1.1;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
-    moveToGoal(corridorEntrance);
+    //success = moveToGoal(corridorEntrance);  // fixme corridor debug
 
-    // wall follower
+    // wall follower to reach load point
     wallFollower(true);
 
-    /*
+    // loading
+    ros::Duration(2).sleep();
+
+    // rotation and return
+    rotateDX();
+
+    // wall follower to exit corridor
+    wallFollower(false);
+
+    // move to unload position
     unloadPoint.target_pose.pose.position.x = -1.65;
     unloadPoint.target_pose.pose.position.y = -0.5;
     unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);*/
-
-    // rotation
-    //move_base_msgs::MoveBaseGoal curpos = corridorEntrance;
-    //inPlaceCCW90(curpos);
-    //success = moveToGoal(client, curpos);
-
-    // loading
-
-    // rotation and return
-    //curpos = loadPoint;
-    //inPlaceCCW90(curpos);
-    //success = moveToGoal(client, curpos);
-
-    // wall follower
-    //wallFollower(false);
-    //success = moveToGoal(client,nearCorridor);
-
-    // move to unload position
-    //success = moveToGoal(client, unloadPoint);
-
-    // wait for movement to finish
-    while (!isManualModeDone) {}
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
+    //success = moveToGoal(client, unloadPoint); // fixme corridor debug
     ros::shutdown();
 }
 
@@ -76,7 +63,6 @@ void G01Move::changePadding(bool increase) {
     ros::Duration(0.1).sleep();
 }
 
-
 bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     spinner.start();
     // wait for the action server to come up
@@ -88,7 +74,6 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
-
     bool padded = true;
     geometry_msgs::Pose currPose = marrPose;
     while (true) {
@@ -111,10 +96,10 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
                 backed = false;
                 rotated = false;
-              //  padded = false;
+                //padded = false;
             }
             if (!padded) {
-            //    changePadding(true);
+                //changePadding(true);
                 padded = true;
             } else if (!rotated) {
                 recoverManual(true);
@@ -145,23 +130,22 @@ void G01Move::recoverManual(bool rot) {
     if (rot) {
         ROS_INFO_STREAM("Backing up rotating");
         moveCommand.linear.x = defX;
-        if (avgL > avgR) {
+        if (avgSx > avgDx) {
             moveCommand.angular.z = defZ;
-            if (avgR < 0.22) {
+            if (avgDx < 0.22) {
                 moveCommand.linear.x = -defX;
                 moveCommand.angular.z = -defZ;
             }
         } else {
             moveCommand.angular.z = -defZ;
-            if (avgL < 0.22) {
+            if (avgSx < 0.22) {
                 moveCommand.linear.x = -defX;
                 moveCommand.angular.z = defZ;
             }
         }
-
     } else {
         ROS_INFO_STREAM("Backing up linear");
-        if (avgL > avgR)
+        if (avgSx > avgDx)
             moveCommand.angular.z = defZ;
         else
             moveCommand.angular.z = -defZ;
@@ -181,46 +165,42 @@ bool G01Move::inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos) {
 }
 
 void G01Move::wallFollower(bool forward) { // todo tests needed here
-    ROS_INFO_STREAM("INTO WALL");
-    // initialize topics
+    ROS_INFO_STREAM("WALL START");
+    isManualModeDone = false;
+
     if (forward)
         scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::forwardCallback, this);
     else
         scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::backwardCallback, this);
-    spinner.start();
+
+    // wait for movement to finish
+    while (!isManualModeDone) {} // todo this is crap
+    ROS_INFO_STREAM("WALL END");
 }
 
-void G01Move::averageLR(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // do not consider movements when not in the right zone
-    if (isManualModeDone) return;
+void G01Move::rotateDX() {
+    ROS_INFO_STREAM("ROTATION START");
 
-    // select values from the whole range
-    size = (int) msg->intensities.size();
-    minDx = msg->ranges[0];
-    maxDx = msg->ranges[0];
-    minSx = msg->ranges[size - 1];
-    maxSx = msg->ranges[size - 1];
-    avgR = 0;
-    avgL = 0;
-    for (int i = 0; i < howMuchDataToUse; i++) {
-        val = msg->ranges[i];
-        if (val < minDx) minDx = val;
-        if (val > maxDx) maxDx = val;
-        avgR += val;
+    double r, p, y, tr, tp, ty;
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y);
+    ty = y;     // current yaw
+    ty -= 3.14; // target yaw
+    ROS_INFO_STREAM("TY " << ty);
+
+    // rotate until desired yaw is reached
+    moveCommand.linear.x = 0.05;
+    moveCommand.angular.z = -3 * twistVel;
+    while (fabs(y - ty) > 0.1) {
+        poseToYPR(marrPoseOdom, &y, &p, &r);
+        velPub.publish(moveCommand);
     }
-    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
-        val = msg->ranges[i];
-        if (val < minSx) minSx = val;
-        if (val > maxSx) maxSx = val;
-        avgL += val;
-    }
+    ROS_INFO_STREAM("ROTATION END");
 
-    avgR /= howMuchDataToUse;
-    avgL /= howMuchDataToUse;
-
-    // distance from front wall
-    forwardDist = msg->ranges[size / 2];
-
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
 }
 
 void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
@@ -229,52 +209,76 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 
     // select values from the whole range
     size = (int) msg->intensities.size();
+    avgDx = 0;
+    avgSx = 0;
     minDx = msg->ranges[0];
     maxDx = msg->ranges[0];
     minSx = msg->ranges[size - 1];
     maxSx = msg->ranges[size - 1];
 
-    // scan and save min and max for both sides
+    // scan and save min avg and max for both sides
     // scan direction is right to left
     for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
+        avgDx += val;
     }
     for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
         if (val < minSx) minSx = val;
         if (val > maxSx) maxSx = val;
+        avgSx += val;
     }
+    avgDx /= howMuchDataToUse;
+    avgSx /= howMuchDataToUse;
 
     // distance from front wall
     forwardDist = msg->ranges[size / 2];
 
     if (forwardDist > loadWallDistance) {
         // we need to move forward
-        moveCommand.linear.x = defaultVel;
 
+        minDx = avgDx;
+        minSx = avgSx;
         val = fabs(minSx - minDx);
+        //val = fabs(avgSx - avgDx);
         ROS_INFO_STREAM("FW " << forwardDist << " DX " << minDx << " SX " << minSx << " DIFF " << val);
-        if ((val > threshMin) && (val < threshMax)) {
-            // significant difference but not
-            // too high or we are after the corridor
-            if (minSx < minDx && minDx > lateralMinDist) {
+        /*if ((val > threshMin) && (val < threshMax)) {
+            // significant difference but not too high
+            // into the corridor, stay centered
+            if (minSx < minDx) {
                 // turn right, there is space
-                ROS_INFO_STREAM("GO DX");
-                moveCommand.angular.z = -0.02;
-            } else if (minSx > minDx && minSx > lateralMinDist) {
+                ROS_INFO_STREAM("CORR: GO DX");
+                moveCommand.angular.z = -twistVel;
+            } else if (minSx > minDx) {
                 // turn left, there is space
-                ROS_INFO_STREAM("GO SX");
-                moveCommand.angular.z = +0.02;
+                ROS_INFO_STREAM("CORR: GO SX");
+                moveCommand.angular.z = +twistVel;
             } else {
-                ROS_INFO_STREAM("AVANTI SAVOIA");
+                ROS_INFO_STREAM("CORR: AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
             }
+        } else if (val >= threshMax) {*/
+        // corridor, follow left wall
+        moveCommand.linear.x = defaultVel;
+        if (minSx < lateralMinDist) {
+            // too near, turn right
+            ROS_INFO_STREAM("GO DX");
+            moveCommand.angular.z = -twistVel;
+        } else if (minSx > 1.1 * lateralMinDist) {
+            // too far, turn left
+            ROS_INFO_STREAM("GO SX");
+            moveCommand.angular.z = +twistVel;
         } else {
-            ROS_INFO_STREAM("AVANTI SAVOIA!!!");
+            ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
+        /*} else {
+            // negligible difference, go forward
+            ROS_INFO_STREAM("AVANTI SAVOIA");
+            moveCommand.angular.z = 0.0;
+        }*/
         velPub.publish(moveCommand);
     } else {
         // stop marrtino
@@ -286,87 +290,111 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
 }
 
 void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // todo maybe useless if we can make it with only the above
-    // fixme still not up-to-date like the above version
-    int size = (int) msg->intensities.size();
-    int howMuch = 5; // angle span to consider
-    double val, minSx = msg->ranges[0], maxSx = msg->ranges[0],
-            minDx = msg->ranges[size - 1], maxDx = msg->ranges[size - 1];
+    // do not consider movements when not in the right zone
+    if (isManualModeDone) return;
 
-    // scan and save min and max for both sides
-    for (int i = 0; i < howMuch; i++) {
+    // select values from the whole range
+    size = (int) msg->intensities.size();
+    avgDx = 0;
+    avgSx = 0;
+    minDx = msg->ranges[0];
+    maxDx = msg->ranges[0];
+    minSx = msg->ranges[size - 1];
+    maxSx = msg->ranges[size - 1];
+
+    // scan and save min avg and max for both sides
+    // scan direction is right to left
+    for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
-        if (val < minSx)
-            minSx = val;
-        if (val > maxSx)
-            maxSx = val;
+        if (val < minDx) minDx = val;
+        if (val > maxDx) maxDx = val;
+        avgDx += val;
     }
-    for (int i = size - 1; i > size - 1 - howMuch; i--) {
+    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
-        if (val < minDx)
-            minDx = val;
-        if (val > maxDx)
-            maxDx = val;
+        if (val < minSx) minSx = val;
+        if (val > maxSx) maxSx = val;
+        avgSx += val;
     }
+    avgDx /= howMuchDataToUse;
+    avgSx /= howMuchDataToUse;
+    val = fabs(avgSx-avgDx);
 
-    double thresh = 0.0;
-    double forwardDist = msg->ranges[size / 2];
+    // distance from front wall
+    forwardDist = msg->ranges[size / 2];
 
-    if (forwardDist > corrWallDistance) { // the only thing that changes from above impl.
-        // todo also consider range saturation
-        // we need to move forward
-        moveCommand.linear.x = 0.2;
-        if (fabs(minSx - minDx) > thresh) {
-            // significant difference
-            if (minSx < minDx)
-                // turn right
-                moveCommand.angular.z = -0.01;
-            else
-                // turn left
-                moveCommand.angular.z = +0.01;
+    double yPos, r, p, y;
+    yPos = marrPoseOdom.position.y;
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
+    if (yPos > 0.22) {
+        // large space
+        if (val < 0.1) {
+            ROS_INFO_STREAM("AVANTI SAVOIA"); // fixme TUNE HERE!!!
+            moveCommand.linear.x = defaultVel / 2;
+            moveCommand.angular.z = 0;
+        } else if(avgSx < avgDx) {
+            ROS_INFO_STREAM("GO DX");
+            moveCommand.linear.x = 0.1;
+            moveCommand.angular.z = -twistVel;
+        } else {
+            ROS_INFO_STREAM("GO SX");
+            moveCommand.linear.x = 0.1;
+            moveCommand.angular.z = +twistVel;
         }
-        velPub.publish(moveCommand);
-    } else {
-        spinner.stop();
-        isManualModeDone = true;
+    } else if (yPos < 0.22) {
+        // corridor
+        if (fabs(y + 3.14 / 2) < 0.1) {
+            // near aligned, follow left wall
+            if (forwardDist > loadWallDistance) {
+                // we need to move forward
+                moveCommand.linear.x = defaultVel;
+                if (minSx < lateralMinDist) {
+                    // too near, turn right
+                    ROS_INFO_STREAM("GO DX");
+                    moveCommand.angular.z = +twistVel;
+                } else if (minSx > 1.1 * lateralMinDist) {
+                    // too far, turn left
+                    ROS_INFO_STREAM("GO SX");
+                    moveCommand.angular.z = -twistVel;
+                } else {
+                    ROS_INFO_STREAM("AVANTI SAVOIA");
+                    moveCommand.angular.z = 0.0;
+                }
+            } else {
+                // stop
+                moveCommand.linear.x = 0.0;
+                moveCommand.angular.z = 0.0;
+                isManualModeDone = true;
+            }
+        } else {
+            // misaligned, fast correction
+            moveCommand.linear.x = 0.1;
+            if (y + 3.14 / 2 < 0) {
+                ROS_INFO_STREAM("FAST DX");
+                moveCommand.angular.z = +twistVel;
+            }else {
+                ROS_INFO_STREAM("FAST SX");
+                moveCommand.angular.z = -twistVel;
+            }
+        }
     }
-
-    /* ALTERNATIVE WAY
-    ROS_INFO("I see: %u", msg->header.seq);
-    ROS_INFO("I see: %f", msg->angle_min);
-    ROS_INFO("I see: %f", msg->time_increment);
-
-    int size = msg->ranges.size();
-
-    //Variables whith index of highest and lowest value in array.
-    int minIndex = 0;
-    int maxIndex = 0;
-
-    //This cycle goes through array and finds minimum
-    for (int i = minIndex; i < maxIndex; i++)
-        if (msg->ranges[link](i) < msg->ranges[link](minIndex) && msg->ranges[link](i) > 0.0)
-            minIndex = i;
-
-    //Calculation of angles from indexes and storing data to class variables.
-    angleMin = (minIndex - size / 2) * msg->angle_increment;
-    double distMin;
-    distMin = msg->ranges[link](minIndex);
-    distFront = msg->ranges[size / 2];
-    diffE = (distMin - wallDistance) - r;
-    e = distMin - wallDistance;
-
-    //Invoking method for publishing message
-    publishMessage();
-
-    if (false)
-        spinner.stop();*/
+    velPub.publish(moveCommand);
 }
+
+//
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
     marrPose = msgAMCL->pose.pose;
 }
 
-
 void G01Move::subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
     marrPoseOdom = msgOdom->pose.pose;
+}
+
+void G01Move::poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll) {
+    tf::Quaternion quaternion;
+    tf::quaternionMsgToTF(pose.orientation, quaternion);
+    tf::Matrix3x3 mat(quaternion);
+    mat.getEulerYPR(*yaw, *pitch, *roll);
 }
