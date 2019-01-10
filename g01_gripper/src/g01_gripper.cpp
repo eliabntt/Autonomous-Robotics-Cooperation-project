@@ -89,6 +89,7 @@ G01Gripper::G01Gripper() : command(), n() {
     poseLZ.position.z = 10;// useless
     poseLZ.orientation = initialPose.orientation;
     */
+    LZPose.orientation = initialPose.orientation;
     ObjectBox box(LZPose);
 
     // strategy: if planning fails objects are placed in the return vector;
@@ -281,6 +282,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
+            ROS_INFO_STREAM("FAILURE2");
             pose = group.getCurrentPose().pose;
             pose.position.z -= 0.3;
             moveManipulator(pose, group);
@@ -356,8 +358,8 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     // if the planning does not finally succeed return false
     for (unsigned long steps:stepsVector) {
         fraction = group.computeCartesianPath(
-                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp);
-
+                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, false);
+e
         if (fraction >= succThr) {
             // very good plan
             bestFraction = fraction;
@@ -371,8 +373,10 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     }
 
     // bad plan with all possible steps number, exit
-    if (bestFraction < minThr)
+    if (bestFraction < minThr){
+        ROS_INFO_STREAM("PLANNING FAILED");
         return false;
+    }
 
     // set the trajectory and execute
     robot_trajectory::RobotTrajectory robotTraj(group.getCurrentState()->getRobotModel(), PLANNING_GROUP);
@@ -706,16 +710,20 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
 void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
     // set joint values and move
     ROS_INFO_STREAM("Moving to LZ");
-    moveManipulator(LZPose, group);
+
+    group.setJointValueTarget(LZ_JOINT_POS);
+    if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
+        group.move();
 }
 
-void G01Gripper::marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL) {
-    geometry_msgs::PoseWithCovarianceStamped LZPoseStamped;
+void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
+    //ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
+    //ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     geometry_msgs::TransformStamped odom_to_world;
     odom_to_world = tfBuffer.lookupTransform("marrtino_odom", "world", ros::Time(0), ros::Duration(1.0) );
-    tf2::doTransform(*msgAMCL, LZPoseStamped, odom_to_world);
-    LZPose = LZPoseStamped.pose.pose;
-    LZPose.position.z += 0.5;
+    tf2::doTransform(msgOdom->pose.pose, LZPose, odom_to_world);
+    //LZPose = LZPoseStamped.pose.pose;
+    LZPose.position.z = 0.7;
 }

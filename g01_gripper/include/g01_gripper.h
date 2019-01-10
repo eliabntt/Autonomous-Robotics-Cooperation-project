@@ -22,6 +22,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <nav_msgs/Odometry.h>
+
 #ifndef G01_GRIPPER_G01_GRIPPER_H
 #define G01_GRIPPER_G01_GRIPPER_H
 
@@ -58,7 +60,7 @@ private:
     void goOverLZ(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
     //marrtino pose callback
-    void marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL);
+    void marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom);
 
         // MEMBERS
     bool sim;
