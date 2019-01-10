@@ -33,12 +33,11 @@ private:
     ros::AsyncSpinner spinner;
 
     // interesting poses
-    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, loadPoint, unloadPoint;
+    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, unloadPoint;
 
-    //Pose subscription stuff
+    // pose subscription stuff
     geometry_msgs::Pose marrPose, marrPoseOdom;
-    ros::Subscriber marrPoseSub;
-    ros::Subscriber marrPoseOdomSub;
+    ros::Subscriber marrPoseSub, marrPoseOdomSub;
 
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msgAMCL);
     void subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr& msgOdom);
@@ -49,21 +48,22 @@ private:
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
     void changePadding(bool increase);
+    void recoverManual(bool rot = false);
 
     // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;
 
-    double loadWallDistance = 1.05, corrWallDistance = 1.05;
-    double defaultVel = 0.3, twistVel = 0.22, lateralMinDist = 0.28,
-        threshMin = 0.01, threshMax = 0.08;
+    // distance from front wall, default speeds
+    double frontWallDist = 1.05, lateralMinDist = 0.28, linVel = 0.3, twistVel = 0.22;
 
-    double val, minDx, maxDx, minSx, maxSx, forwardDist, avgSx, avgDx;
+    // laser callback internal values
+    double val, minDx, maxDx, avgDx, minSx, maxSx, avgSx, forwardDist;
     int size,  howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool isManualModeDone = false;
 
-    void recoverManual(bool rot = false);
+    // laser-based moving methods
     void wallFollower(bool forward);
     void rotateDX();
     void forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);

@@ -183,10 +183,9 @@ void G01Move::rotateDX() {
 
     double r, p, y, tr, tp, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y);
     ty = y;     // current yaw
     ty -= 3.14; // target yaw
-    ROS_INFO_STREAM("TY " << ty);
+    ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y << " TY " << ty);
 
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.05;
@@ -195,16 +194,16 @@ void G01Move::rotateDX() {
         poseToYPR(marrPoseOdom, &y, &p, &r);
         velPub.publish(moveCommand);
     }
-    ROS_INFO_STREAM("ROTATION END");
 
     // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
+    ROS_INFO_STREAM("ROTATION END");
 }
 
 void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // do not consider movements when not in the right zone
+    // do not consider readings when not in the right zone
     if (isManualModeDone) return;
 
     // select values from the whole range
@@ -232,41 +231,22 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     }
     avgDx /= howMuchDataToUse;
     avgSx /= howMuchDataToUse;
+    val = fabs(avgSx - avgDx);
 
     // distance from front wall
+    // fixme do not consider this dist if not properly aligned (corr entrance: it stops very early)
     forwardDist = msg->ranges[size / 2];
+    ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
 
-    if (forwardDist > loadWallDistance) {
+    // corridor, follow left wall
+    if (forwardDist > frontWallDist) {
         // we need to move forward
-
-        minDx = avgDx;
-        minSx = avgSx;
-        val = fabs(minSx - minDx);
-        //val = fabs(avgSx - avgDx);
-        ROS_INFO_STREAM("FW " << forwardDist << " DX " << minDx << " SX " << minSx << " DIFF " << val);
-        /*if ((val > threshMin) && (val < threshMax)) {
-            // significant difference but not too high
-            // into the corridor, stay centered
-            if (minSx < minDx) {
-                // turn right, there is space
-                ROS_INFO_STREAM("CORR: GO DX");
-                moveCommand.angular.z = -twistVel;
-            } else if (minSx > minDx) {
-                // turn left, there is space
-                ROS_INFO_STREAM("CORR: GO SX");
-                moveCommand.angular.z = +twistVel;
-            } else {
-                ROS_INFO_STREAM("CORR: AVANTI SAVOIA");
-                moveCommand.angular.z = 0.0;
-            }
-        } else if (val >= threshMax) {*/
-        // corridor, follow left wall
-        moveCommand.linear.x = defaultVel;
-        if (minSx < lateralMinDist) {
+        moveCommand.linear.x = linVel;
+        if (avgSx < lateralMinDist) {
             // too near, turn right
             ROS_INFO_STREAM("GO DX");
             moveCommand.angular.z = -twistVel;
-        } else if (minSx > 1.1 * lateralMinDist) {
+        } else if (avgSx > 1.1 * lateralMinDist) {
             // too far, turn left
             ROS_INFO_STREAM("GO SX");
             moveCommand.angular.z = +twistVel;
@@ -274,23 +254,17 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
-        /*} else {
-            // negligible difference, go forward
-            ROS_INFO_STREAM("AVANTI SAVOIA");
-            moveCommand.angular.z = 0.0;
-        }*/
-        velPub.publish(moveCommand);
     } else {
-        // stop marrtino
+        // stop
         moveCommand.linear.x = 0.0;
         moveCommand.angular.z = 0.0;
-        velPub.publish(moveCommand);
         isManualModeDone = true;
     }
+    velPub.publish(moveCommand);
 }
 
 void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // do not consider movements when not in the right zone
+    // do not consider readings when not in the right zone
     if (isManualModeDone) return;
 
     // select values from the whole range
@@ -318,65 +292,53 @@ void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     }
     avgDx /= howMuchDataToUse;
     avgSx /= howMuchDataToUse;
-    val = fabs(avgSx-avgDx);
+    val = fabs(avgSx - avgDx);
 
     // distance from front wall
     forwardDist = msg->ranges[size / 2];
 
+    // position from odom
     double yPos, r, p, y;
     yPos = marrPoseOdom.position.y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
-    if (yPos > 0.22) {
+
+    if (yPos > 0.16) {
         // large space
-        if (val < 0.1) {
-            ROS_INFO_STREAM("AVANTI SAVOIA"); // fixme TUNE HERE!!!
-            moveCommand.linear.x = defaultVel / 2;
+        moveCommand.linear.x = 0.8 * linVel;
+        if (avgSx < 1.15 * lateralMinDist) {
+            ROS_INFO_STREAM("LS GO DX");
+            moveCommand.angular.z = -3 * twistVel;
+        } else if (avgDx < 1.15 * lateralMinDist) {
+            ROS_INFO_STREAM("LS GO SX");
+            moveCommand.angular.z = +3 * twistVel;
+        } else if (val < 0.4) {
+            ROS_INFO_STREAM("LS AVANTI SAVOIA");
             moveCommand.angular.z = 0;
-        } else if(avgSx < avgDx) {
-            ROS_INFO_STREAM("GO DX");
-            moveCommand.linear.x = 0.1;
-            moveCommand.angular.z = -twistVel;
-        } else {
-            ROS_INFO_STREAM("GO SX");
-            moveCommand.linear.x = 0.1;
-            moveCommand.angular.z = +twistVel;
         }
-    } else if (yPos < 0.22) {
-        // corridor
-        if (fabs(y + 3.14 / 2) < 0.1) {
-            // near aligned, follow left wall
-            if (forwardDist > loadWallDistance) {
-                // we need to move forward
-                moveCommand.linear.x = defaultVel;
-                if (minSx < lateralMinDist) {
-                    // too near, turn right
-                    ROS_INFO_STREAM("GO DX");
-                    moveCommand.angular.z = +twistVel;
-                } else if (minSx > 1.1 * lateralMinDist) {
-                    // too far, turn left
-                    ROS_INFO_STREAM("GO SX");
-                    moveCommand.angular.z = -twistVel;
-                } else {
-                    ROS_INFO_STREAM("AVANTI SAVOIA");
-                    moveCommand.angular.z = 0.0;
-                }
+        // fixme quite unstable in the change but then ok
+    } else if (yPos < 0.16) {
+        // corridor, follow left wall
+        if (forwardDist > frontWallDist) {
+            // we need to move forward
+            moveCommand.linear.x = linVel;
+            if (minSx < lateralMinDist) {
+                // too near, turn right
+                ROS_INFO_STREAM("GO DX");
+                moveCommand.angular.z = -1.1 * twistVel;
+            } else if (minSx > 1.05 * lateralMinDist) {
+                // too far, turn left
+                ROS_INFO_STREAM("GO SX");
+                moveCommand.angular.z = +1.1 * twistVel;
             } else {
-                // stop
-                moveCommand.linear.x = 0.0;
+                ROS_INFO_STREAM("AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
-                isManualModeDone = true;
             }
         } else {
-            // misaligned, fast correction
-            moveCommand.linear.x = 0.1;
-            if (y + 3.14 / 2 < 0) {
-                ROS_INFO_STREAM("FAST DX");
-                moveCommand.angular.z = +twistVel;
-            }else {
-                ROS_INFO_STREAM("FAST SX");
-                moveCommand.angular.z = -twistVel;
-            }
+            // stop
+            moveCommand.linear.x = 0.0;
+            moveCommand.angular.z = 0.0;
+            isManualModeDone = true;
         }
     }
     velPub.publish(moveCommand);
