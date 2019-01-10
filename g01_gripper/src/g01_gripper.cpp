@@ -280,7 +280,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_INFO_STREAM("Cylinder will be rotated");
         }
 
-        if (!moveManipulator(destPose, group)) {
+        if (!moveManipulator(destPose, group)) {//TODO: THIS IS THE POINT WHERE IT ALWAYS FAILS
             // try to go back down (less to be in a safe position)
             ROS_INFO_STREAM("FAILURE2");
             pose = group.getCurrentPose().pose;
@@ -296,7 +296,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             // save new object position
             obj.pose.position = group.getCurrentPose().pose.position;
             obj.pose.position.z -= 0.05;
-            remaining.emplace_back(obj);
+            //remaining.emplace_back(obj);
             continue;
         }
 
@@ -341,8 +341,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     return remaining;
 }
 
-bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
-                                 moveit::planning_interface::MoveGroupInterface &group) {
+bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
     // cartesian path parameters
     const double JUMP_THRESH = (sim ? 0.0 : 0.1); //fixme no idea if it is a good value
     const double EEF_STEP = 0.01;
@@ -357,8 +356,11 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     // if the planning is better than minThr retry with another number of intermediate steps
     // if the planning does not finally succeed return false
     for (unsigned long steps:stepsVector) {
+        moveit_msgs::MoveItErrorCodes errorCode;
         fraction = group.computeCartesianPath(
-                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, false);//fixme this is a bad thing but.. "debug purposes"
+                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, true, &errorCode);
+        if(errorCode.val != 1)
+            ROS_INFO_STREAM("MOVEIT_ERROR_CODE:" << errorCode);
         if (fraction >= succThr) {
             // very good plan
             bestFraction = fraction;
@@ -724,5 +726,5 @@ void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
     odom_to_world = tfBuffer.lookupTransform("marrtino_odom", "world", ros::Time(0), ros::Duration(1.0) );
     tf2::doTransform(msgOdom->pose.pose, LZPose, odom_to_world);
     //LZPose = LZPoseStamped.pose.pose;
-    LZPose.position.z = 0.7;
+    LZPose.position.z = 1.2;
 }
