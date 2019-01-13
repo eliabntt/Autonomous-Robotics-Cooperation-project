@@ -26,7 +26,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
     //marrtino pose
     //marrPoseSub = n.subscribe("/marrtino/map", 1, &G01Gripper::marrPoseCallback, this);
-    testPose();
+//    testPose();
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
@@ -88,9 +88,9 @@ G01Gripper::G01Gripper() : command(), n() {
     poseLZ.position.y = 1.1;
     poseLZ.position.z = 10;// useless
     poseLZ.orientation = initialPose.orientation;
-    */
-    LZPose.orientation = initialPose.orientation;
-    ObjectBox box(LZPose);
+
+    LZPose.orientation = initialPose.orientation;*/
+    ObjectBox box = ObjectBox();
 
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
@@ -302,7 +302,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
-        pose.position.z -= 0.4;
 
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)

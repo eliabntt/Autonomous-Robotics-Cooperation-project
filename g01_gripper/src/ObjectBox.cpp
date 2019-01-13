@@ -3,6 +3,7 @@
 //
 
 #include <ObjectBox.h>
+#include <tf2_ros/transform_listener.h>
 
 /* Scheme of the box
  * --------------> X
@@ -13,31 +14,31 @@
  * Y
  */
 
-ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
+ObjectBox::ObjectBox() {
     names.resize(6);
-    ROS_INFO_STREAM("OB robotPose: x: " << robotPose.position.x << " y: " << robotPose.position.y << " z: " << robotPose.position.z);
-
-    // set box offset w.r.t. world frame using given robot pose
-    // robot position is assumed to be centered
-    // offset refers to upper-left corner of box (corner of 0)
-    double OFFSETX = robotPose.position.x - W / 2; // todo tune signs
-    double OFFSETY = robotPose.position.y - H / 2;
-    double OFFSETZ = 0.2;
-
-    // construct poses (positions in box)
-    // 1/6w 1/4h  3/6w 1/4h  5/6w 1/4h
-    // 1/6w 3/4h  3/6w 3/4h  5/6w 3/4h
-    for (int r = 1; r < 4; r += 2)
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tf2_listener(tfBuffer);
+    geometry_msgs::TransformStamped odom_to_world;
+    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0) );
+    std::vector<geometry_msgs::Pose> newPoses;
+    double OFFSETX = - W / 2; // todo tune signs
+    double OFFSETY = - H / 2;
+    double OFFSETZ = 0.9;
+    for (int r = 1; r < 4; r += 2) {
         for (int c = 1; c < 6; c += 2) {
             geometry_msgs::Pose pose;
             pose.position.x = OFFSETX + (double) c / 6 * W;
             pose.position.y = OFFSETY + (double) r / 4 * H;
-            pose.position.z = robotPose.position.z + OFFSETZ;
-            pose.orientation = robotPose.orientation;
-            poses.emplace_back(pose);
-            ROS_INFO_STREAM("Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);
-
+            pose.position.z = OFFSETZ;
+            pose.orientation.w = 1;
+            tf2::doTransform(pose, pose, odom_to_world);
+            newPoses.emplace_back(pose);
+            ROS_INFO_STREAM(
+                    "Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y
+                                    << " z: " << pose.position.z);
         }
+    }
+    poses = newPoses;
 }
 
 bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
