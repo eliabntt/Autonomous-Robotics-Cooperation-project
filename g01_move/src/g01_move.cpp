@@ -157,7 +157,7 @@ void G01Move::wallFollower(bool forward) { // todo tests needed here
 void G01Move::rotateDX() {
     ROS_INFO_STREAM("ROTATION START");
 
-    double r, p, y, tr, tp, ty;
+    double r, p, y, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ty = y;     // current yaw
     ty -= 3.14; // target yaw
@@ -208,13 +208,13 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
-    // fixme do not consider this dist if not properly aligned (corr entrance: it stops very early)
     forwardDist = msg->ranges[size / 2];
 }
 
 void G01Move::forwardCallback() {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
 
+    // fixme do not consider forwardDist if not properly aligned (corr entrance: it stops very early)
     // corridor, follow left wall
     if (forwardDist > frontWallDist) {
         // we need to move forward
@@ -266,10 +266,10 @@ void G01Move::backwardCallback() {
         moveCommand.linear.x = 0.8 * linVel;
         if (avgSx < 1.15 * lateralMinDist) {
             ROS_INFO_STREAM("LS GO DX");
-            moveCommand.angular.z = +4 * twistVel;
+            moveCommand.angular.z = -3 * twistVel;
         } else if (avgDx < 1.15 * lateralMinDist) {
             ROS_INFO_STREAM("LS GO SX");
-            moveCommand.angular.z = -2 * twistVel;
+            moveCommand.angular.z = +3 * twistVel;
         } else if (val < 0.4) {
             ROS_INFO_STREAM("LS AVANTI SAVOIA");
             moveCommand.angular.z = 0;
@@ -283,11 +283,11 @@ void G01Move::backwardCallback() {
             if (minSx < lateralMinDist) {
                 // too near, turn right
                 ROS_INFO_STREAM("GO DX");
-                moveCommand.angular.z = +1.1 * twistVel;
+                moveCommand.angular.z = -twistVel;
             } else if (minSx > 1.05 * lateralMinDist) {
                 // too far, turn left
                 ROS_INFO_STREAM("GO SX");
-                moveCommand.angular.z = -1.1 * twistVel;
+                moveCommand.angular.z = +twistVel;
             } else {
                 ROS_INFO_STREAM("AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
