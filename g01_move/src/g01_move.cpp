@@ -27,7 +27,7 @@ G01Move::G01Move() : n(), spinner(2) {
     corridorEntrance.target_pose.pose.position.x = 0.4;
     corridorEntrance.target_pose.pose.position.y = -1.6;
     corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 3), corridorEntrance.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);  // fixme corridor debug
 
     corridorInside.target_pose.pose.position.x = 0.6;
@@ -53,7 +53,7 @@ G01Move::G01Move() : n(), spinner(2) {
     unloadPoint.target_pose.pose.position.y = -0.5;
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
-    //success = moveToGoal(unloadPoint); // fixme corridor debug
+    success = moveToGoal(unloadPoint); // fixme corridor debug
     spinner.stop();
     ros::shutdown();
 }
@@ -165,7 +165,7 @@ void G01Move::rotateDX() {
 
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.15;
-    moveCommand.angular.z = - 4 * twistVel;
+    moveCommand.angular.z = -4 * twistVel;
     while (fabs(y - ty) > 0.1) {
         velPub.publish(moveCommand);
         ros::Duration(0.1).sleep();
@@ -262,6 +262,7 @@ void G01Move::backwardCallback() {
     ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
 
     if (yPos > 0.16) {
+        //fixme awful!!
         // large space
         moveCommand.linear.x = 0.8 * linVel;
         if (avgSx < 1.15 * lateralMinDist) {
@@ -275,7 +276,7 @@ void G01Move::backwardCallback() {
             moveCommand.angular.z = 0;
         }
         // fixme quite unstable in the change but then ok
-    } else if (yPos < 0.16) {
+    } else {
         // corridor, follow left wall
         if (forwardDist > frontWallDist) {
             // we need to move forward
@@ -292,14 +293,28 @@ void G01Move::backwardCallback() {
                 ROS_INFO_STREAM("AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
             }
-        } else {
-            // stop
+        } else if (yPos > -1.2) {
+            moveCommand.linear.x = linVel;
+            if (minSx < lateralMinDist) {
+                // too near, turn right
+                ROS_INFO_STREAM("GO DX");
+                moveCommand.angular.z = -2 * twistVel;
+            } else if (minSx > 1.05 * lateralMinDist) {
+                // too far, turn left
+                ROS_INFO_STREAM("GO SX");
+                moveCommand.angular.z = +2 * twistVel;
+            } else {
+                ROS_INFO_STREAM("AVANTI SAVOIA");
+                moveCommand.angular.z = 0.0;
+            }
+        } else {     // stop
             moveCommand.linear.x = 0.0;
             moveCommand.angular.z = 0.0;
             isManualModeDone = true;
         }
     }
     velPub.publish(moveCommand);
+    ros::Duration(0.1).sleep();
 }
 
 //
