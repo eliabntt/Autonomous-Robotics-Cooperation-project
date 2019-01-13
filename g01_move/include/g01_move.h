@@ -33,7 +33,7 @@ private:
     ros::AsyncSpinner spinner;
 
     // interesting poses
-    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, unloadPoint;
+    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, unloadPoint;
 
     // pose subscription stuff
     geometry_msgs::Pose marrPose, marrPoseOdom;
@@ -47,7 +47,6 @@ private:
     bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
-    void changePadding(bool increase);
     void recoverManual(bool rot = false);
 
     // corridor part
