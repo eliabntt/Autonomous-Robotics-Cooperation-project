@@ -25,8 +25,8 @@ G01Gripper::G01Gripper() : command(), n() {
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
     //marrtino pose
-    marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
-
+    //marrPoseSub = n.subscribe("/marrtino/map", 1, &G01Gripper::marrPoseCallback, this);
+    testPose();
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
@@ -715,16 +715,36 @@ void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group)
     group.setJointValueTarget(LZ_JOINT_POS);
     if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
         group.move();
+    else
+        ROS_INFO_STREAM("MOVEMENT TO LZ BY JOINTS FAILED");
+}
+/*
+void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
+    ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
+    ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tf2_listener(tfBuffer);
+    geometry_msgs::TransformStamped odom_to_world;
+    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(1.0) );
+    tf2::doTransform(msgOdom->pose.pose, LZPose, odom_to_world);
+    //LZPose = LZPoseStamped.pose.pose;
+    LZPose.position.z = 1.2;
+    marrPoseSub.shutdown();
+    ROS_INFO_STREAM("Marrtino pose received, shutting down listener");
 }
 
-void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
+*/
+
+void G01Gripper::testPose() {
     //ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
     //ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
-    geometry_msgs::TransformStamped odom_to_world;
-    odom_to_world = tfBuffer.lookupTransform("marrtino_odom", "world", ros::Time(0), ros::Duration(1.0) );
-    tf2::doTransform(msgOdom->pose.pose, LZPose, odom_to_world);
-    //LZPose = LZPoseStamped.pose.pose;
-    LZPose.position.z = 1.2;
+    geometry_msgs::TransformStamped basket_to_world;
+    basket_to_world = tfBuffer.lookupTransform("world", "marrtino_basket", ros::Time(0), ros::Duration(10.0) );
+    geometry_msgs::Pose basketPose;
+    basketPose.orientation.w =1;
+    ROS_INFO_STREAM("BASKETPOSE: " << basketPose);
+    tf2::doTransform(basketPose, LZPose, basket_to_world);
+    ROS_INFO_STREAM("LZPOSE: " << LZPose);
 }
