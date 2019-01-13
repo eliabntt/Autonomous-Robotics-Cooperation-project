@@ -22,7 +22,7 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     // offset refers to upper-left corner of box (corner of 0)
     double OFFSETX = robotPose.position.x - W / 2; // todo tune signs
     double OFFSETY = robotPose.position.y - H / 2;
-    double OFFSETZ = 1.2; // fixme raised a bit for debug purposes
+    double OFFSETZ = 0.2;
 
     // construct poses (positions in box)
     // 1/6w 1/4h  3/6w 1/4h  5/6w 1/4h
@@ -32,7 +32,7 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
             geometry_msgs::Pose pose;
             pose.position.x = OFFSETX + (double) c / 6 * W;
             pose.position.y = OFFSETY + (double) r / 4 * H;
-            pose.position.z = OFFSETZ;
+            pose.position.z = robotPose.position.z + OFFSETZ;
             pose.orientation = robotPose.orientation;
             poses.emplace_back(pose);
             ROS_INFO_STREAM("Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);

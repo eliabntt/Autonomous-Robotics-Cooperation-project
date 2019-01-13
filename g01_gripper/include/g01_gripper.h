@@ -61,7 +61,7 @@ private:
     bool isHeld(int howMuch);
     //marrtino pose callback
     void marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom);
-
+    void testPose();
         // MEMBERS
     bool sim;
     ros::NodeHandle n;
