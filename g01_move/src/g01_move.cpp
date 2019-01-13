@@ -13,19 +13,21 @@ G01Move::G01Move() : n(), spinner(2) {
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
     marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100, &G01Move::subPoseOdomCallback, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 1000);
+    scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
+
     spinner.start();
 
     nearCorridor.target_pose.pose.position.x = 0.0;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
-    //bool success = moveToGoal(nearCorridor); // fixme corridor debug
+    bool success = moveToGoal(nearCorridor); // fixme corridor debug
 
     corridorEntrance.target_pose.pose.position.x = 0.6;
     corridorEntrance.target_pose.pose.position.y = -1.1;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorEntrance.target_pose.pose.orientation);
-    //success = moveToGoal(corridorEntrance);  // fixme corridor debug
+    success = moveToGoal(corridorEntrance);  // fixme corridor debug
 
     // wall follower to reach load point
     wallFollower(true);
@@ -44,7 +46,7 @@ G01Move::G01Move() : n(), spinner(2) {
     unloadPoint.target_pose.pose.position.y = -0.5;
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
-    //success = moveToGoal(client, unloadPoint); // fixme corridor debug
+    //success = moveToGoal(unloadPoint); // fixme corridor debug
     ros::shutdown();
 }
 
@@ -167,15 +169,13 @@ bool G01Move::inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos) {
 void G01Move::wallFollower(bool forward) { // todo tests needed here
     ROS_INFO_STREAM("WALL START");
     isManualModeDone = false;
-
-    if (forward)
-        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::forwardCallback, this);
-    else
-        scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::backwardCallback, this);
-
-    // wait for movement to finish
-    while (!isManualModeDone) {} // todo this is crap
-    ROS_INFO_STREAM("WALL END");
+    spinner.start();
+    while (!isManualModeDone)
+        if (forward)
+            forwardCallback();
+        else
+            backwardCallback();
+    spinner.stop();
 }
 
 void G01Move::rotateDX() {
@@ -202,10 +202,7 @@ void G01Move::rotateDX() {
     ROS_INFO_STREAM("ROTATION END");
 }
 
-void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // do not consider readings when not in the right zone
-    if (isManualModeDone) return;
-
+void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // select values from the whole range
     size = (int) msg->intensities.size();
     avgDx = 0;
@@ -236,6 +233,9 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // distance from front wall
     // fixme do not consider this dist if not properly aligned (corr entrance: it stops very early)
     forwardDist = msg->ranges[size / 2];
+}
+
+void G01Move::forwardCallback() {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
 
     // corridor, follow left wall
@@ -263,40 +263,7 @@ void G01Move::forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
     velPub.publish(moveCommand);
 }
 
-void G01Move::backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg) {
-    // do not consider readings when not in the right zone
-    if (isManualModeDone) return;
-
-    // select values from the whole range
-    size = (int) msg->intensities.size();
-    avgDx = 0;
-    avgSx = 0;
-    minDx = msg->ranges[0];
-    maxDx = msg->ranges[0];
-    minSx = msg->ranges[size - 1];
-    maxSx = msg->ranges[size - 1];
-
-    // scan and save min avg and max for both sides
-    // scan direction is right to left
-    for (int i = 0; i < howMuchDataToUse; i++) {
-        val = msg->ranges[i];
-        if (val < minDx) minDx = val;
-        if (val > maxDx) maxDx = val;
-        avgDx += val;
-    }
-    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
-        val = msg->ranges[i];
-        if (val < minSx) minSx = val;
-        if (val > maxSx) maxSx = val;
-        avgSx += val;
-    }
-    avgDx /= howMuchDataToUse;
-    avgSx /= howMuchDataToUse;
-    val = fabs(avgSx - avgDx);
-
-    // distance from front wall
-    forwardDist = msg->ranges[size / 2];
-
+void G01Move::backwardCallback() {
     // position from odom
     double yPos, r, p, y;
     yPos = marrPoseOdom.position.y;

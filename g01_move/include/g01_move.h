@@ -66,8 +66,9 @@ private:
     // laser-based moving methods
     void wallFollower(bool forward);
     void rotateDX();
-    void forwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
-    void backwardCallback(const sensor_msgs::LaserScan::ConstPtr &msg);
+    void forwardCallback();
+    void backwardCallback();
+    void readLaser(const sensor_msgs::LaserScan::ConstPtr &msg);
 };
 
 #endif
