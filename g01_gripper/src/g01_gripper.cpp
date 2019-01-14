@@ -26,9 +26,9 @@ G01Gripper::G01Gripper() : command(), n() {
 
 
     //marrtino pose
-    marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
-    ros::Duration(1).sleep();
-    ObjectBox box = ObjectBox(LZPose);
+    //marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
+    //ros::Duration(1).sleep();
+    ObjectBox box = ObjectBox();
     // testPose();
 
     // gazebo fixes
@@ -272,6 +272,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
 
         // calculate the new orientation of the "wrist"
+        destPose.orientation = group.getCurrentPose().pose.orientation;
         if (rotate) {
             r = 0, p = -3.14 / 3, y = 0;
             tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
@@ -293,7 +294,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_INFO_STREAM(destPose.position.x);
             ROS_INFO_STREAM(destPose.position.y);
 
-            pose.position.z -= 0.3;
+            pose.position.z -= 0.1;
             moveManipulator(pose, group);
 
             // detach object
@@ -310,11 +311,13 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             planningSceneIF.removeCollisionObjects(toRemove);
             //remaining.emplace_back(obj);
             continue;
+        } else {
+            ROS_INFO_STREAM("movement to placement position completed");
         }
-
+/*
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
-
+        pose.position.z -= 0.1;
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)
         if (!moveManipulator(pose, group)) {
@@ -322,8 +325,10 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
             goHome(group);
             continue;
+        } else {
+            ROS_INFO_STREAM("arm lowering completed");
         }
-
+*/
         // open the gripper, adjust rviz and gazebo
         group.detachObject(obj.header.frame_id);
         if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
@@ -386,8 +391,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
 
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr){
-        ROS_INFO_STREAM(bestFraction);
-        ROS_INFO_STREAM("PLANNING FAILED: results under minimal threshold");
+        ROS_INFO_STREAM("PLANNING FAILED: result [" << bestFraction << "] under minimal threshold");
         return false;
     }
 
