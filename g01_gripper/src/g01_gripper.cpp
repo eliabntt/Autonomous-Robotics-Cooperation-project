@@ -24,9 +24,13 @@ G01Gripper::G01Gripper() : command(), n() {
             "/robotiq_hands/l_hand/SModelRobotOutput", 1);
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
+
     //marrtino pose
-    //marrPoseSub = n.subscribe("/marrtino/map", 1, &G01Gripper::marrPoseCallback, this);
-//    testPose();
+    marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
+    ros::Duration(1).sleep();
+    ObjectBox box = ObjectBox(LZPose);
+    // testPose();
+
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
@@ -90,7 +94,6 @@ G01Gripper::G01Gripper() : command(), n() {
     poseLZ.orientation = initialPose.orientation;
 
     LZPose.orientation = initialPose.orientation;*/
-    ObjectBox box = ObjectBox();
 
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
@@ -284,6 +287,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             // try to go back down (less to be in a safe position)
             ROS_INFO_STREAM("FAILURE2");
             pose = group.getCurrentPose().pose;
+            ROS_INFO_STREAM(pose.position.x);
+            ROS_INFO_STREAM(pose.position.y);
+
+            ROS_INFO_STREAM(destPose.position.x);
+            ROS_INFO_STREAM(destPose.position.y);
+
             pose.position.z -= 0.3;
             moveManipulator(pose, group);
 
@@ -346,7 +355,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
     // cartesian path parameters
     const double JUMP_THRESH = (sim ? 0.0 : 0.1); //fixme no idea if it is a good value
-    const double EEF_STEP = 0.01;
+    const double EEF_STEP = 0.1;
     moveit_msgs::RobotTrajectory traj, trajTemp;
 
     // planning trials parameters (thresholds and temp)
@@ -377,6 +386,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
 
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr){
+        ROS_INFO_STREAM(bestFraction);
         ROS_INFO_STREAM("PLANNING FAILED: results under minimal threshold");
         return false;
     }
@@ -720,22 +730,12 @@ void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group)
     else
         ROS_INFO_STREAM("MOVEMENT TO LZ BY JOINTS FAILED");
 }
-/*
+
 void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
-    ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
-    ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
-    tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tf2_listener(tfBuffer);
-    geometry_msgs::TransformStamped odom_to_world;
-    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(1.0) );
-    tf2::doTransform(msgOdom->pose.pose, LZPose, odom_to_world);
-    //LZPose = LZPoseStamped.pose.pose;
-    LZPose.position.z = 1.2;
+    LZPose = msgOdom->pose.pose;
     marrPoseSub.shutdown();
     ROS_INFO_STREAM("Marrtino pose received, shutting down listener");
 }
-
-*/
 
 void G01Gripper::testPose() {
     //ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
