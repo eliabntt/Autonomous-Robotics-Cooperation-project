@@ -296,6 +296,9 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             // save new object position
             obj.pose.position = group.getCurrentPose().pose.position;
             obj.pose.position.z -= 0.05;
+
+            std::vector<std::string> toRemove = {obj.header.frame_id};
+            planningSceneIF.removeCollisionObjects(toRemove);
             //remaining.emplace_back(obj);
             continue;
         }
