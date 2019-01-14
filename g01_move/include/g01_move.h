@@ -12,7 +12,7 @@
 #include <tf/transform_datatypes.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_srvs/Empty.h>
-
+#include <math.h>
 #include <dynamic_reconfigure/DoubleParameter.h>
 #include <dynamic_reconfigure/Reconfigure.h>
 #include <dynamic_reconfigure/Config.h>
@@ -48,7 +48,7 @@ private:
     bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
     bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
     void recoverManual(bool rot = false);
-
+    void changeVel(bool negative);
     // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;

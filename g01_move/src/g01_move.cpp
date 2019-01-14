@@ -48,11 +48,18 @@ G01Move::G01Move() : n(), spinner(2) {
     // wall follower to exit corridor
     wallFollower(false);
 
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 0.4 * 3.14),
+                          corridorEntrance.target_pose.pose.orientation);
+    success = moveToGoal(corridorEntrance);  // fixme corridor debug
+
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), nearCorridor.target_pose.pose.orientation);
+    success = moveToGoal(nearCorridor); // fixme corridor debug
+
     // move to unload position
-    unloadPoint.target_pose.pose.position.x = -1.65;
-    unloadPoint.target_pose.pose.position.y = -0.5;
+    unloadPoint.target_pose.pose.position.x = -1.57;
+    unloadPoint.target_pose.pose.position.y = -0.37;
     unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint); // fixme corridor debug
     spinner.stop();
     ros::shutdown();
@@ -84,6 +91,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
                 backed = false;
                 rotated = false;
+                changeVel(false);
             }
 
             if (!rotated) {
@@ -100,6 +108,19 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             }
         }
     }
+}
+
+void G01Move::changeVel(bool negative) {
+    dynamic_reconfigure::ReconfigureRequest srv_req;
+    dynamic_reconfigure::ReconfigureResponse srv_resp;
+    dynamic_reconfigure::DoubleParameter double_param;
+    dynamic_reconfigure::Config conf;
+
+    double_param.name = "min_vel_x";
+    double_param.value = negative ? -0.15 : 0.1;
+    conf.doubles.push_back(double_param);
+    srv_req.config = conf;
+    ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
 }
 
 void G01Move::recoverManual(bool rot) {
@@ -129,9 +150,32 @@ void G01Move::recoverManual(bool rot) {
         }
     } else {
         ROS_INFO_STREAM("Backing up linear");
-        moveCommand.linear.x = -defX;
-    }
 
+        tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y, marrPoseOdom.orientation.z,
+                                marrPoseOdom.orientation.w);
+        tf::Vector3 vector(0.2, 0, 0);
+        tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
+
+        changeVel(true);
+        move_base_msgs::MoveBaseGoal goal_temp;
+        goal_temp.target_pose.header.frame_id = "marrtino_map";
+        goal_temp.target_pose.header.stamp = ros::Time::now();
+        goal_temp.target_pose.pose = marrPoseOdom;
+        goal_temp.target_pose.pose.position.x -= rotated_vector.getX();
+        goal_temp.target_pose.pose.position.y -= rotated_vector.getY();
+
+        ROS_INFO_STREAM("x " << marrPoseOdom.position.x << " y " << marrPoseOdom.position.y << " wanted "
+                             << goal_temp.target_pose.pose.position.x << " " << goal_temp.target_pose.pose.position.y);
+
+        MoveBaseClient client_temp("marrtino/move_base", false);
+        ROS_INFO("Sending goal");
+        client_temp.sendGoal(goal_temp);
+        client_temp.waitForResult();
+
+        if (client_temp.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+            changeVel(false);
+        }
+    }
     velPub.publish(moveCommand);
     ros::Duration(2).sleep();
 }
@@ -261,16 +305,16 @@ void G01Move::backwardCallback() {
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
 
-    if (yPos > 0.16) {
-        //fixme awful!!
+    if (yPos > 0.2) {
+        //fixme better!!
         // large space
-        moveCommand.linear.x = 0.8 * linVel;
+        moveCommand.linear.x = 0.1;
         if (avgSx < 1.15 * lateralMinDist) {
             ROS_INFO_STREAM("LS GO DX");
-            moveCommand.angular.z = -3 * twistVel;
+            moveCommand.angular.z = -4 * twistVel;
         } else if (avgDx < 1.15 * lateralMinDist) {
             ROS_INFO_STREAM("LS GO SX");
-            moveCommand.angular.z = +3 * twistVel;
+            moveCommand.angular.z = +4 * twistVel;
         } else if (val < 0.4) {
             ROS_INFO_STREAM("LS AVANTI SAVOIA");
             moveCommand.angular.z = 0;
