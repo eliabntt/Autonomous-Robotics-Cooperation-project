@@ -14,16 +14,16 @@
  * Y
  */
 
-ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
+ObjectBox::ObjectBox() {
     names.resize(6);
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     geometry_msgs::TransformStamped odom_to_world;
     odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0) );
     std::vector<geometry_msgs::Pose> newPoses;
-    ROS_INFO_STREAM(robotPose.position.x);
-    double OFFSETX = robotPose.position.x - H/2; // todo tune signs
-    double OFFSETY = robotPose.position.y + W/2;
+    //ROS_INFO_STREAM(robotPose.position.x);
+    double OFFSETX = - H/2; // todo tune signs
+    double OFFSETY = + W/2;
     double OFFSETZ = 0.9;
     for (int r = 1; r < 4; r += 2) {
         for (int c = 1; c < 6; c += 2) {

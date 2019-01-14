@@ -19,7 +19,7 @@ private:
     std::vector<std::string> names;// todo maybe unneeded, to save objects name
 
 public:
-    ObjectBox(geometry_msgs::Pose robotPose);
+    ObjectBox();
     std::string posOccupiedBy(int pos);
     bool isEmpty();
     bool isFull();
