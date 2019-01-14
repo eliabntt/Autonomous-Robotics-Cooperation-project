@@ -325,11 +325,11 @@ void G01Move::backwardCallback() {
         if (forwardDist > frontWallDist) {
             // we need to move forward
             moveCommand.linear.x = linVel;
-            if (minSx < lateralMinDist) {
+            if (avgSx < lateralMinDist) {
                 // too near, turn right
                 ROS_INFO_STREAM("GO DX");
                 moveCommand.angular.z = -twistVel;
-            } else if (minSx > 1.1 * lateralMinDist) {
+            } else if (avgSx > 1.1 * lateralMinDist) {
                 // too far, turn left
                 ROS_INFO_STREAM("GO SX");
                 moveCommand.angular.z = +twistVel;
@@ -340,11 +340,11 @@ void G01Move::backwardCallback() {
         } else if (yPos > -1.1) {
             // exit, extra twist if needed
             moveCommand.linear.x = linVel;
-            if (minSx < lateralMinDist) {
+            if (avgSx < lateralMinDist) {
                 // too near, turn right
                 ROS_INFO_STREAM("EXIT GO DX");
                 moveCommand.angular.z = -2 * twistVel;
-            } /*else if (minSx > 1.05 * lateralMinDist) {
+            } /*else if (avgSx > 1.05 * lateralMinDist) {
                 // too far, turn left
                 ROS_INFO_STREAM("EXIT GO SX");
                 moveCommand.angular.z = +2 * twistVel;
