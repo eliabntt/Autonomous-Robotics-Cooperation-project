@@ -272,19 +272,21 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
 
         // calculate the new orientation of the "wrist"
-        destPose.orientation = group.getCurrentPose().pose.orientation;
         if (rotate) {
             r = 0, p = -3.14 / 3, y = 0;
-            tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
-            qRot.normalize();
-            tf::Quaternion qFinal = qRot * tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
-                                                          destPose.orientation.z, destPose.orientation.w);
-            qFinal.normalize();
-            tf::quaternionTFToMsg(qFinal, destPose.orientation);
             ROS_INFO_STREAM("Cylinder will be rotated");
+        } else {
+            r = 0, p = -3.14 / 2, y = 0;
         }
 
-        if (!moveManipulator(destPose, group)) {//TODO: THIS IS THE POINT WHERE IT ALWAYS FAILS
+        tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
+        qRot.normalize();
+        tf::Quaternion qFinal = qRot * tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
+                                                      destPose.orientation.z, destPose.orientation.w);
+        qFinal.normalize();
+        tf::quaternionTFToMsg(qFinal, destPose.orientation);
+
+        if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
             ROS_INFO_STREAM("FAILURE2");
             pose = group.getCurrentPose().pose;
