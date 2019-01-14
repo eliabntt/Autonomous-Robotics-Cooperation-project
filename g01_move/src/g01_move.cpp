@@ -148,6 +148,9 @@ void G01Move::recoverManual(bool rot) {
                 moveCommand.angular.z = defZ;
             }
         }
+
+        velPub.publish(moveCommand);
+        ros::Duration(1).sleep();
     } else {
         ROS_INFO_STREAM("Backing up linear");
 
@@ -176,8 +179,6 @@ void G01Move::recoverManual(bool rot) {
             changeVel(false);
         }
     }
-    velPub.publish(moveCommand);
-    ros::Duration(2).sleep();
 }
 
 bool G01Move::inPlaceCW90(move_base_msgs::MoveBaseGoal &pos) {
@@ -305,7 +306,7 @@ void G01Move::backwardCallback() {
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
 
-    if (yPos > 0.2) {
+    if (yPos > 0.3) {
         //fixme better!!
         // large space
         moveCommand.linear.x = 0.1;
