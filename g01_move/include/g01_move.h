@@ -2,6 +2,7 @@
 // Created by eliabntt on 28/11/18.
 //
 #include <utility>
+#include <math.h>
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/Twist.h>
@@ -12,7 +13,6 @@
 #include <tf/transform_datatypes.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_srvs/Empty.h>
-#include <math.h>
 #include <dynamic_reconfigure/DoubleParameter.h>
 #include <dynamic_reconfigure/Reconfigure.h>
 #include <dynamic_reconfigure/Config.h>
@@ -45,10 +45,9 @@ private:
 
     // plan-based moving methods
     bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
-    bool inPlaceCW90(move_base_msgs::MoveBaseGoal &pos);
-    bool inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos);
     void recoverManual(bool rot = false);
     void changeVel(bool negative);
+
     // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;

@@ -21,13 +21,13 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
-    bool success = moveToGoal(nearCorridor); // fixme corridor debug
+    bool success = moveToGoal(nearCorridor);
 
     corridorEntrance.target_pose.pose.position.x = 0.4;
     corridorEntrance.target_pose.pose.position.y = -1.6;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
-    success = moveToGoal(corridorEntrance);  // fixme corridor debug
+    success = moveToGoal(corridorEntrance);
 
     corridorInside.target_pose.pose.position.x = 0.55;
     corridorInside.target_pose.pose.position.y = -1.3;
@@ -178,14 +178,6 @@ void G01Move::recoverManual(bool rot) {
             changeVel(false);
         }
     }
-}
-
-bool G01Move::inPlaceCW90(move_base_msgs::MoveBaseGoal &pos) {
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, -3.14 / 2), pos.target_pose.pose.orientation);
-}
-
-bool G01Move::inPlaceCCW90(move_base_msgs::MoveBaseGoal &pos) {
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), pos.target_pose.pose.orientation);
 }
 
 void G01Move::wallFollower(bool forward) {
