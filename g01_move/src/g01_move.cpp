@@ -55,13 +55,15 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
+    //fixme maybe one here
     // move to unload position
-    unloadPoint.target_pose.pose.position.x = -1.57;
+    unloadPoint.target_pose.pose.position.x = -1.55;
     unloadPoint.target_pose.pose.position.y = -0.37;
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
 
+    //todo find clear space to start
     spinner.stop();
     ros::shutdown();
 }
@@ -76,33 +78,44 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
+    bool allowNeg = false;
+    changeVel(false); //just to be sure
     geometry_msgs::Pose currPose = marrPose;
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
         goal.target_pose.header.stamp = ros::Time::now();
 
-        ROS_INFO("Sending goal");
+        ROS_INFO("Sending goal global");
         client.sendGoal(goal);
+        ros::Duration(1).sleep();
+
+        double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
+        double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
+        if (diffX > +0.1 || diffX < -0.1 ||
+            diffY < -0.1 || diffY > +0.1) {
+            ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
+            backed = false;
+            rotated = false;
+            allowNeg = false;
+            changeVel(false);
+        }
+
         client.waitForResult();
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
-            if (currPose.position.x != marrPose.position.x) {
-                ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
-                backed = false;
-                rotated = false;
-                changeVel(false);
-            }
-
-            if (!rotated) {
-                recoverManual(true);
-                rotated = true;
-                currPose = marrPose;
-            } else if (!backed) {
+            if (!backed) {
                 recoverManual();
                 backed = true;
-                currPose = marrPose;
+                currPose = marrPoseOdom;
+            } else if (!rotated) {
+                recoverManual(true);
+                rotated = true;
+                currPose = marrPoseOdom;
+            } else if (!allowNeg) {
+                changeVel(true);
+                allowNeg = true;
             } else {
                 ROS_ERROR_STREAM("Error, robot failed moving");
                 return false;
@@ -129,22 +142,21 @@ void G01Move::recoverManual(bool rot) {
     //todo refine
     moveCommand.linear.x = 0;
     moveCommand.angular.z = 0;
-    double defZ = 0.4, defX = 0.1;
+    double defZ = 0.4, defX = 0.2;
 
     if (rot) {
-        ROS_INFO_STREAM("Backing up rotating");
         moveCommand.linear.x = defX;
         if (avgSx > avgDx) {
-            moveCommand.angular.z = defZ;
-            if (avgDx < 0.22) {
-                moveCommand.linear.x = -defX;
-                moveCommand.angular.z = -defZ;
-            }
-        } else {
             moveCommand.angular.z = -defZ;
-            if (avgSx < 0.22) {
+            if (avgDx < 0.3) {
                 moveCommand.linear.x = -defX;
                 moveCommand.angular.z = defZ;
+            }
+        } else {
+            moveCommand.angular.z = defZ;
+            if (avgSx < 0.3) {
+                moveCommand.linear.x = -defX;
+                moveCommand.angular.z = -defZ;
             }
         }
 
@@ -155,7 +167,7 @@ void G01Move::recoverManual(bool rot) {
 
         tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y,
                                 marrPoseOdom.orientation.z, marrPoseOdom.orientation.w);
-        tf::Vector3 vector(0.2, 0, 0);
+        tf::Vector3 vector(0.4, 0, 0);
         tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
 
         changeVel(true);
@@ -282,7 +294,8 @@ void G01Move::forwardCallback() {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
-    } else if (marrPoseOdom.position.y < 1.3) {
+    } else if (marrPoseOdom.position.y < 1.1)//fixme wrt linear velocity(delay+velocity long shot)
+    {
         moveCommand.linear.x = linVel;
         if (avgSx < lateralMinDist) {
             // too near, turn right
@@ -309,7 +322,7 @@ void G01Move::backwardCallback() {
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
 
-    if (yPos > 0.2) {
+    if (yPos > 0.1) {
         // large space
         moveCommand.linear.x = linVel / 2; // just enough to go on
         if (avgSx < 1.15 * lateralMinDist) {
@@ -332,7 +345,7 @@ void G01Move::backwardCallback() {
                 // too near, turn right
                 ROS_INFO_STREAM("GO DX");
                 moveCommand.angular.z = -twistVel;
-            } else if (avgSx > 1.1 * lateralMinDist) {
+            } else if (avgSx > lateralMinDist) {
                 // too far, turn left
                 ROS_INFO_STREAM("GO SX");
                 moveCommand.angular.z = +twistVel;
