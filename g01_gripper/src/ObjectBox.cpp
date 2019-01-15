@@ -34,9 +34,9 @@ ObjectBox::ObjectBox() {
             pose.orientation.w = 1;
             tf2::doTransform(pose, pose, odom_to_world);
             newPoses.emplace_back(pose);
-            ROS_INFO_STREAM(
+            /*ROS_INFO_STREAM(
                     "Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y
-                                    << " z: " << pose.position.z);
+                                    << " z: " << pose.position.z);*/
         }
     }
     poses = newPoses;
@@ -55,7 +55,7 @@ bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
             free[second] = false;
             names.at(first) = name;
             names.at(second) = name;
-            ROS_INFO_STREAM("Pose x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);
+            //ROS_INFO_STREAM("Pose x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);
             return true;
         } else {
             first += 2;

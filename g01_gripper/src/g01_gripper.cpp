@@ -207,7 +207,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         //just to get the right rotation...
         if (!moveManipulator(pose, group)){
-            ROS_INFO_STREAM("well, at least i tried...");
+            ROS_INFO_STREAM("Error while trying to align to the object");
         }
         // get the right altitude for gripper:
         // anti squish countermeasure
@@ -268,7 +268,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         else
             canPlace = box.placeCube(obj.header.frame_id, destPose);
 
-        ROS_INFO_STREAM("Place: " << canPlace << " pose: x: " << destPose.position.x << " y: " << destPose.position.y << " z: " << destPose.position.z);
+        //ROS_INFO_STREAM("Place: " << canPlace << " pose: x: " << destPose.position.x << " y: " << destPose.position.y << " z: " << destPose.position.z);
 
         if (!canPlace)
             ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
@@ -276,7 +276,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // calculate the new orientation of the "wrist"
         if (rotate) {
             r = 0, p = -(3.14 / 3 + 3.14 / 2), y = 0;
-            ROS_INFO_STREAM("Cylinder will be rotated");
+            ROS_INFO_STREAM("Cylinder will be tilted");
         } else {
             r = 0, p = -3.14 / 2, y = 0;
         }
@@ -290,13 +290,13 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
-            ROS_INFO_STREAM("FAILURE2");
+            ROS_INFO_STREAM("Error trying to get into placement position");
             pose = group.getCurrentPose().pose;
-            ROS_INFO_STREAM(pose.position.x);
+            /*ROS_INFO_STREAM(pose.position.x);
             ROS_INFO_STREAM(pose.position.y);
 
             ROS_INFO_STREAM(destPose.position.x);
-            ROS_INFO_STREAM(destPose.position.y);
+            ROS_INFO_STREAM(destPose.position.y);*/
 
             pose.position.z -= 0.1;
             moveManipulator(pose, group);
@@ -392,7 +392,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
             traj = trajTemp;
         }
     }
-    ROS_INFO_STREAM("Best_Fraction: " << bestFraction);
+    //ROS_INFO_STREAM("Best_Fraction: " << bestFraction);
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr){
         ROS_INFO_STREAM("PLANNING FAILED: result [" << bestFraction << "] under minimal threshold");
