@@ -254,7 +254,7 @@ void G01Move::forwardCallback() {
 
     if (marrPoseOdom.position.y < -0.55) {
         // entrance, try to align before following the wall
-        moveCommand.linear.x = linVel*2/3; // just enough to move on
+        moveCommand.linear.x = linVel * 2 / 3; // just enough to move on
         if (avgSx < lateralMinDist) {
             // too near, turn right
             ROS_INFO_STREAM("ENT GO DX");
@@ -281,6 +281,17 @@ void G01Move::forwardCallback() {
         } else {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
+        }
+    } else if (marrPoseOdom.position.y < 1.3) {
+        moveCommand.linear.x = linVel;
+        if (avgSx < lateralMinDist) {
+            // too near, turn right
+            ROS_INFO_STREAM("CRASHING GO DX");
+            moveCommand.angular.z = -3 * twistVel;
+        } else if (avgSx > 1.1 * lateralMinDist) {
+            // too far, turn left
+            ROS_INFO_STREAM("CRASHING GO SX");
+            moveCommand.angular.z = +3 * twistVel;
         }
     } else {
         // stop
