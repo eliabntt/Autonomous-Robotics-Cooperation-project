@@ -139,12 +139,12 @@ void G01Move::changeVel(bool negative) {
 
 void G01Move::recoverManual(bool rot) {
     //resetting previous moveCommand settings
-    //todo refine
     moveCommand.linear.x = 0;
     moveCommand.angular.z = 0;
     double defZ = 0.4, defX = 0.2;
 
     if (rot) {
+        //todo refine
         moveCommand.linear.x = defX;
         if (avgSx > avgDx) {
             moveCommand.angular.z = -defZ;
@@ -178,17 +178,16 @@ void G01Move::recoverManual(bool rot) {
         goal_temp.target_pose.pose.position.x -= rotated_vector.getX();
         goal_temp.target_pose.pose.position.y -= rotated_vector.getY();
 
-        ROS_INFO_STREAM("x " << marrPoseOdom.position.x << " y " << marrPoseOdom.position.y << " wanted "
-                             << goal_temp.target_pose.pose.position.x << " " << goal_temp.target_pose.pose.position.y);
-
         MoveBaseClient client_temp("marrtino/move_base", false);
-        ROS_INFO("Sending goal");
+        ROS_INFO("Sending backup goal");
         client_temp.sendGoal(goal_temp);
         client_temp.waitForResult();
 
         if (client_temp.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             changeVel(false);
+            ROS_INFO_STREAM("Backup goal reached");
         }
+
     }
 }
 
