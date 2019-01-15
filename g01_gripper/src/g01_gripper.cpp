@@ -205,6 +205,10 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // apply correction to pose.orientation
         tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(-diff, 0, 0), pose.orientation);
 
+        //just to get the right rotation...
+        if (!moveManipulator(pose, group)){
+            ROS_INFO_STREAM("well, at least i tried...");
+        }
         // get the right altitude for gripper:
         // anti squish countermeasure
         if (obj.pose.position.z > 1.2)
@@ -271,7 +275,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // calculate the new orientation of the "wrist"
         if (rotate) {
-            r = 0, p = -3.14 / 3, y = 0;
+            r = 0, p = -(3.14 / 3 + 3.14 / 2), y = 0;
             ROS_INFO_STREAM("Cylinder will be rotated");
         } else {
             r = 0, p = -3.14 / 2, y = 0;

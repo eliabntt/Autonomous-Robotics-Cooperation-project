@@ -24,7 +24,7 @@ ObjectBox::ObjectBox() {
     //ROS_INFO_STREAM(robotPose.position.x);
     double OFFSETX = - H/2; // todo tune signs
     double OFFSETY = + W/2;
-    double OFFSETZ = 0.9;
+    double OFFSETZ = 1;
     for (int r = 1; r < 4; r += 2) {
         for (int c = 1; c < 6; c += 2) {
             geometry_msgs::Pose pose;
