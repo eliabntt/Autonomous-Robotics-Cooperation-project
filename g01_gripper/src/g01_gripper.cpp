@@ -211,7 +211,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose.position.z = obj.pose.position.z; // cylinders
         else
             pose.position.z = obj.pose.position.z * 1.1;
-
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
         if (!moveManipulator(pose, group)) {
@@ -222,7 +221,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             remaining.emplace_back(obj);
             continue;
         }
-
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
         int howMuch = 100;
@@ -390,7 +388,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
             traj = trajTemp;
         }
     }
-
+    ROS_INFO_STREAM("Best_Fraction: " << bestFraction);
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr){
         ROS_INFO_STREAM("PLANNING FAILED: result [" << bestFraction << "] under minimal threshold");
