@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="prefix" default="marrtino_"/>
+	<arg name="map_file" default="empty.yaml"/>
+	<arg name="map_frame" default="$(arg prefix)map"/>
+	<arg name="output" default="screen"/>
+	<!-- Run the map server -->
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find g01_move)/maps/$(arg map_file)" output="$(arg output)">
+		<param name="frame_id" value="$(arg map_frame)"/>
+  </node>
+
+</launch>
