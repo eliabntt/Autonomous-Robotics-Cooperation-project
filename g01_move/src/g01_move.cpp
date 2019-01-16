@@ -43,7 +43,14 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::Duration(2).sleep();
 
     // rotation and return
-    rotateDX();
+    //rotateDX();
+
+    // pose other corr entrance
+    unloadPoint.target_pose.pose.position.x = 0.58;
+    unloadPoint.target_pose.pose.position.y = 0.65;
+    unloadPoint.target_pose.pose.position.z = 0.0;
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, -3.14/2), unloadPoint.target_pose.pose.orientation);
+    success = moveToGoal(unloadPoint);
 
     // wall follower to exit corridor
     wallFollower(false);
@@ -55,8 +62,8 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
-    //fixme maybe one here
-    // move to unload position
+    //fixme maybe one more pos here
+
     unloadPoint.target_pose.pose.position.x = -1.6;
     unloadPoint.target_pose.pose.position.y = -0.44;
     unloadPoint.target_pose.pose.position.z = 0.0;
@@ -216,7 +223,7 @@ void G01Move::rotateDX() {
     ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y << " TY " << ty);
 
     // rotate until desired yaw is reached
-    moveCommand.linear.x = 0.2;
+    moveCommand.linear.x = 0.15;
     moveCommand.angular.z = -3 * twistVel;
     while (fabs(y - ty) > 0.1) {
         velPub.publish(moveCommand);
@@ -267,45 +274,29 @@ void G01Move::forwardCallback() {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
     // corridor, follow left wall
 
-    if (marrPoseOdom.position.y < -1) {
-        // entrance, try to align before following the wall
-
-        moveCommand.linear.x = linVel * 2 / 3; // just enough to move on
-        if (avgSx < lateralMinDist) {
-            // too near, turn right
-            ROS_INFO_STREAM("ENT GO DX");
-            moveCommand.angular.z = -2 * twistVel;
-        } else if (avgSx > 1.1 * lateralMinDist) {
-            // too far, turn left
-            ROS_INFO_STREAM("ENT GO SX");
-            moveCommand.angular.z = +0.5 * twistVel;
-        } else {
-            ROS_INFO_STREAM("ENT AVANTI SAVOIA");
-            moveCommand.angular.z = 0.0;
-        }
-    } else if (forwardDist > frontWallDist) {
+    if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
         moveCommand.linear.x = linVel;
-        if (avgSx < 0.95 * lateralMinDist) {
+        if (avgSx < lateralMinDist) {
             ROS_INFO_STREAM("GO DX");
             moveCommand.angular.z = -twistVel;
-        } else if (avgSx > lateralMinDist) {
+        } else if (avgSx > 1.1 * lateralMinDist) {
             ROS_INFO_STREAM("GO SX");
-            moveCommand.angular.z = +1.5 * twistVel;
+            moveCommand.angular.z = +1.2 * twistVel;
         } else {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
     } else if (marrPoseOdom.position.y < 1.1) {
-        //fixme wrt linear velocity(delay+velocity long shot)
-        moveCommand.linear.x = 0.5 * linVel;
+        // not aligned, just rotate a little
+        moveCommand.linear.x = linVel * 2/3; // todo maybe unneeded, go with full
         if (avgSx < lateralMinDist) {
-            ROS_INFO_STREAM("CRASHING GO DX");
-            moveCommand.angular.z = -4 * twistVel;
+            ROS_INFO_STREAM("ALIGN GO DX");
+            moveCommand.angular.z = -2 * twistVel;
         } else if (avgSx > 1.1 * lateralMinDist) {
-            ROS_INFO_STREAM("CRASHING GO SX");
-            moveCommand.angular.z = +4 * twistVel;
+            ROS_INFO_STREAM("ALIGN GO SX");
+            moveCommand.angular.z = +2 * twistVel;
         }
     } else {
         // stop
@@ -342,12 +333,12 @@ void G01Move::backwardCallback() {
             if (fabs(avgSx - avgDx) < 0.1) {
                 ROS_INFO_STREAM("LS AVANTI SAVOIA");
                 moveCommand.angular.z = 0;
-            } else if (avgDx < 1.2 * lateralMinDist) {
+            } else if (avgDx < 1.25 * lateralMinDist) { // fixme problematic
                 ROS_INFO_STREAM("LS GO SX");
-                moveCommand.angular.z = +2 * twistVel;
+                moveCommand.angular.z = +3 * twistVel;
             } else if (avgSx < 1.15 * lateralMinDist) {
                 ROS_INFO_STREAM("LS GO DX");
-                moveCommand.angular.z = -3 * twistVel;
+                moveCommand.angular.z = -2 * twistVel;
             } else {
                 ROS_INFO_STREAM("LS AVANTI SAVOIA");
                 moveCommand.angular.z = 0;
