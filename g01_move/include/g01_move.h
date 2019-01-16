@@ -53,7 +53,7 @@ private:
     ros::Subscriber scannerSub;
 
     // distance from front wall, default speeds
-    double frontWallDist = 1.15, lateralMinDist = 0.28, linVel = 0.4, twistVel = 0.3;
+    double frontWallDist = 1.15, lateralMinDist = 0.28, linVel = 0.4, twistVel = 0.4;
 
     // laser callback internal values
     double val, minDx, maxDx, avgDx, minSx, maxSx, avgSx, forwardDist;

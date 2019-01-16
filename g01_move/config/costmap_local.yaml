@@ -1,7 +1,7 @@
 global_frame: marrtino_map
 rolling_window: true
 static_map: false
-planner_frequency: 10.0
+planner_frequency: 8.0
 planner_patiente: 2.0
 update_frequency: 10.0
 
