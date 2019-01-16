@@ -1,0 +1,11 @@
+<!-- launch file for move -->
+<launch>
+    <arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
+  
+    <include file="$(find g01_move)/launch/robot_navigation.launch">
+	<arg name="output" default="log"/>
+    </include>
+    <node name="g01_move" pkg="g01_move" type="g01_move" required="true" output="screen">
+        <param name="sim" value="$(arg sim)"/>
+    </node>
+</launch>

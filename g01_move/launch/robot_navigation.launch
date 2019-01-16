@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="x" default="0.0"/>
+	<arg name="y" default="0.0"/>
+	<arg name="z" default="0.0"/>
+	<arg name="yaw" default="3.14"/>
+
+	<arg name="marrtino_ns" default="/marrtino" />
+	<arg name="robot_id" default="$(arg marrtino_ns)"/>
+	<arg name="prefix" default="/marrtino_"/>
+
+	<arg name="scan_topic" default="scan" />
+	<arg name="map_topic" default="map" />
+	<arg name="map_frame" default="$(arg prefix)map"/>
+	<arg name="global_frame" default="$(arg prefix)map"/>
+	<arg name="odom_frame" default="$(arg prefix)odom"/>
+	<arg name="base_frame" default="$(arg prefix)base_footprint"/>
+
+	<arg name="mapping" default="false"/>
+	<arg name="map_file" default="arena.yaml"/>
+	<arg name="output" default="screen"/>
+ <!-- Initial Posizion -->
+	<group ns="$(arg robot_id)">
+
+	<!-- Map Server -->
+	<include unless="$(arg mapping)" file="$(find g01_move)/launch/map_server.launch">
+		<arg name="map_file" value="$(arg map_file)"/>
+		<arg name="map_frame" value="$(arg map_frame)" />
+		<arg name="output" value="$(arg output)"/>
+	</include>
+
+	<!-- Move Base -->
+	<include file="$(find g01_move)/launch/move_base.launch">
+		<arg name="prefix" value="$(arg prefix)"/>
+		<arg name="global_frame" value="$(arg global_frame)" />
+		<arg name="odom_frame" value="$(arg odom_frame)" />
+		<arg name="base_frame" value="$(arg base_frame)" />
+		<arg name="static_map" value="true"/>
+		<arg name="output" value="$(arg output)"/>
+	</include>
+	</group>
+</launch>
