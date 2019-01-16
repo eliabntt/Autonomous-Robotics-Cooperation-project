@@ -1,9 +1,10 @@
+#footprint: [[-0.14, -0.17], [-0.14, 0.17], [0.01, 0.17], [0.01,0.21], [0.14,0.21], [0.14, -0.21], [0.01,-0.21], [0.01,-0.17]] still under testing gives problem with update
 footprint: [[-0.14, -0.20], [-0.14, 0.20], [0.14,0.20],[0.14, -0.20]]
 footprint_padding: 0.02
 
 robot_base_frame: marrtino_base_footprint
 
-publish_frequency: 1.0
+publish_frequency: 1
 transform_tolerance: 0.5
 
 resolution: 0.01

@@ -23,14 +23,14 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
-    corridorEntrance.target_pose.pose.position.x = 0.4;
+    corridorEntrance.target_pose.pose.position.x = 0.3;
     corridorEntrance.target_pose.pose.position.y = -1.6;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
-    corridorInside.target_pose.pose.position.x = 0.55;
-    corridorInside.target_pose.pose.position.y = -1.3;
+    corridorInside.target_pose.pose.position.x = 0.6;
+    corridorInside.target_pose.pose.position.y = -1.2;
     corridorInside.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
@@ -57,10 +57,10 @@ G01Move::G01Move() : n(), spinner(2) {
 
     //fixme maybe one here
     // move to unload position
-    unloadPoint.target_pose.pose.position.x = -1.55;
-    unloadPoint.target_pose.pose.position.y = -0.37;
+    unloadPoint.target_pose.pose.position.x = -1.6;
+    unloadPoint.target_pose.pose.position.y = -0.44;
     unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), unloadPoint.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
 
     //todo find clear space to start
@@ -87,12 +87,12 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
         ROS_INFO("Sending goal global");
         client.sendGoal(goal);
-        ros::Duration(1).sleep();
+        ros::Duration(2).sleep();
 
         double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
         double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
-        if (diffX > +0.1 || diffX < -0.1 ||
-            diffY < -0.1 || diffY > +0.1) {
+        if (diffX > +0.05 || diffX < -0.05 ||
+            diffY < -0.05 || diffY > +0.05) {
             ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
             backed = false;
             rotated = false;
@@ -101,21 +101,24 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         }
 
         client.waitForResult();
-        if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+        if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED || (fabs(marrPoseOdom.position.x - goal.target_pose.pose.position.x) < 0.2 && fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2)) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
             if (!backed) {
+                ROS_INFO_STREAM("RECOVER MANUAL BACKED");
                 recoverManual();
                 backed = true;
                 currPose = marrPoseOdom;
+            } else if (!allowNeg) {
+                ROS_INFO_STREAM("RECOVER MANUAL NEGATIVE");
+                changeVel(true);
+                allowNeg = true;
             } else if (!rotated) {
+                ROS_INFO_STREAM("RECOVER MANUAL ROTATION");
                 recoverManual(true);
                 rotated = true;
                 currPose = marrPoseOdom;
-            } else if (!allowNeg) {
-                changeVel(true);
-                allowNeg = true;
             } else {
                 ROS_ERROR_STREAM("Error, robot failed moving");
                 return false;
@@ -131,7 +134,7 @@ void G01Move::changeVel(bool negative) {
     dynamic_reconfigure::Config conf;
 
     double_param.name = "min_vel_x";
-    double_param.value = negative ? -0.15 : 0.1;
+    double_param.value = negative ? -0.2 : 0.1;
     conf.doubles.push_back(double_param);
     srv_req.config = conf;
     ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
@@ -145,6 +148,7 @@ void G01Move::recoverManual(bool rot) {
 
     if (rot) {
         //todo refine
+        ROS_INFO_STREAM("Rotating..");
         moveCommand.linear.x = defX;
         if (avgSx > avgDx) {
             moveCommand.angular.z = -defZ;
@@ -161,13 +165,13 @@ void G01Move::recoverManual(bool rot) {
         }
 
         velPub.publish(moveCommand);
-        ros::Duration(1).sleep();
+        ros::Duration(2).sleep();
     } else {
         ROS_INFO_STREAM("Backing up linear");
 
         tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y,
                                 marrPoseOdom.orientation.z, marrPoseOdom.orientation.w);
-        tf::Vector3 vector(0.4, 0, 0);
+        tf::Vector3 vector(0.3, 0, 0);
         tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
 
         changeVel(true);
@@ -181,7 +185,7 @@ void G01Move::recoverManual(bool rot) {
         MoveBaseClient client_temp("marrtino/move_base", false);
         ROS_INFO("Sending backup goal");
         client_temp.sendGoal(goal_temp);
-        client_temp.waitForResult();
+        client_temp.waitForResult(ros::Duration(2));
 
         if (client_temp.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             changeVel(false);
@@ -263,18 +267,18 @@ void G01Move::forwardCallback() {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
     // corridor, follow left wall
 
-    if (marrPoseOdom.position.y < -0.55) {
+    if (marrPoseOdom.position.y < -1) {
         // entrance, try to align before following the wall
 
         moveCommand.linear.x = linVel * 2 / 3; // just enough to move on
         if (avgSx < lateralMinDist) {
             // too near, turn right
             ROS_INFO_STREAM("ENT GO DX");
-            moveCommand.angular.z = -3 * twistVel;
+            moveCommand.angular.z = -2 * twistVel;
         } else if (avgSx > 1.1 * lateralMinDist) {
             // too far, turn left
             ROS_INFO_STREAM("ENT GO SX");
-            moveCommand.angular.z = +3 * twistVel;
+            moveCommand.angular.z = +0.5 * twistVel;
         } else {
             ROS_INFO_STREAM("ENT AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
@@ -283,25 +287,25 @@ void G01Move::forwardCallback() {
         // assume nearly aligned, we need to move forward
 
         moveCommand.linear.x = linVel;
-        if (avgSx < lateralMinDist) {
+        if (avgSx < 0.95 * lateralMinDist) {
             ROS_INFO_STREAM("GO DX");
             moveCommand.angular.z = -twistVel;
-        } else if (avgSx > 1.1 * lateralMinDist) {
+        } else if (avgSx > lateralMinDist) {
             ROS_INFO_STREAM("GO SX");
-            moveCommand.angular.z = +twistVel;
+            moveCommand.angular.z = +1.5 * twistVel;
         } else {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
     } else if (marrPoseOdom.position.y < 1.1) {
         //fixme wrt linear velocity(delay+velocity long shot)
-        moveCommand.linear.x = linVel;
+        moveCommand.linear.x = 0.5 * linVel;
         if (avgSx < lateralMinDist) {
             ROS_INFO_STREAM("CRASHING GO DX");
-            moveCommand.angular.z = -3 * twistVel;
+            moveCommand.angular.z = -4 * twistVel;
         } else if (avgSx > 1.1 * lateralMinDist) {
             ROS_INFO_STREAM("CRASHING GO SX");
-            moveCommand.angular.z = +3 * twistVel;
+            moveCommand.angular.z = +4 * twistVel;
         }
     } else {
         // stop
@@ -310,6 +314,7 @@ void G01Move::forwardCallback() {
         isManualModeDone = true;
     }
     velPub.publish(moveCommand);
+    ros::Duration(0.1).sleep();
 }
 
 void G01Move::backwardCallback() {
@@ -323,22 +328,23 @@ void G01Move::backwardCallback() {
     if (yPos > 0.1) {
         // large space
 
-        moveCommand.linear.x = linVel / 2; // just enough to go on
-        if (xPos < 0.86 && yPos > 1.50) {
-            // nearly centered: force forward
+        if (xPos < 0.86 && yPos > 1.30) {
+            // nearly centered: force forward //fixme little left
             // danger to deviate instead of going on
 
+            moveCommand.linear.x = linVel;
+            moveCommand.angular.z = 1.1 * twistVel;
             ROS_INFO_STREAM("CENTER AVANTI SAVOIA");
             moveCommand.angular.z = 0;
         } else {
             // slightly to the left
-
+            moveCommand.linear.x = linVel; // just enough to go on
             if (fabs(avgSx - avgDx) < 0.1) {
                 ROS_INFO_STREAM("LS AVANTI SAVOIA");
                 moveCommand.angular.z = 0;
             } else if (avgDx < 1.2 * lateralMinDist) {
                 ROS_INFO_STREAM("LS GO SX");
-                moveCommand.angular.z = +3 * twistVel;
+                moveCommand.angular.z = +2 * twistVel;
             } else if (avgSx < 1.15 * lateralMinDist) {
                 ROS_INFO_STREAM("LS GO DX");
                 moveCommand.angular.z = -3 * twistVel;
@@ -356,10 +362,10 @@ void G01Move::backwardCallback() {
             moveCommand.linear.x = linVel;
             if (avgSx < lateralMinDist) {
                 ROS_INFO_STREAM("GO DX");
-                moveCommand.angular.z = -twistVel;
-            } else if (avgSx > lateralMinDist) {
+                moveCommand.angular.z = -2 * twistVel;
+            } else if (avgSx > 1.1 * lateralMinDist) {
                 ROS_INFO_STREAM("GO SX");
-                moveCommand.angular.z = +twistVel;
+                moveCommand.angular.z = +3 * twistVel;
             } else {
                 ROS_INFO_STREAM("AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
@@ -371,10 +377,7 @@ void G01Move::backwardCallback() {
             if (avgSx < lateralMinDist) {
                 ROS_INFO_STREAM("EXIT GO DX");
                 moveCommand.angular.z = -2 * twistVel;
-            } /*else if (avgSx > 1.05 * lateralMinDist) {
-                ROS_INFO_STREAM("EXIT GO SX");
-                moveCommand.angular.z = +2 * twistVel;
-            } */ else {
+            } else {
                 ROS_INFO_STREAM("EXIT AVANTI SAVOIA");
                 moveCommand.angular.z = 0.0;
             }
