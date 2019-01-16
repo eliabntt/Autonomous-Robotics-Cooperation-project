@@ -216,8 +216,8 @@ void G01Move::rotateDX() {
     ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y << " TY " << ty);
 
     // rotate until desired yaw is reached
-    moveCommand.linear.x = 0.15;
-    moveCommand.angular.z = -4 * twistVel;
+    moveCommand.linear.x = 0.2;
+    moveCommand.angular.z = -3 * twistVel;
     while (fabs(y - ty) > 0.1) {
         velPub.publish(moveCommand);
         ros::Duration(0.1).sleep();
