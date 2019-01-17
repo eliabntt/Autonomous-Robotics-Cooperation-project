@@ -60,12 +60,12 @@ private:
     int size,  howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool success, isManualModeDone = false;
+    bool first = true;
 
     // laser-based moving methods
     void wallFollower(bool forward);
     void rotateDX();
-    void forwardCallback();
-    void backwardCallback();
+    void followeCallback(bool forward=true);
     void readLaser(const sensor_msgs::LaserScan::ConstPtr &msg);
 };
 

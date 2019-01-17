@@ -20,7 +20,7 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.1;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14/4), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 4), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
     corridorEntrance.target_pose.pose.position.x = 0.4;
@@ -29,15 +29,35 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
-    corridorInside.target_pose.pose.position.x = 0.6;
+    corridorInside.target_pose.pose.position.x = 0.65;
     //todo move near entrance
-    corridorInside.target_pose.pose.position.y = -0.9;
+    corridorInside.target_pose.pose.position.y = -1.3;
     corridorInside.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorInside.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 * 0.45), corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
 
-
+    double r, p, y, ty;
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    ROS_INFO_STREAM("y " << marrPoseOdom.position.y);
+    ROS_INFO_STREAM("yaw " << y);
+    ros::Duration(3).sleep();
     // wall follower to reach load point
+    if (marrPoseOdom.position.y < -1.45)
+        moveCommand.linear.x = 0.5;
+    else
+        moveCommand.linear.x = 0;
+    if (fabs(1.413 - y) > 0.2) {
+        if ((1.413 - y) > 0) {
+            ROS_INFO_STREAM("turn left????");//fixme
+            moveCommand.angular.z = -0.1;
+        } else {
+            ROS_INFO_STREAM("turn right????");//fixme
+            moveCommand.angular.z = 0.1;
+        }
+    } else
+        moveCommand.angular.z = 0;
+    velPub.publish(moveCommand);
+
     ros::Duration(0.5).sleep(); // to get accurate odom data
     wallFollower(true);
 
@@ -64,6 +84,11 @@ G01Move::G01Move() : n(), spinner(2) {
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 3.14 / 2), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
+
+    moveCommand.linear.x = 1;
+    moveCommand.angular.z = 0;
+    velPub.publish(moveCommand);
+    ros::Duration(0.5).sleep();
 
     wallFollower(false);
     /*
@@ -126,7 +151,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         client.waitForResult();
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED ||
             (fabs(marrPoseOdom.position.x - goal.target_pose.pose.position.x) < 0.2 &&
-             fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2 )) {
+             fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2)) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
@@ -222,11 +247,12 @@ void G01Move::recoverManual(bool rot) {
 void G01Move::wallFollower(bool forward) {
     ROS_INFO_STREAM("WALL START");
     isManualModeDone = false;
+    first = true;
     while (!isManualModeDone)
         if (forward)
-            forwardCallback();
+            followerCallback();
         else
-            backwardCallback();
+            followerCallback(false);
     ROS_INFO_STREAM("WALL END");
 }
 
@@ -241,7 +267,7 @@ void G01Move::rotateDX() {
     double r, p, y, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ty = y;     // current yaw
-    ty -= (3.44); // target yaw
+    ty -= (3.34); // target yaw
     ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y << " TY " << ty);
 
     // rotate until desired yaw is reached
@@ -257,7 +283,7 @@ void G01Move::rotateDX() {
     moveCommand.linear.x = 0.2;
     moveCommand.angular.z = 0;
     velPub.publish(moveCommand);
-    ros::Duration(1).sleep();
+    ros::Duration(0.8).sleep();
     ROS_INFO_STREAM("LINEAR END");
     // stop
     moveCommand.linear.x = 0.0;
@@ -298,31 +324,45 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     forwardDist = msg->ranges[size / 2];
 }
 
-void G01Move::forwardCallback() {
+void G01Move::followerCallback(bool forward) {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " DIFF " << val);
     // corridor, follow left wall
 
+    double check = (forward ? avgSx : avgDx);
+
+    lateralMinDist = (forward ? 0.28 : 0.26);
+    double min_y = (forward ? -2 : -1.2);
+
+    ROS_INFO_STREAM(lateralMinDist);
+    ROS_INFO_STREAM(avgDx);
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
         moveCommand.linear.x = linVel;
-        if (avgSx < 0.97 * lateralMinDist) {
+        if (check < 0.97 * lateralMinDist) {
             ROS_INFO_STREAM("GO DX");
-            moveCommand.angular.z = -1.1 * twistVel;
-        } else if (avgSx > 1.03 * lateralMinDist) {
+            moveCommand.angular.z = -1.5 * twistVel;
+            moveCommand.linear.x = 0.9 * linVel;
+            first = false;
+        } else if (check > 1.03 * lateralMinDist) {
             ROS_INFO_STREAM("GO SX");
             moveCommand.angular.z = +1.5 * twistVel;
+            if (first) {
+                ROS_INFO_STREAM("first");
+                moveCommand.angular.z = 2 * twistVel;
+                moveCommand.linear.x = 0.5 * linVel;
+            }
         } else {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
-    } else if (marrPoseOdom.position.y < 1.1) {
+    } else if (marrPoseOdom.position.y < 1.1 && marrPoseOdom.position.y > min_y) {
         // not aligned, just rotate a little
         moveCommand.linear.x = linVel * 1 / 3; // todo maybe unneeded, go with full
-        if (avgSx < lateralMinDist) {
+        if (check < lateralMinDist) {
             ROS_INFO_STREAM("ALIGN GO DX");
             moveCommand.angular.z = -3 * twistVel;
-        } else if (avgSx > 1.1 * lateralMinDist) {
+        } else if (check > 1.1 * lateralMinDist) {
             ROS_INFO_STREAM("ALIGN GO SX");
             moveCommand.angular.z = +3 * twistVel;
         }
@@ -332,86 +372,10 @@ void G01Move::forwardCallback() {
         moveCommand.angular.z = 0.0;
         isManualModeDone = true;
     }
+    moveCommand.angular.z = (forward ? moveCommand.angular.z : -moveCommand.angular.z);
     velPub.publish(moveCommand);
     ros::Duration(0.1).sleep();
 }
-
-void G01Move::backwardCallback() {
-    // position from odom
-    double xPos, yPos, r, p, y;
-    xPos = marrPoseOdom.position.x;
-    yPos = marrPoseOdom.position.y;
-    poseToYPR(marrPoseOdom, &y, &p, &r);
-    ROS_INFO_STREAM("YPOS " << yPos << " Y " << y << " FW " << forwardDist << " DX " << avgDx << " SX " << avgSx);
-
-    if (yPos > 0.1) {
-        // large space
-
-        if (xPos < 0.86 && yPos > 1.30) {
-            // nearly centered: force forward //fixme little left
-            // danger to deviate instead of going on
-
-            moveCommand.linear.x = linVel;
-            moveCommand.angular.z = 1.1 * twistVel;
-            ROS_INFO_STREAM("CENTER AVANTI SAVOIA");
-            moveCommand.angular.z = 0;
-        } else {
-            // slightly to the left
-            moveCommand.linear.x = linVel; // just enough to go on
-            if (fabs(avgSx - avgDx) < 0.1) {
-                ROS_INFO_STREAM("LS AVANTI SAVOIA");
-                moveCommand.angular.z = 0;
-            } else if (avgDx < 1.25 * lateralMinDist) { // fixme problematic
-                ROS_INFO_STREAM("LS GO SX");
-                moveCommand.angular.z = +3 * twistVel;
-            } else if (avgSx < 1.15 * lateralMinDist) {
-                ROS_INFO_STREAM("LS GO DX");
-                moveCommand.angular.z = -2 * twistVel;
-            } else {
-                ROS_INFO_STREAM("LS AVANTI SAVOIA");
-                moveCommand.angular.z = 0;
-            }
-        }
-    } else {
-        // corridor, follow left wall
-
-        if (forwardDist > frontWallDist) {
-            // we need to move forward
-
-            moveCommand.linear.x = linVel;
-            if (avgSx < lateralMinDist) {
-                ROS_INFO_STREAM("GO DX");
-                moveCommand.angular.z = -2 * twistVel;
-            } else if (avgSx > 1.1 * lateralMinDist) {
-                ROS_INFO_STREAM("GO SX");
-                moveCommand.angular.z = +3 * twistVel;
-            } else {
-                ROS_INFO_STREAM("AVANTI SAVOIA");
-                moveCommand.angular.z = 0.0;
-            }
-        } else if (yPos > -1.1) {
-            // exit, extra twist if needed
-
-            moveCommand.linear.x = linVel;
-            if (avgSx < lateralMinDist) {
-                ROS_INFO_STREAM("EXIT GO DX");
-                moveCommand.angular.z = -2 * twistVel;
-            } else {
-                ROS_INFO_STREAM("EXIT AVANTI SAVOIA");
-                moveCommand.angular.z = 0.0;
-            }
-        } else {
-            // stop
-            moveCommand.linear.x = 0.0;
-            moveCommand.angular.z = 0.0;
-            isManualModeDone = true;
-        }
-    }
-    velPub.publish(moveCommand);
-    ros::Duration(0.2).sleep();
-}
-
-//
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
     marrPose = msgAMCL->pose.pose;
