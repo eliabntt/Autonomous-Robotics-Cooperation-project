@@ -17,13 +17,13 @@ G01Move::G01Move() : n(), spinner(2) {
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
     spinner.start();
 
-    nearCorridor.target_pose.pose.position.x = 0.0;
+    nearCorridor.target_pose.pose.position.x = 0.1;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14/4), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
-    corridorEntrance.target_pose.pose.position.x = 0.3;
+    corridorEntrance.target_pose.pose.position.x = 0.4;
     corridorEntrance.target_pose.pose.position.y = -1.6;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
@@ -42,18 +42,25 @@ G01Move::G01Move() : n(), spinner(2) {
     // loading
     ros::Duration(2).sleep();
 
-    // rotation and return
-    //rotateDX();
 
     // pose other corr entrance
-    unloadPoint.target_pose.pose.position.x = 0.58;
-    unloadPoint.target_pose.pose.position.y = 0.65;
+
+    //changeInflation(true);
+    ROS_INFO_STREAM("ROTATION");
+
+    rotateDX();
+    ros::Duration(2).sleep();
+    ROS_INFO_STREAM("TO FINAL");
+
+    unloadPoint.target_pose.pose.position.x = 0.715;
+    unloadPoint.target_pose.pose.position.y = 0.1;
     unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, -3.14/2), unloadPoint.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 3.14 / 2), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
+ /*
+    wallFollower(false);
 
     // wall follower to exit corridor
-    wallFollower(false);
 
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 0.4 * 3.14),
                           corridorEntrance.target_pose.pose.orientation);
@@ -70,7 +77,7 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
 
-    //todo find clear space to start
+*/    //todo find clear space to start
     spinner.stop();
     ros::shutdown();
 }
@@ -86,13 +93,14 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     bool backed = false;
     bool rotated = false;
     bool allowNeg = false;
-    changeVel(false); //just to be sure
+
     geometry_msgs::Pose currPose = marrPose;
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
         goal.target_pose.header.stamp = ros::Time::now();
 
-        ROS_INFO("Sending goal global");
+        ROS_INFO("Sending global goal");
+
         client.sendGoal(goal);
         ros::Duration(2).sleep();
 
@@ -107,8 +115,11 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             changeVel(false);
         }
 
+
         client.waitForResult();
-        if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED || (fabs(marrPoseOdom.position.x - goal.target_pose.pose.position.x) < 0.2 && fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2)) {
+        if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED ||
+            (fabs(marrPoseOdom.position.x - goal.target_pose.pose.position.x) < 0.2 &&
+             fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2 )) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
@@ -178,7 +189,7 @@ void G01Move::recoverManual(bool rot) {
 
         tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y,
                                 marrPoseOdom.orientation.z, marrPoseOdom.orientation.w);
-        tf::Vector3 vector(0.3, 0, 0);
+        tf::Vector3 vector(0.25, 0, 0);
         tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
 
         changeVel(true);
@@ -219,18 +230,24 @@ void G01Move::rotateDX() {
     double r, p, y, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ty = y;     // current yaw
-    ty -= 3.14; // target yaw
+    ty -= (3.44); // target yaw
     ROS_INFO_STREAM("R " << r << " P " << p << " Y " << y << " TY " << ty);
 
     // rotate until desired yaw is reached
-    moveCommand.linear.x = 0.15;
-    moveCommand.angular.z = -3 * twistVel;
+    moveCommand.linear.x = 0.1;
+    moveCommand.angular.z = -1.8 * twistVel;
     while (fabs(y - ty) > 0.1) {
         velPub.publish(moveCommand);
-        ros::Duration(0.1).sleep();
+        ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
 
+    ROS_INFO_STREAM("ROTATION END");
+    moveCommand.linear.x = 0.2;
+    moveCommand.angular.z = 0;
+    velPub.publish(moveCommand);
+    ros::Duration(1).sleep();
+    ROS_INFO_STREAM("LINEAR END");
     // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
@@ -278,25 +295,25 @@ void G01Move::forwardCallback() {
         // assume nearly aligned, we need to move forward
 
         moveCommand.linear.x = linVel;
-        if (avgSx < lateralMinDist) {
+        if (avgSx < 0.97 * lateralMinDist) {
             ROS_INFO_STREAM("GO DX");
-            moveCommand.angular.z = -twistVel;
-        } else if (avgSx > 1.1 * lateralMinDist) {
+            moveCommand.angular.z = -1.1 * twistVel;
+        } else if (avgSx > 1.03 * lateralMinDist) {
             ROS_INFO_STREAM("GO SX");
-            moveCommand.angular.z = +1.2 * twistVel;
+            moveCommand.angular.z = +1.5 * twistVel;
         } else {
             ROS_INFO_STREAM("AVANTI SAVOIA");
             moveCommand.angular.z = 0.0;
         }
     } else if (marrPoseOdom.position.y < 1.1) {
         // not aligned, just rotate a little
-        moveCommand.linear.x = linVel * 2/3; // todo maybe unneeded, go with full
+        moveCommand.linear.x = linVel * 1 / 3; // todo maybe unneeded, go with full
         if (avgSx < lateralMinDist) {
             ROS_INFO_STREAM("ALIGN GO DX");
-            moveCommand.angular.z = -2 * twistVel;
+            moveCommand.angular.z = -3 * twistVel;
         } else if (avgSx > 1.1 * lateralMinDist) {
             ROS_INFO_STREAM("ALIGN GO SX");
-            moveCommand.angular.z = +2 * twistVel;
+            moveCommand.angular.z = +3 * twistVel;
         }
     } else {
         // stop
