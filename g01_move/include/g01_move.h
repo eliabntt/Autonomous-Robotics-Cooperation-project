@@ -53,7 +53,7 @@ private:
     ros::Subscriber scannerSub;
 
     // distance from front wall, default speeds
-    double frontWallDist = 1.15, lateralMinDist = 0.28, linVel = 0.4, twistVel = 0.4;
+    double frontWallDist = 1.15, lateralMinDist = 0.3, linVel = 0.4, twistVel = 0.4;
 
     // laser callback internal values
     double val, minDx, maxDx, avgDx, minSx, maxSx, avgSx, forwardDist;
@@ -63,6 +63,7 @@ private:
     bool first = true;
 
     // laser-based moving methods
+    void alignCorridor();
     void wallFollower(bool forward);
     void rotateDX();
     void followerCallback(bool forward=true);
