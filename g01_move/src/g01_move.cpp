@@ -194,7 +194,7 @@ void G01Move::recoverManual(bool rot) {
     //resetting previous moveCommand settings
     moveCommand.linear.x = 0;
     moveCommand.angular.z = 0;
-    double defZ = 0.4, defX = 0.2;
+    double defZ = 0.2, defX = 0.2;
 
     if (rot) {
         //todo refine
@@ -330,7 +330,7 @@ void G01Move::followerCallback(bool forward) {
 
     double check = (forward ? avgSx : avgDx);
 
-    lateralMinDist = (forward ? 0.28 : 0.26);
+    lateralMinDist = (forward ? 0.28 : 0.28);
     double min_y = (forward ? -2 : -1.2);
 
     ROS_INFO_STREAM(lateralMinDist);
