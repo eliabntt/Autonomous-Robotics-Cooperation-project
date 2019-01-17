@@ -3,7 +3,7 @@
 	<arg name="x" default="0.0"/>
 	<arg name="y" default="0.0"/>
 	<arg name="z" default="0.0"/>
-	<arg name="yaw" default="3.14"/>
+	<arg name="yaw" default="3.1415926535897931"/>
 
 	<arg name="marrtino_ns" default="/marrtino" />
 	<arg name="robot_id" default="$(arg marrtino_ns)"/>
