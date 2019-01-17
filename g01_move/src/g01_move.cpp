@@ -24,16 +24,18 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(nearCorridor);
 
     corridorEntrance.target_pose.pose.position.x = 0.4;
-    corridorEntrance.target_pose.pose.position.y = -1.6;
+    corridorEntrance.target_pose.pose.position.y = -1.4;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * 3.14), corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
     corridorInside.target_pose.pose.position.x = 0.6;
-    corridorInside.target_pose.pose.position.y = -1.2;
+    //todo move near entrance
+    corridorInside.target_pose.pose.position.y = -0.9;
     corridorInside.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 / 2), corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
+
 
     // wall follower to reach load point
     ros::Duration(0.5).sleep(); // to get accurate odom data
@@ -51,33 +53,38 @@ G01Move::G01Move() : n(), spinner(2) {
     rotateDX();
     ros::Duration(2).sleep();
     ROS_INFO_STREAM("TO FINAL");
+    unloadPoint.target_pose.pose.position.x = 0.92;
+    unloadPoint.target_pose.pose.position.y = 0.78;
+    unloadPoint.target_pose.pose.position.z = 0.0;
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 3.14 / 3), unloadPoint.target_pose.pose.orientation);
+    success = moveToGoal(unloadPoint);
 
     unloadPoint.target_pose.pose.position.x = 0.715;
-    unloadPoint.target_pose.pose.position.y = 0.1;
+    unloadPoint.target_pose.pose.position.y = 0.2;
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 3.14 / 2), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
- /*
+
     wallFollower(false);
+    /*
+       // wall follower to exit corridor
 
-    // wall follower to exit corridor
+       tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 0.4 * 3.14),
+                             corridorEntrance.target_pose.pose.orientation);
+       success = moveToGoal(corridorEntrance);
 
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14 + 0.4 * 3.14),
-                          corridorEntrance.target_pose.pose.orientation);
-    success = moveToGoal(corridorEntrance);
+       tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), nearCorridor.target_pose.pose.orientation);
+       success = moveToGoal(nearCorridor);
 
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), nearCorridor.target_pose.pose.orientation);
-    success = moveToGoal(nearCorridor);
+       //fixme maybe one more pos here
 
-    //fixme maybe one more pos here
+       unloadPoint.target_pose.pose.position.x = -1.6;
+       unloadPoint.target_pose.pose.position.y = -0.44;
+       unloadPoint.target_pose.pose.position.z = 0.0;
+       tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
+       success = moveToGoal(unloadPoint);
 
-    unloadPoint.target_pose.pose.position.x = -1.6;
-    unloadPoint.target_pose.pose.position.y = -0.44;
-    unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 3.14), unloadPoint.target_pose.pose.orientation);
-    success = moveToGoal(unloadPoint);
-
-*/    //todo find clear space to start
+   */    //todo find clear space to start
     spinner.stop();
     ros::shutdown();
 }
@@ -204,12 +211,11 @@ void G01Move::recoverManual(bool rot) {
         ROS_INFO("Sending backup goal");
         client_temp.sendGoal(goal_temp);
         client_temp.waitForResult(ros::Duration(2));
-
         if (client_temp.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
             changeVel(false);
             ROS_INFO_STREAM("Backup goal reached");
         }
-
+        client_temp.cancelGoal();
     }
 }
 
@@ -226,6 +232,11 @@ void G01Move::wallFollower(bool forward) {
 
 void G01Move::rotateDX() {
     ROS_INFO_STREAM("ROTATION START");
+
+    moveCommand.linear.x = 0.2;
+    moveCommand.angular.z = -twistVel;
+    velPub.publish(moveCommand);
+    ros::Duration(1).sleep();
 
     double r, p, y, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
