@@ -40,16 +40,12 @@ private:
     ros::Subscriber marrPoseSub, marrPoseOdomSub;
 
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL);
-
     void subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom);
-
     void poseToYPR(geometry_msgs::Pose pose, double *yaw, double *pitch, double *roll);
 
     // plan-based moving methods
     bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
-
     void recoverManual(bool rot = false);
-
     void changeVel(bool negative);
 
     // corridor part
@@ -69,13 +65,10 @@ private:
 
     // laser-based moving methods
     void alignCorridor();
-
     void wallFollower(bool forward);
-
-    void rotateDX();
-
+    void rotateRight();
+    void deviateRight();
     void followerCallback(bool forward = true);
-
     void readLaser(const sensor_msgs::LaserScan::ConstPtr &msg);
 };
 
