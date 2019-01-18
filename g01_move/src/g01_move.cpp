@@ -285,7 +285,7 @@ void G01Move::rotateRight() {
 void G01Move::deviateRight() {
     // set right deviation todo tune if needed
     moveCommand.linear.x = 0.2;
-    moveCommand.angular.z = -0.1;
+    moveCommand.angular.z = -0.4;
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
 
