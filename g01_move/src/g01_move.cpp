@@ -71,8 +71,8 @@ G01Move::G01Move() : n(), spinner(2) {
                           plannerGoal.target_pose.pose.orientation);
     success = moveToGoal(plannerGoal);
 
-    moveCommand.linear.x = 1;
-    moveCommand.angular.z = 0;
+    moveCommand.linear.x = 0.8;
+    moveCommand.angular.z = -0.1;
     velPub.publish(moveCommand);
     ros::Duration(0.5).sleep();
 
@@ -81,12 +81,6 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // slightly deviate right after the exit
     deviateRight();
-
-    // back to prev goals
-    ROS_INFO_STREAM("Go away from the wall");
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + 0.4 * PI),
-                          corridorEntrance.target_pose.pose.orientation);
-    success = moveToGoal(corridorEntrance);
 
     ROS_INFO_STREAM("Align with the arena");
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), nearCorridor.target_pose.pose.orientation);
@@ -355,9 +349,10 @@ void G01Move::followerCallback(bool forward) {
         } else if (avgSx > 1.02 * lateralMinDist) {
             moveCommand.angular.z = +1.5 * twistVel;
             if (first) {
+                //todo need tuning
                 ROS_INFO_STREAM("First alignment near the wall");
-                moveCommand.angular.z = 2 * twistVel;
-                moveCommand.linear.x = linVel / 3;
+                moveCommand.angular.z = 3 * twistVel;
+                moveCommand.linear.x = linVel / 2;
             }
         } else
             moveCommand.angular.z = 0.0;
