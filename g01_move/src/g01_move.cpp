@@ -16,14 +16,13 @@ G01Move::G01Move() : n(), spinner(2) {
 
     ROS_INFO_STREAM("Go Near corridor");
     // move near the corridor area using subsequent goals
-    //todo remove one, try to speed up things
     nearCorridor.target_pose.pose.position.x = 0.15;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
-
+    //todo tune - too near the entrance and the successive one (y component)
     ROS_INFO_STREAM("Align with entrance");
     corridorEntrance.target_pose.pose.position.x = 0.4;
     corridorEntrance.target_pose.pose.position.y = -1.4;
@@ -72,7 +71,6 @@ G01Move::G01Move() : n(), spinner(2) {
                           plannerGoal.target_pose.pose.orientation);
     success = moveToGoal(plannerGoal);
 
-    //fixme maybe unneccesary
     moveCommand.linear.x = 1;
     moveCommand.angular.z = 0;
     velPub.publish(moveCommand);
@@ -81,6 +79,7 @@ G01Move::G01Move() : n(), spinner(2) {
     // wall follower to exit corridor
     wallFollower(false);
 
+    //todo add small rotation to right
     // back to prev goals
     ROS_INFO_STREAM("Go away from the wall");
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + 0.4 * PI),
@@ -130,8 +129,9 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
         double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
         double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
-        if (diffX > +0.05 || diffX < -0.05 ||
-            diffY < -0.05 || diffY > +0.05) {
+
+        if (diffX > +0.08 || diffX < -0.08 ||
+            diffY < -0.08 || diffY > +0.08) {
             ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
             backed = false;
             rotated = false;
