@@ -212,7 +212,7 @@ void G01Move::recoverManual(bool rot) {
 
         changeVel(true);
         move_base_msgs::MoveBaseGoal goal_temp;
-        goal_temp.target_pose.header.frame_id = "marrtino_map";
+        goal_temp.target_pose.header.frame_id = "marrtino_odom"; //fixme or marrtino_map??
         goal_temp.target_pose.header.stamp = ros::Time::now();
         goal_temp.target_pose.pose = marrPoseOdom;
         //apply the shift
@@ -234,7 +234,7 @@ void G01Move::alignCorridor() {
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
-    moveCommand.linear.x = (marrPoseOdom.position.y < -1.35) ? 0.1 : 0.0;
+    moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.2 : 0.0;
 
     if (fabs(0.4 * PI - y) > 0.2) {
         if ((0.4 * PI - y) > 0) {
@@ -245,6 +245,7 @@ void G01Move::alignCorridor() {
     } else
         moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
+    ros::Duration(0.4).sleep();
 }
 
 void G01Move::rotateRight() {
@@ -352,7 +353,7 @@ void G01Move::followerCallback(bool forward) {
                 //todo need tuning
                 ROS_INFO_STREAM("First alignment near the wall");
                 moveCommand.angular.z = 3 * twistVel;
-                moveCommand.linear.x = linVel / 2;
+                moveCommand.linear.x = linVel * 0.6;
             }
         } else
             moveCommand.angular.z = 0.0;
