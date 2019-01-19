@@ -19,25 +19,23 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.15;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    //fixme Yaw = PI/4 or 0 or something between
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 8), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
-    //todo tune - too near the entrance and the successive one (y component)
     ROS_INFO_STREAM("Align with corridor entrance");
-    corridorEntrance.target_pose.pose.position.x = 0.45; //fixme 0.45 vs 0.5 vs 0.4
-    corridorEntrance.target_pose.pose.position.y = -1.4;
+    corridorEntrance.target_pose.pose.position.x = 0.45;
+    corridorEntrance.target_pose.pose.position.y = -1.5;
     corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * PI),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI * 5/16),
                           corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
 
     ROS_INFO_STREAM("Try to go inside corridor");
-    corridorInside.target_pose.pose.position.x = 0.65;
-    corridorInside.target_pose.pose.position.y = -1.3;
+    corridorInside.target_pose.pose.position.x = 0.5; // little to the left, because planner is crap
+    corridorInside.target_pose.pose.position.y = -1.35;
     corridorInside.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * PI),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4),
                           corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
 
@@ -83,6 +81,7 @@ G01Move::G01Move() : n(), spinner(2) {
     // slightly deviate right after the exit
     deviateRight();
 
+    // back to prev goals
     ROS_INFO_STREAM("Align with the arena");
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
@@ -233,6 +232,7 @@ void G01Move::recoverManual(bool rot) {
 }
 
 void G01Move::alignCorridor() {
+    ROS_INFO_STREAM("ALIGN");
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
@@ -287,7 +287,7 @@ void G01Move::rotateRight() {
 }
 
 void G01Move::deviateRight() {
-    // set right deviation todo tune if needed
+    // set right deviation
     moveCommand.linear.x = 0.2;
     moveCommand.angular.z = -0.4;
     velPub.publish(moveCommand);
@@ -313,14 +313,14 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // scan direction is right to left
     for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
-        //if(val > threshold) val = avgDx/i;
+        if (val > readThr) val = avgDx / i; // cap values
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
         avgDx += val;
     }
     for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
-        //if(val > threshold) val = avgDx/i;
+        if (val > readThr) val = avgSx / i; // cap values
         if (val < minSx) minSx = val;
         if (val > maxSx) maxSx = val;
         avgSx += val;
