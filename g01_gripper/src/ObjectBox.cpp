@@ -3,7 +3,6 @@
 //
 
 #include <ObjectBox.h>
-#include <tf2_ros/transform_listener.h>
 
 /* Scheme of the box
  * --------------> X
@@ -14,16 +13,19 @@
  * Y
  */
 
-ObjectBox::ObjectBox() {
+ObjectBox::ObjectBox(geometry_msgs::PoseWithCovarianceStamped robotPose) {
     names.resize(6);
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     geometry_msgs::TransformStamped odom_to_world;
-    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0) );
+    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0) );
+    geometry_msgs::Pose something = robotPose.pose.pose;
+    tf2::doTransform(something, something, odom_to_world);
+    ROS_INFO_STREAM("Marrtino pose:" << robotPose);
     std::vector<geometry_msgs::Pose> newPoses;
     //ROS_INFO_STREAM(robotPose.position.x);
-    double OFFSETX = - H/2; // todo tune signs
-    double OFFSETY = + W/2;
+    double OFFSETX = something.position.x - H/2; // todo tune signs
+    double OFFSETY = something.position.y + W/2;
     double OFFSETZ = 1;
     for (int r = 1; r < 4; r += 2) {
         for (int c = 1; c < 6; c += 2) {
@@ -32,11 +34,10 @@ ObjectBox::ObjectBox() {
             pose.position.y = OFFSETY + (double) r / 4 * H;
             pose.position.z = OFFSETZ;
             pose.orientation.w = 1;
-            tf2::doTransform(pose, pose, odom_to_world);
             newPoses.emplace_back(pose);
-            /*ROS_INFO_STREAM(
+            ROS_INFO_STREAM(
                     "Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y
-                                    << " z: " << pose.position.z);*/
+                                    << " z: " << pose.position.z);
         }
     }
     poses = newPoses;
