@@ -26,10 +26,10 @@ G01Gripper::G01Gripper() : command(), n() {
 
 
     //marrtino pose
-    //marrPoseSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrPoseCallback, this);
-    //ros::Duration(1).sleep();
-    ObjectBox box = ObjectBox();
-    // testPose();
+    marrPoseSub = n.subscribe("/marrtino/amcl_pose", 1, &G01Gripper::marrPoseCallback, this);
+    ros::Duration(1).sleep();
+    ObjectBox box = ObjectBox(LZPose);
+    //getBoxPose();
 
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
@@ -739,13 +739,13 @@ void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group)
         ROS_INFO_STREAM("MOVEMENT TO LZ BY JOINTS FAILED");
 }
 
-void G01Gripper::marrPoseCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
-    LZPose = msgOdom->pose.pose;
+void G01Gripper::marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &AMCLPose) {
+    LZPose = AMCLPose;
     marrPoseSub.shutdown();
     ROS_INFO_STREAM("Marrtino pose received, shutting down listener");
 }
-
-void G01Gripper::testPose() {
+/*
+void G01Gripper::getBoxPose() {
     //ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
     //ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
     tf2_ros::Buffer tfBuffer;
@@ -757,4 +757,4 @@ void G01Gripper::testPose() {
     ROS_INFO_STREAM("BASKETPOSE: " << basketPose);
     tf2::doTransform(basketPose, LZPose, basket_to_world);
     ROS_INFO_STREAM("LZPOSE: " << LZPose);
-}
+}*/

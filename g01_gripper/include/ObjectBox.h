@@ -9,6 +9,10 @@
 #include <geometry_msgs/Pose.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_datatypes.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 
 class ObjectBox {
 private:
@@ -19,7 +23,7 @@ private:
     std::vector<std::string> names;// todo maybe unneeded, to save objects name
 
 public:
-    ObjectBox();
+    ObjectBox(geometry_msgs::PoseWithCovarianceStamped robotPose);
     std::string posOccupiedBy(int pos);
     bool isEmpty();
     bool isFull();

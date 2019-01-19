@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2
     tf
     robotiq_s_model_control
+    tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
