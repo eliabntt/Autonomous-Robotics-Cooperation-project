@@ -357,7 +357,7 @@ void G01Move::followerCallback(bool forward) {
             }
         } else
             moveCommand.angular.z = 0.0;
-    } else if ((forward && marrPoseOdom.position.y < 1.1) || (!forward && marrPoseOdom.position.y > -1.2)) {
+    } else if ((forward && marrPoseOdom.position.y < 1.1) || (!forward && marrPoseOdom.position.y > -1.05)) {
         // entrance and exit: just rotate a little
 
         moveCommand.linear.x = linVel * 1 / 3;
