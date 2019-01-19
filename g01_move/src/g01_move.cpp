@@ -19,27 +19,27 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.15;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 8), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 6), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
     ROS_INFO_STREAM("Align with corridor entrance");
     corridorEntrance.target_pose.pose.position.x = 0.45;
     corridorEntrance.target_pose.pose.position.y = -1.5;
     corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI * 5/16),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4),
                           corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
-
 
     ROS_INFO_STREAM("Try to go inside corridor");
     corridorInside.target_pose.pose.position.x = 0.5; // little to the left, because planner is crap
     corridorInside.target_pose.pose.position.y = -1.35;
     corridorInside.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                           corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
 
     // try to align with the corridor if needed
+    ROS_INFO_STREAM("In-place alignment");
     alignCorridor();
 
     wallFollower(true);
@@ -185,7 +185,6 @@ void G01Move::recoverManual(bool rot) {
     double defZ = 0.2, defX = 0.2;
 
     if (rot) {
-        //todo refine
         moveCommand.linear.x = defX;
         if (avgSx > avgDx) {
             moveCommand.angular.z = -defZ;
@@ -232,19 +231,16 @@ void G01Move::recoverManual(bool rot) {
 }
 
 void G01Move::alignCorridor() {
-    ROS_INFO_STREAM("ALIGN");
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
     moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.3 : 0.0;
 
-    //fixme need work
     if (fabs(0.4 * PI - y) > 0.2) {
-        if ((0.4 * PI - y) > 0) {
+        if ((0.4 * PI - y) > 0)
             moveCommand.angular.z = -0.2;
-        } else {
+        else
             moveCommand.angular.z = 0.2;
-        }
     } else
         moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -355,7 +351,6 @@ void G01Move::followerCallback(bool forward) {
         } else if (avgSx > 1.02 * lateralMinDist) {
             moveCommand.angular.z = +1.5 * twistVel;
             if (first) {
-                //todo need tuning
                 ROS_INFO_STREAM("First alignment near the wall");
                 moveCommand.angular.z = 3 * twistVel;
                 moveCommand.linear.x = linVel * 0.6;
