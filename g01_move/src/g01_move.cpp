@@ -19,12 +19,13 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.15;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4), nearCorridor.target_pose.pose.orientation);
+    //fixme Yaw = PI/4 or 0 or something between
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
     //todo tune - too near the entrance and the successive one (y component)
     ROS_INFO_STREAM("Align with corridor entrance");
-    corridorEntrance.target_pose.pose.position.x = 0.4;
+    corridorEntrance.target_pose.pose.position.x = 0.45; //fixme 0.45 vs 0.5 vs 0.4
     corridorEntrance.target_pose.pose.position.y = -1.4;
     corridorEntrance.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0.4 * PI),
@@ -93,10 +94,9 @@ G01Move::G01Move() : n(), spinner(2) {
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
 
-    //todo rotate and align
     //fixme for real challenge MAYBE find clear space to start - ask
     spinner.stop();
-    ros::shutdown(); // todo maybe unneeded, will stop by itself
+    ros::shutdown();
 }
 
 bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
@@ -142,10 +142,12 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             return true;
         } else {
             if (!backed) {
+                client.stopTrackingGoal();
                 ROS_WARN_STREAM("Manual recovery: going back");
                 recoverManual();
                 backed = true;
                 currPose = marrPoseOdom;
+                ros::Duration(0.2).sleep();
             } else if (!allowNeg) {
                 ROS_WARN_STREAM("Manual recovery: allow negative velocities");
                 changeVel(true);
@@ -212,7 +214,7 @@ void G01Move::recoverManual(bool rot) {
 
         changeVel(true);
         move_base_msgs::MoveBaseGoal goal_temp;
-        goal_temp.target_pose.header.frame_id = "marrtino_odom"; //fixme or marrtino_map??
+        goal_temp.target_pose.header.frame_id = "marrtino_odom"; //fixme or marrtino_map, but odom seems working better for recovery
         goal_temp.target_pose.header.stamp = ros::Time::now();
         goal_temp.target_pose.pose = marrPoseOdom;
         //apply the shift
@@ -234,13 +236,14 @@ void G01Move::alignCorridor() {
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
-    moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.2 : 0.0;
+    moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.3 : 0.0;
 
+    //fixme need work
     if (fabs(0.4 * PI - y) > 0.2) {
         if ((0.4 * PI - y) > 0) {
-            moveCommand.angular.z = -0.1;
+            moveCommand.angular.z = -0.2;
         } else {
-            moveCommand.angular.z = 0.1;
+            moveCommand.angular.z = 0.2;
         }
     } else
         moveCommand.angular.z = 0.0;
@@ -310,12 +313,14 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // scan direction is right to left
     for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
+        //if(val > threshold) val = avgDx/i;
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
         avgDx += val;
     }
     for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
+        //if(val > threshold) val = avgDx/i;
         if (val < minSx) minSx = val;
         if (val > maxSx) maxSx = val;
         avgSx += val;
