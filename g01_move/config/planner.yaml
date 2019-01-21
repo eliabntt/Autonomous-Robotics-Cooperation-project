@@ -26,6 +26,7 @@ DWAPlannerROS:
   max_rot_vel: 2.0 #6
   min_rot_vel: 0.05
 
+  cheat_factor: 2
   # Goal Tolerance Parameters
   yaw_goal_tolerance: 0.3
   xy_goal_tolerance: 0.15
