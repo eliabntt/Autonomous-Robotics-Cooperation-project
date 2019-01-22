@@ -3,6 +3,7 @@
 //
 
 #include <ObjectBox.h>
+#include "../../../../../../opt/ros/kinetic/include/tf/LinearMath/Quaternion.h"
 
 /* Scheme of the box
  * --------------> X
@@ -13,34 +14,33 @@
  * Y
  */
 
-ObjectBox::ObjectBox(geometry_msgs::PoseWithCovarianceStamped robotPose) {
-    names.resize(6);
-    tf2_ros::Buffer tfBuffer;
-    tf2_ros::TransformListener tf2_listener(tfBuffer);
-    geometry_msgs::TransformStamped odom_to_world;
-    odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0) );
-    geometry_msgs::Pose something = robotPose.pose.pose;
-    tf2::doTransform(something, something, odom_to_world);
-    ROS_INFO_STREAM("Marrtino pose:" << robotPose);
-    std::vector<geometry_msgs::Pose> newPoses;
-    //ROS_INFO_STREAM(robotPose.position.x);
-    double OFFSETX = something.position.x - H/2; // todo tune signs
-    double OFFSETY = something.position.y + W/2;
-    double OFFSETZ = 1;
-    for (int r = 1; r < 4; r += 2) {
-        for (int c = 1; c < 6; c += 2) {
-            geometry_msgs::Pose pose;
-            pose.position.x = OFFSETX + (double) c / 6 * W;
-            pose.position.y = OFFSETY + (double) r / 4 * H;
-            pose.position.z = OFFSETZ;
-            pose.orientation.w = 1;
-            newPoses.emplace_back(pose);
-            ROS_INFO_STREAM(
-                    "Creation: r: " << r << " c: " << c << " pose: x: " << pose.position.x << " y: " << pose.position.y
-                                    << " z: " << pose.position.z);
+ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
+    geometry_msgs::Pose center, temp;
+    center.position.z = robotPose.position.z;
+    //todo check if necessary
+    temp.orientation.x = 0;
+    temp.orientation.y = 0;
+    temp.orientation.z = 0;
+    temp.orientation.w = 1;
+    tf::Quaternion rotation(robotPose.orientation.x, robotPose.orientation.y,
+                            robotPose.orientation.z, robotPose.orientation.w);
+    tf::Vector3 widthVector(W / 3, 0, 0);
+    tf::Vector3 lengthVector(L / 4, 0, 0);
+    //rotate the shift
+    tf::Vector3 centralOffset = tf::quatRotate(rotation, widthVector);
+    rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
+    tf::Vector3 trasversalOffset = tf::quatRotate(rotation, lengthVector);
+    for (int i = 0; i < 3; i++) {
+        center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
+        center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
+        for (int j = 0; j < 2; j++) {
+            temp.position.x = center.position.x - std::pow(-1,j) * trasversalOffset.getX();
+            temp.position.y = center.position.y - std::pow(-1,j) * trasversalOffset.getY();
+            poses.emplace_back(temp);
+
+            ROS_INFO_STREAM(temp.position);
         }
     }
-    poses = newPoses;
 }
 
 bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
