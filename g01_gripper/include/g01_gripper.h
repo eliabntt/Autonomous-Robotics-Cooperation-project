@@ -60,10 +60,10 @@ private:
     void goOverLZ(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
     //marrtino pose callback
-    void marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &AMCLPose);
-    void getBoxPose();
-        // MEMBERS
-    bool sim;
+    void marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose);
+
+    // MEMBERS
+    bool sim, odomReceived = false;
     ros::NodeHandle n;
 
     // manipulator
@@ -72,14 +72,14 @@ private:
     // joints' angles for fixed points  base         shoulder       elbow         wr1          wr2          wr3
     std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415 / 2,   3.1415 / 2,   -3.1415 / 2, -3.1415 / 2, 0};
     std::vector<double> LZ_JOINT_POS   {-3.1415,     -3.1415 / 2.8, 3.1415 / 2.8, -3.1415 / 2, -3.1415 / 2, 0};
-    geometry_msgs::PoseWithCovarianceStamped LZPose;
+    geometry_msgs::Pose LZPose;
     geometry_msgs::Pose initialPose; // not in joints here
     std::string planFrameId, endEffId;
 
     // subscriber
     ros::Subscriber gripperStatusSub;
     ros::Subscriber subGrab, subAvoid;
-    ros::Subscriber marrPoseSub;
+    ros::Subscriber marrOdomSub;
     robotiq_s_model_control::SModel_robot_input status;
 
     // publisher

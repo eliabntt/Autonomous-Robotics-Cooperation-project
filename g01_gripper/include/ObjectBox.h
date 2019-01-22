@@ -16,14 +16,14 @@
 
 class ObjectBox {
 private:
-    const double W = 0.297, H = 0.210; // A4 paper size = shape of the box
+    const double W = 0.297, L = 0.210; // A4 paper size = shape of the box
     std::vector<bool> free = {true, true, true,
                               true, true, true};
     std::vector<geometry_msgs::Pose> poses;
     std::vector<std::string> names;// todo maybe unneeded, to save objects name
 
 public:
-    ObjectBox(geometry_msgs::PoseWithCovarianceStamped robotPose);
+    ObjectBox(geometry_msgs::Pose robotPose);
     std::string posOccupiedBy(int pos);
     bool isEmpty();
     bool isFull();

@@ -26,10 +26,9 @@ G01Gripper::G01Gripper() : command(), n() {
 
 
     //marrtino pose
-    marrPoseSub = n.subscribe("/marrtino/amcl_pose", 1, &G01Gripper::marrPoseCallback, this);
+    marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrOdomCallback, this);
+
     ros::Duration(1).sleep();
-    ObjectBox box = ObjectBox(LZPose);
-    //getBoxPose();
 
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
@@ -53,7 +52,7 @@ G01Gripper::G01Gripper() : command(), n() {
     bool finish = false;
     while (ros::ok() && !finish) {
         // start from home position
-        goHome(group);
+     //   goHome(group);
 
         // save pose for later (was hardcoded as joints angles)
         initialPose = group.getCurrentPose().pose;
@@ -78,7 +77,12 @@ G01Gripper::G01Gripper() : command(), n() {
             finish = true;
         }
     }
+    if (odomReceived) {
+        ObjectBox box = ObjectBox(LZPose);
 
+        ROS_INFO_STREAM("GROUP: \n"<<group.getCurrentPose().pose.position);
+    }
+    /*
     // add objects as collision items (elaborated in callbacks)
     // also add walls if in simulation (manipulator already moved to home)
     if (sim) addCollisionWalls();
@@ -94,7 +98,7 @@ G01Gripper::G01Gripper() : command(), n() {
     poseLZ.orientation = initialPose.orientation;
 
     LZPose.orientation = initialPose.orientation;*/
-
+/*
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
 
@@ -128,6 +132,7 @@ G01Gripper::G01Gripper() : command(), n() {
     goHome(group);
     spinner.stop();
     ros::shutdown();
+*/
 }
 
 // Movement
@@ -206,7 +211,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         tf::quaternionTFToMsg(qEE * tf::createQuaternionFromRPY(-diff, 0, 0), pose.orientation);
 
         //just to get the right rotation...
-        if (!moveManipulator(pose, group)){
+        if (!moveManipulator(pose, group)) {
             ROS_INFO_STREAM("Error while trying to align to the object");
         }
         // get the right altitude for gripper:
@@ -263,7 +268,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // retrieve and go to destination point
         bool canPlace;
         geometry_msgs::Pose destPose;
-        if(rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
+        if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
             canPlace = box.placeCylinder(obj.header.frame_id, destPose);
         else
             canPlace = box.placeCube(obj.header.frame_id, destPose);
@@ -361,7 +366,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     return remaining;
 }
 
-bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group) {
+bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
+                                 moveit::planning_interface::MoveGroupInterface &group) {
     // cartesian path parameters
     const double JUMP_THRESH = (sim ? 0.0 : 0.1); //fixme no idea if it is a good value
     const double EEF_STEP = 0.1;
@@ -377,9 +383,9 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
     // if the planning does not finally succeed return false
     for (unsigned long steps:stepsVector) {
         moveit_msgs::MoveItErrorCodes errorCode;
-        fraction = group.computeCartesianPath(
-                makeWaypoints(group.getCurrentPose().pose, destination, steps), EEF_STEP, JUMP_THRESH, trajTemp, true, &errorCode);
-        if(errorCode.val != 1)
+        fraction = group.computeCartesianPath(makeWaypoints(group.getCurrentPose().pose, destination, steps),
+                                              EEF_STEP, JUMP_THRESH, trajTemp, true, &errorCode);
+        if (errorCode.val != 1)
             ROS_INFO_STREAM("MOVEIT_ERROR_CODE:" << errorCode);
         if (fraction >= succThr) {
             // very good plan
@@ -394,7 +400,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination, moveit::planni
     }
     //ROS_INFO_STREAM("Best_Fraction: " << bestFraction);
     // bad plan with all possible steps number, exit
-    if (bestFraction < minThr){
+    if (bestFraction < minThr) {
         ROS_INFO_STREAM("PLANNING FAILED: result [" << bestFraction << "] under minimal threshold");
         return false;
     }
@@ -731,7 +737,6 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
 void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
     // set joint values and move
     ROS_INFO_STREAM("Moving to LZ");
-
     group.setJointValueTarget(LZ_JOINT_POS);
     if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
         group.move();
@@ -739,22 +744,16 @@ void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group)
         ROS_INFO_STREAM("MOVEMENT TO LZ BY JOINTS FAILED");
 }
 
-void G01Gripper::marrPoseCallback(const geometry_msgs::PoseWithCovarianceStamped &AMCLPose) {
-    LZPose = AMCLPose;
-    marrPoseSub.shutdown();
-    ROS_INFO_STREAM("Marrtino pose received, shutting down listener");
-}
-/*
-void G01Gripper::getBoxPose() {
-    //ROS_INFO_STREAM("Position received:" << msgOdom->pose.pose);
-    //ROS_INFO_STREAM("From frame:" << msgOdom->header.frame_id);
+void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) {
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
-    geometry_msgs::TransformStamped basket_to_world;
-    basket_to_world = tfBuffer.lookupTransform("world", "marrtino_basket", ros::Time(0), ros::Duration(10.0) );
-    geometry_msgs::Pose basketPose;
-    basketPose.orientation.w =1;
-    ROS_INFO_STREAM("BASKETPOSE: " << basketPose);
-    tf2::doTransform(basketPose, LZPose, basket_to_world);
-    ROS_INFO_STREAM("LZPOSE: " << LZPose);
-}*/
+    try {
+        geometry_msgs::TransformStamped odom_to_world;
+        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0));
+        tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
+        odomReceived = true;
+        marrOdomSub.shutdown();
+    } catch (tf2::TransformException &exception) {
+        ROS_ERROR_STREAM("transform not found");
+    }
+}
