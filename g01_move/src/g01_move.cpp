@@ -19,14 +19,15 @@ G01Move::G01Move() : n(), spinner(2) {
     nearCorridor.target_pose.pose.position.x = 0.15;
     nearCorridor.target_pose.pose.position.y = -1.8;
     nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 6), nearCorridor.target_pose.pose.orientation);
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
+                          nearCorridor.target_pose.pose.orientation);
     success = moveToGoal(nearCorridor);
 
     ROS_INFO_STREAM("Align with corridor entrance");
     corridorEntrance.target_pose.pose.position.x = 0.45;
     corridorEntrance.target_pose.pose.position.y = -1.5;
     corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 3),
                           corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
