@@ -17,7 +17,7 @@ G01Move::G01Move() : n(), spinner(2) {
     // move near the corridor area using subsequent goals
     ROS_INFO_STREAM("Go near corridor");
     nearCorridor.target_pose.pose.position.x = 0.15;
-    nearCorridor.target_pose.pose.position.y = -1.8;
+    nearCorridor.target_pose.pose.position.y = -1.6;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
                           nearCorridor.target_pose.pose.orientation);
@@ -55,7 +55,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // move to the entrance of the corridor - back
     ROS_INFO_STREAM("Intermediate through the funnel");
-    plannerGoal.target_pose.pose.position.x = 0.87;
+    plannerGoal.target_pose.pose.position.x = 0.72;
     plannerGoal.target_pose.pose.position.y = 0.78;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
@@ -64,8 +64,8 @@ G01Move::G01Move() : n(), spinner(2) {
 
 
     ROS_INFO_STREAM("Going near the entrance of the corridor");
-    plannerGoal.target_pose.pose.position.x = 0.726;
-    plannerGoal.target_pose.pose.position.y = 0.2;
+    plannerGoal.target_pose.pose.position.x = 0.626;
+    plannerGoal.target_pose.pose.position.y = 0.25;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
                           plannerGoal.target_pose.pose.orientation);
@@ -270,7 +270,7 @@ void G01Move::rotateRight() {
     }
 
     // go forward if we are safe
-    if (marrPoseOdom.position.x > 0.8) {
+    if (marrPoseOdom.position.x > 0.7) {
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0;
         velPub.publish(moveCommand);
