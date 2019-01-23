@@ -13,10 +13,11 @@
  * V
  * Y
  */
+ObjectBox::ObjectBox() {}
 
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
+    names.resize(6); //fixme why?
     geometry_msgs::Pose center, temp;
-    center.position.z = robotPose.position.z;
     //todo check if necessary
     temp.orientation.x = 0;
     temp.orientation.y = 0;
@@ -34,11 +35,12 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
         center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
         center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
         for (int j = 0; j < 2; j++) {
-            temp.position.x = center.position.x - std::pow(-1,j) * trasversalOffset.getX();
-            temp.position.y = center.position.y - std::pow(-1,j) * trasversalOffset.getY();
+            temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.getX();
+            temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.getY();
+            temp.position.z = 1.2;
             poses.emplace_back(temp);
 
-            ROS_INFO_STREAM(temp.position);
+        //    ROS_INFO_STREAM(temp.position);
         }
     }
 }
@@ -47,9 +49,9 @@ bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
     // return first available positions
     if (isFull()) return false;
 
-    // cylinders can go in 0+3, 1+4, 2+5
-    int first = 0, second = 3;
-    while (first < 3 && second < 6)
+    // cylinders can go in 0+1, 2+3, 4+5
+    int first = 0, second = 1;
+    while (first <= 4 && second <= 5)
         if (free[first] && free[second]) {
             pose = poses[first]; // fixme ERROR
             free[first] = false;
@@ -73,7 +75,7 @@ bool ObjectBox::placeCube(std::string name, geometry_msgs::Pose &pose) {
         if (free[i]) {
             pose = poses[i];
             free[i] = false;
-            names.at(i) = name;
+            names.at(i) = name; // fixme why?
             return true;
         }
     return false;

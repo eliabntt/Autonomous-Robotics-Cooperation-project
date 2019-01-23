@@ -52,7 +52,7 @@ G01Gripper::G01Gripper() : command(), n() {
     bool finish = false;
     while (ros::ok() && !finish) {
         // start from home position
-     //   goHome(group);
+        goHome(group);
 
         // save pose for later (was hardcoded as joints angles)
         initialPose = group.getCurrentPose().pose;
@@ -77,12 +77,7 @@ G01Gripper::G01Gripper() : command(), n() {
             finish = true;
         }
     }
-    if (odomReceived) {
-        ObjectBox box = ObjectBox(LZPose);
 
-        ROS_INFO_STREAM("GROUP: \n"<<group.getCurrentPose().pose.position);
-    }
-    /*
     // add objects as collision items (elaborated in callbacks)
     // also add walls if in simulation (manipulator already moved to home)
     if (sim) addCollisionWalls();
@@ -90,49 +85,50 @@ G01Gripper::G01Gripper() : command(), n() {
 
     ROS_INFO_STREAM("Pick and place starting...");
 
-    /* ObjectBox takes care of occupancy things
-    geometry_msgs::Pose poseLZ; // todo tune, should be center of mass of marttino
-    poseLZ.position.x = 0.4;
-    poseLZ.position.y = 1.1;
-    poseLZ.position.z = 10;// useless
-    poseLZ.orientation = initialPose.orientation;
-
-    LZPose.orientation = initialPose.orientation;*/
-/*
     // strategy: if planning fails objects are placed in the return vector;
     // retry the call for max 5 times if needed
 
     // move cylinders (hexagons)
-    int count = 0;
-    while (!cylToGrab.empty() && count < 5) {
-        cylToGrab = moveObjects(group, cylToGrab, box, true);
-        count += 1;
-    }
-    if (!cylToGrab.empty())
-        ROS_ERROR_STREAM("Error, " << cylToGrab.size() << " Hexagon(s) cannot be placed");
+    if (odomReceived) {
+        ObjectBox box = ObjectBox(LZPose);
+        full = false; // the box is empty
+        finish = true;
+        int count = 0;
+        while (!cylToGrab.empty() && count < 5 && !full) {
+            cylToGrab = moveObjects(group, cylToGrab, box, true);
+            count += 1;
+        }
+        if (!cylToGrab.empty()) {
+            ROS_ERROR_STREAM("Error, " << cylToGrab.size() << " Hexagon(s) cannot be placed");
+            finish = false;
+        }
+        // move cubes
+        count = 0;
+        while (!cubeToGrab.empty() && count < 5 && !full) {
+            cubeToGrab = moveObjects(group, cubeToGrab, box);
+            count += 1;
+        }
+        if (!cubeToGrab.empty()) {
+            ROS_ERROR_STREAM("Error, " << cubeToGrab.size() << " Cube(s) cannot be placed");
+            finish = false;
+        }
+        // move prisms
+        count = 0;
+        while (!triToGrab.empty() && count < 5 && !full) {
+            triToGrab = moveObjects(group, triToGrab, box);
+            count += 1;
+        }
+        if (!triToGrab.empty()) {
+            ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
+            finish = false;
+        }
 
-    // move cubes
-    count = 0;
-    while (!cubeToGrab.empty() && count < 5) {
-        cubeToGrab = moveObjects(group, cubeToGrab, box);
-        count += 1;
-    }
-    if (!cubeToGrab.empty())
-        ROS_ERROR_STREAM("Error, " << cubeToGrab.size() << " Cube(s) cannot be placed");
+        if (finish) {} // finish will be true only if all three list are empty
 
-    // move prisms
-    count = 0;
-    while (!triToGrab.empty() && count < 5) {
-        triToGrab = moveObjects(group, triToGrab, box);
-        count += 1;
+        goHome(group);
+        spinner.stop(); // fixme for fsm!
+        ros::shutdown(); // fixme for fsm!
     }
-    if (!triToGrab.empty())
-        ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
-
-    goHome(group);
-    spinner.stop();
-    ros::shutdown();
-*/
 }
 
 // Movement
@@ -140,7 +136,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
                                                                 ObjectBox box, bool rotate) {
     // settings //fixme with real ones
-    group.setMaxVelocityScalingFactor(0.1);
+    group.setMaxVelocityScalingFactor(0.9);
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
@@ -148,7 +144,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
     // generic poses and values to be used below
     geometry_msgs::Pose objectPose, pose;
-    tf::Quaternion qObj, qEE;
+    tf::Quaternion qEE;
     double objX, objY, curX, curY;
     double y, p, r, y_ee, p_ee, r_ee;
     long index;
@@ -158,6 +154,20 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
     // loop through objects
     for (geometry_msgs::PoseStamped obj : objectList) {
+        // first thing check if space available
+        // retrieve destination point
+        bool canPlace;
+        geometry_msgs::Pose destPose;
+        if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
+            canPlace = box.placeCylinder(obj.header.frame_id, destPose);
+        else
+            canPlace = box.placeCube(obj.header.frame_id, destPose);
+        if (!canPlace) {
+            ROS_ERROR_STREAM("Cannot move to box, no place to put object");
+            full = true;
+            break;
+        }
+
         // get index of object's name to extract Gazebo's object and link names
         index = std::find(tagnames.begin(), tagnames.end(), obj.header.frame_id) - tagnames.begin();
 
@@ -195,6 +205,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // end effector pose
+        // todo check if necessary
         pose = group.getCurrentPose().pose;
         qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
@@ -214,12 +225,14 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         if (!moveManipulator(pose, group)) {
             ROS_INFO_STREAM("Error while trying to align to the object");
         }
+
         // get the right altitude for gripper:
         // anti squish countermeasure
         if (obj.pose.position.z > 1.2)
             pose.position.z = obj.pose.position.z; // cylinders
         else
             pose.position.z = obj.pose.position.z * 1.1;
+
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
         if (!moveManipulator(pose, group)) {
@@ -230,8 +243,10 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             remaining.emplace_back(obj);
             continue;
         }
+
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
+        // todo add the other gripper
         int howMuch = 100;
         gripperClose(howMuch);
         ROS_INFO_STREAM("Closing the gripper");
@@ -265,43 +280,26 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // move fast to a point near the landing zone
         goOverLZ(group); // todo check problems in movement
 
-        // retrieve and go to destination point
-        bool canPlace;
-        geometry_msgs::Pose destPose;
-        if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
-            canPlace = box.placeCylinder(obj.header.frame_id, destPose);
-        else
-            canPlace = box.placeCube(obj.header.frame_id, destPose);
-
-        //ROS_INFO_STREAM("Place: " << canPlace << " pose: x: " << destPose.position.x << " y: " << destPose.position.y << " z: " << destPose.position.z);
-
-        if (!canPlace)
-            ROS_ERROR_STREAM("Cannot move to box, no place to put object"); // todo decide what to do here...
 
         // calculate the new orientation of the "wrist"
-        if (rotate) {
+/*        if (rotate) { //todo move in goOverLz
             r = 0, p = -(3.14 / 3 + 3.14 / 2), y = 0;
             ROS_INFO_STREAM("Cylinder will be tilted");
         } else {
             r = 0, p = -3.14 / 2, y = 0;
-        }
+        }*/
 
-        tf::Quaternion qRot = tf::createQuaternionFromRPY(r, p, y);
-        qRot.normalize();
-        tf::Quaternion qFinal = qRot * tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
-                                                      destPose.orientation.z, destPose.orientation.w);
-        qFinal.normalize();
-        tf::quaternionTFToMsg(qFinal, destPose.orientation);
+        poseToYPR(destPose, &y, &p, &r);
+        tf::Quaternion qRot = tf::createQuaternionFromYaw(y);
+        tf::quaternionTFToMsg(qRot * tf::Quaternion(group.getCurrentPose().pose.orientation.x,
+                                                    group.getCurrentPose().pose.orientation.y,
+                                                    group.getCurrentPose().pose.orientation.z,
+                                                    group.getCurrentPose().pose.orientation.w), destPose.orientation);
 
         if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
             ROS_INFO_STREAM("Error trying to get into placement position");
             pose = group.getCurrentPose().pose;
-            /*ROS_INFO_STREAM(pose.position.x);
-            ROS_INFO_STREAM(pose.position.y);
-
-            ROS_INFO_STREAM(destPose.position.x);
-            ROS_INFO_STREAM(destPose.position.y);*/
 
             pose.position.z -= 0.1;
             moveManipulator(pose, group);

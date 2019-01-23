@@ -63,7 +63,7 @@ private:
     void marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose);
 
     // MEMBERS
-    bool sim, odomReceived = false;
+    bool sim, odomReceived = false, full;
     ros::NodeHandle n;
 
     // manipulator
