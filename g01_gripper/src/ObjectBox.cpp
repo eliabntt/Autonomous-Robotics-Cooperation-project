@@ -16,7 +16,6 @@
 ObjectBox::ObjectBox() {}
 
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
-    names.resize(6); //fixme why?
     geometry_msgs::Pose center, temp;
     //todo check if necessary
     temp.orientation.x = 0;
@@ -29,6 +28,9 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     tf::Vector3 lengthVector(L / 4, 0, 0);
     //rotate the shift
     tf::Vector3 centralOffset = tf::quatRotate(rotation, widthVector);
+    ROS_INFO_STREAM(centralOffset.getX() << " " << centralOffset.getY());
+    ROS_INFO_STREAM("robot: " << robotPose.position);
+
     rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
     tf::Vector3 trasversalOffset = tf::quatRotate(rotation, lengthVector);
     for (int i = 0; i < 3; i++) {
@@ -40,12 +42,12 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
             temp.position.z = 1.2;
             poses.emplace_back(temp);
 
-        //    ROS_INFO_STREAM(temp.position);
+            ROS_INFO_STREAM(temp.position);
         }
     }
 }
 
-bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
+bool ObjectBox::placeCylinder(geometry_msgs::Pose &pose) {
     // return first available positions
     if (isFull()) return false;
 
@@ -56,8 +58,6 @@ bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
             pose = poses[first]; // fixme ERROR
             free[first] = false;
             free[second] = false;
-            names.at(first) = name;
-            names.at(second) = name;
             //ROS_INFO_STREAM("Pose x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);
             return true;
         } else {
@@ -67,7 +67,7 @@ bool ObjectBox::placeCylinder(std::string name, geometry_msgs::Pose &pose) {
     return false;
 }
 
-bool ObjectBox::placeCube(std::string name, geometry_msgs::Pose &pose) {
+bool ObjectBox::placeCube(geometry_msgs::Pose &pose) {
     if (isFull()) return false;
 
     // cubes can go in first available (single) place
@@ -75,7 +75,6 @@ bool ObjectBox::placeCube(std::string name, geometry_msgs::Pose &pose) {
         if (free[i]) {
             pose = poses[i];
             free[i] = false;
-            names.at(i) = name; // fixme why?
             return true;
         }
     return false;
@@ -83,11 +82,6 @@ bool ObjectBox::placeCube(std::string name, geometry_msgs::Pose &pose) {
 
 bool ObjectBox::placeTriangle(std::string name, geometry_msgs::Pose &pose) {
     return placeCube(name, pose); // todo maybe do it better
-}
-
-std::string ObjectBox::posOccupiedBy(int pos) {
-    if (pos > 0 && pos < 6) return names.at(pos);
-    else return std::string("");
 }
 
 bool ObjectBox::isEmpty() {
