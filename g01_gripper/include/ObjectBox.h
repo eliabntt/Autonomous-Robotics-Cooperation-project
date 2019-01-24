@@ -9,7 +9,6 @@
 #include <geometry_msgs/Pose.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_datatypes.h>
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
@@ -19,9 +18,9 @@ private:
     const double W = 0.297, L = 0.210; // A4 paper size = shape of the box
     std::vector<bool> free = {true, true, true,
                               true, true, true};
-    std::vector<geometry_msgs::Pose> poses;
 
 public:
+    std::vector<geometry_msgs::Pose> poses, possiblePoses;
     ObjectBox();
     ObjectBox(geometry_msgs::Pose robotPose);
     bool isEmpty();

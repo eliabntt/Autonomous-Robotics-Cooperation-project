@@ -3,18 +3,15 @@
 //
 
 #include <ObjectBox.h>
-#include "../../../../../../opt/ros/kinetic/include/tf/LinearMath/Quaternion.h"
 
 /* Scheme of the box
  * --------------> X
- * | 0 | 1 | 2 |
- * | 3 | 4 | 5 |
+ * | 0 | 2 | 4 |
+ * | 1 | 3 | 5 |
  * |------------
  * V
  * Y
  */
-ObjectBox::ObjectBox() {}
-
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     geometry_msgs::Pose center, temp;
     //todo check if necessary
@@ -27,22 +24,20 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     tf::Vector3 widthVector(W / 3, 0, 0);
     tf::Vector3 lengthVector(L / 4, 0, 0);
     //rotate the shift
+    rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
     tf::Vector3 centralOffset = tf::quatRotate(rotation, widthVector);
-    ROS_INFO_STREAM(centralOffset.getX() << " " << centralOffset.getY());
-    ROS_INFO_STREAM("robot: " << robotPose.position);
-
     rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
     tf::Vector3 trasversalOffset = tf::quatRotate(rotation, lengthVector);
     for (int i = 0; i < 3; i++) {
         center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
         center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
+        center.position.z = 1.2;
+        possiblePoses.emplace_back(center);
         for (int j = 0; j < 2; j++) {
-            temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.getX();
-            temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.getY();
+            temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.x();
+            temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.y();
             temp.position.z = 1.2;
             poses.emplace_back(temp);
-
-            ROS_INFO_STREAM(temp.position);
         }
     }
 }
@@ -58,7 +53,6 @@ bool ObjectBox::placeCylinder(geometry_msgs::Pose &pose) {
             pose = poses[first]; // fixme ERROR
             free[first] = false;
             free[second] = false;
-            //ROS_INFO_STREAM("Pose x: " << pose.position.x << " y: " << pose.position.y << " z: " << pose.position.z);
             return true;
         } else {
             first += 2;
@@ -80,9 +74,6 @@ bool ObjectBox::placeCube(geometry_msgs::Pose &pose) {
     return false;
 }
 
-bool ObjectBox::placeTriangle(std::string name, geometry_msgs::Pose &pose) {
-    return placeCube(name, pose); // todo maybe do it better
-}
 
 bool ObjectBox::isEmpty() {
     // all true in free vector
