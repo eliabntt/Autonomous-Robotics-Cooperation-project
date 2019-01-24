@@ -20,19 +20,16 @@ private:
     std::vector<bool> free = {true, true, true,
                               true, true, true};
     std::vector<geometry_msgs::Pose> poses;
-    std::vector<std::string> names;// todo maybe unneeded, to save objects name
 
 public:
+    ObjectBox();
     ObjectBox(geometry_msgs::Pose robotPose);
-    std::string posOccupiedBy(int pos);
     bool isEmpty();
     bool isFull();
 
     // bool returns if place is possible, pose contains the actual position
-    bool placeCylinder(std::string name, geometry_msgs::Pose &valid);
-    bool placeCube(std::string name, geometry_msgs::Pose &valid);
-    bool placeTriangle(std::string name, geometry_msgs::Pose &valid);
-    // todo maybe implement clearing of last if place is not successful
+    bool placeCylinder(geometry_msgs::Pose &valid);
+    bool placeCube(geometry_msgs::Pose &valid);
 };
 
 #endif //PROJECT_OBJECTBOX_H

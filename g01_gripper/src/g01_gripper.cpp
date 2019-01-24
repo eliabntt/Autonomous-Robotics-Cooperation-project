@@ -52,6 +52,7 @@ G01Gripper::G01Gripper() : command(), n() {
     bool finish = false;
     while (ros::ok() && !finish) {
         // start from home position
+        ROS_INFO_STREAM(group.getCurrentPose().pose);
         goHome(group);
 
         // save pose for later (was hardcoded as joints angles)
@@ -140,7 +141,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
-    std::vector<geometry_msgs::PoseStamped> remaining;
+    std::vector <geometry_msgs::PoseStamped> remaining;
 
     // generic poses and values to be used below
     geometry_msgs::Pose objectPose, pose;
@@ -159,12 +160,13 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         bool canPlace;
         geometry_msgs::Pose destPose;
         if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
-            canPlace = box.placeCylinder(obj.header.frame_id, destPose);
+            canPlace = box.placeCylinder(destPose);
         else
-            canPlace = box.placeCube(obj.header.frame_id, destPose);
+            canPlace = box.placeCube(destPose);
         if (!canPlace) {
             ROS_ERROR_STREAM("Cannot move to box, no place to put object");
             full = true;
+            remaining.emplace_back(obj);
             break;
         }
 
@@ -205,7 +207,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // end effector pose
-        // todo check if necessary
         pose = group.getCurrentPose().pose;
         qEE = tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
         poseToYPR(pose, &y_ee, &p_ee, &r_ee);
@@ -277,17 +278,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        // move fast to a point near the landing zone
-        goOverLZ(group); // todo check problems in movement
-
 
         // calculate the new orientation of the "wrist"
-/*        if (rotate) { //todo move in goOverLz
-            r = 0, p = -(3.14 / 3 + 3.14 / 2), y = 0;
+        if (rotate) { //todo move in goOverLz
+            r = 0, p = -3.14 / 3, y = 0;
             ROS_INFO_STREAM("Cylinder will be tilted");
-        } else {
-            r = 0, p = -3.14 / 2, y = 0;
-        }*/
+        }
 
         poseToYPR(destPose, &y, &p, &r);
         tf::Quaternion qRot = tf::createQuaternionFromYaw(y);
@@ -314,14 +310,14 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             obj.pose.position = group.getCurrentPose().pose.position;
             obj.pose.position.z -= 0.05;
 
-            std::vector<std::string> toRemove = {obj.header.frame_id};
+            std::vector <std::string> toRemove = {obj.header.frame_id};
             planningSceneIF.removeCollisionObjects(toRemove);
             //remaining.emplace_back(obj);
             continue;
         } else {
             ROS_INFO_STREAM("movement to placement position completed");
         }
-/*
+
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.1;
@@ -335,7 +331,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         } else {
             ROS_INFO_STREAM("arm lowering completed");
         }
-*/
+
         // open the gripper, adjust rviz and gazebo
         group.detachObject(obj.header.frame_id);
         if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
@@ -343,7 +339,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         gripperOpen();
 
         // remove the corresponding collision object from the scene
-        std::vector<std::string> toRemove = {obj.header.frame_id};
+        std::vector <std::string> toRemove = {obj.header.frame_id};
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
