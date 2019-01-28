@@ -32,8 +32,8 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(corridorEntrance);
 
     ROS_INFO_STREAM("Try to go inside corridor");
-    corridorInside.target_pose.pose.position.x = 0.5; // little to the left, because planner is crap
-    corridorInside.target_pose.pose.position.y = -1.35;
+    corridorInside.target_pose.pose.position.x = 0.58; // little to the left, because planner is crap
+    corridorInside.target_pose.pose.position.y = -1;
     corridorInside.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                           corridorInside.target_pose.pose.orientation);
@@ -50,7 +50,7 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::Duration(2).sleep();
 
     // rotation
-    ROS_INFO_STREAM("Rotate, going back to unload point");
+/*    ROS_INFO_STREAM("Rotate, going back to unload point");
     rotateRight();
 
     // move to the entrance of the corridor - back
@@ -93,7 +93,7 @@ G01Move::G01Move() : n(), spinner(2) {
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
-
+*/
     //fixme for real challenge MAYBE find clear space to start - ask
     spinner.stop();
     ros::shutdown();
@@ -158,6 +158,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 rotated = true;
                 currPose = marrPoseOdom;
             } else {
+                // todo try with a relocalization
                 ROS_ERROR_STREAM("Error, robot failed moving");
                 changeVel(false);
                 return false;
