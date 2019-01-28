@@ -304,21 +304,35 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     size = (int) msg->intensities.size();
     avgDx = 0;
     avgSx = 0;
-    minDx = msg->ranges[0];
-    maxDx = msg->ranges[0];
-    minSx = msg->ranges[size - 1];
-    maxSx = msg->ranges[size - 1];
+
+    if (sim) {
+        // scan direction is right to left
+        // range is limited, use that
+        readIStart = 0;
+        readIEnd = size - 1;
+        readIFront = size / 2;
+    } else {
+        // scan direction is left to right
+        // start and end is back
+        readIStart = size / 2 - size / 5;
+        readIEnd = size / 2 + size / 5;
+        readIFront = size / 2;
+    }
+
+    minDx = msg->ranges[readIStart];
+    maxDx = msg->ranges[readIStart];
+    minSx = msg->ranges[readIEnd];
+    maxSx = msg->ranges[readIEnd];
 
     // scan and save min avg and max for both sides
-    // scan direction is right to left
-    for (int i = 0; i < howMuchDataToUse; i++) {
+    for (int i = readIStart; i < readIStart + howMuchDataToUse; i++) {
         val = msg->ranges[i];
         if (val > readThr) val = readThr; // cap values
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
         avgDx += val;
     }
-    for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
+    for (int i = readIEnd; i > readIEnd - howMuchDataToUse; i--) {
         val = msg->ranges[i];
         if (val > readThr) val = readThr; // cap values
         if (val < minSx) minSx = val;
@@ -330,7 +344,7 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
-    forwardDist = msg->ranges[size / 2];
+    forwardDist = msg->ranges[readIFront];
 }
 
 void G01Move::wallFollower(bool forward) {
