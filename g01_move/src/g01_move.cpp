@@ -43,6 +43,7 @@ G01Move::G01Move() : n(), spinner(2) {
     ROS_INFO_STREAM("In-place alignment");
     alignCorridor();
 
+    ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
 
     // loading
@@ -77,6 +78,7 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::Duration(0.5).sleep();
 
     // wall follower to exit corridor
+    ROS_INFO_STREAM("Following the wall");
     wallFollower(false);
 
     // slightly deviate right after the exit
@@ -311,14 +313,14 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // scan direction is right to left
     for (int i = 0; i < howMuchDataToUse; i++) {
         val = msg->ranges[i];
-        if (val > readThr) val = avgDx / i; // cap values
+        if (val > readThr) val = readThr; // cap values
         if (val < minDx) minDx = val;
         if (val > maxDx) maxDx = val;
         avgDx += val;
     }
     for (int i = size - 1; i > size - 1 - howMuchDataToUse; i--) {
         val = msg->ranges[i];
-        if (val > readThr) val = avgSx / i; // cap values
+        if (val > readThr) val = readThr; // cap values
         if (val < minSx) minSx = val;
         if (val > maxSx) maxSx = val;
         avgSx += val;
@@ -339,19 +341,26 @@ void G01Move::wallFollower(bool forward) {
 }
 
 void G01Move::followerCallback(bool forward) {
-    //ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
-    //                      << " Y " << marrPoseOdom.position.y);
+    ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
+                          << " Y " << marrPoseOdom.position.y);
 
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
+        // stay near to wall if near load point
+        // fixme pay attention: if it is lowered when too near frontWallDist
+        // fixme it may not return aligned: transition must be as smooth as possible
+        // fixme also true that it may crash before turning right to be aligned whp
+        isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
+        lateralMinDist = (isNearLoadPoint ? 0.27 : 0.3); // todo test in lab if 30 is ok
+
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
-            moveCommand.angular.z = -2 * twistVel;
-            moveCommand.linear.x = 0.9 * linVel;
+            moveCommand.angular.z = ((!isNearLoadPoint) ? -1.5 * twistVel : -twistVel);
+            //moveCommand.linear.x = 0.9 * linVel;
             first = false;
         } else if (avgSx > 1.02 * lateralMinDist) {
-            moveCommand.angular.z = +1.5 * twistVel;
+            moveCommand.angular.z = ((!isNearLoadPoint) ? +1.5 * twistVel : twistVel);
             if (first) {
                 ROS_INFO_STREAM("First alignment near the wall");
                 moveCommand.angular.z = 3 * twistVel;

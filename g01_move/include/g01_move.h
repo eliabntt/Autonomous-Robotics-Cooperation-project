@@ -60,7 +60,7 @@ private:
     double readThr = 0.6, val, minDx, maxDx, avgDx, minSx, maxSx, avgSx, forwardDist;
     int size, howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
-    bool success, isManualModeDone = false;
+    bool success, isManualModeDone = false, isNearLoadPoint = false;
     bool first = true;
 
     // laser-based moving methods
