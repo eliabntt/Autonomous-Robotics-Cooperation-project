@@ -3,6 +3,7 @@
 //
 #include <utility>
 #include <ros/ros.h>
+#include <std_msgs/UInt16.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometric_shapes/shape_operations.h>
@@ -35,6 +36,8 @@ private:
     // gripper
     void gripperClose(int howMuch);
     void gripperOpen();
+    void fakeGripperClose();
+    void fakeGripperOpen();
     bool gazeboAttach(std::string name, std::string link);
     bool gazeboDetach(std::string name, std::string link);
 
@@ -59,6 +62,7 @@ private:
     void goHome(moveit::planning_interface::MoveGroupInterface &group);
     void goOverLZ(moveit::planning_interface::MoveGroupInterface &group);
     bool isHeld(int howMuch);
+
     //marrtino pose callback
     void marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose);
 
@@ -84,7 +88,7 @@ private:
 
     // publisher
     ros::ServiceClient attacher, detacher;
-    ros::Publisher gripperCommandPub;
+    ros::Publisher gripperCommandPub, fakeGripperCommandPub;
     robotiq_s_model_control::SModel_robot_output command;
 
     // objects to track
