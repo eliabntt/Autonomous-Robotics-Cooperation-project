@@ -22,6 +22,7 @@ G01Gripper::G01Gripper() : command(), n() {
     // gripper
     gripperCommandPub = n.advertise<robotiq_s_model_control::SModel_robot_output>(
             "/robotiq_hands/l_hand/SModelRobotOutput", 1);
+    fakeGripperCommandPub = n.advertise<std_msgs::UInt16>("/angle_motor", 1);
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
 
@@ -462,6 +463,10 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
 // Gripper
 void G01Gripper::gripperOpen() {
+    fakeGripperOpen();
+    return;
+
+    // code to be used with robotiq gripper
     command.rACT = 1;
     command.rMOD = 0;
     command.rGTO = 1;
@@ -484,6 +489,12 @@ void G01Gripper::gripperOpen() {
     gripperCommandPub.publish(command);
 }
 
+void G01Gripper::fakeGripperOpen() {
+    std_msgs::UInt16 command;
+    command.data = 16;
+    fakeGripperCommandPub.publish(command);
+}
+
 bool G01Gripper::gazeboDetach(std::string name, std::string link) {
     gazebo_ros_link_attacher::AttachRequest req;
     req.model_name_1 = "robot";
@@ -495,6 +506,10 @@ bool G01Gripper::gazeboDetach(std::string name, std::string link) {
 }
 
 void G01Gripper::gripperClose(int howMuch) {
+    fakeGripperClose();
+    return;
+
+    // code to be used with robotiq gripper
     assert(howMuch > 0);
     command.rACT = 1;
     command.rMOD = 0;
@@ -516,6 +531,12 @@ void G01Gripper::gripperClose(int howMuch) {
     command.rSPS = 0;
     command.rFRS = 0;
     gripperCommandPub.publish(command);
+}
+
+void G01Gripper::fakeGripperClose() {
+    std_msgs::UInt16 command;
+    command.data = 150;
+    fakeGripperCommandPub.publish(command);
 }
 
 bool G01Gripper::gazeboAttach(std::string name, std::string link) {
