@@ -58,7 +58,7 @@ private:
 
     // laser callback internal values
     double readThr = 0.6, val, minDx, maxDx, avgDx, minSx, maxSx, avgSx, forwardDist;
-    int size, howMuchDataToUse = 25; // angle span to consider
+    int size, readIStart, readIEnd, readIFront, howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool success, isManualModeDone = false, isNearLoadPoint = false;
     bool first = true;
