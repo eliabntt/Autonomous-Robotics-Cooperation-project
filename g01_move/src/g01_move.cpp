@@ -301,23 +301,19 @@ void G01Move::deviateRight() {
 
 void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // select values from the whole range
-    size = (int) msg->intensities.size();
+    size = (int) msg->ranges.size();
     avgDx = 0;
     avgSx = 0;
 
-    if (sim) {
-        // scan direction is right to left
-        // range is limited, use that
-        readIStart = 0;
-        readIEnd = size - 1;
-        readIFront = size / 2;
-    } else {
-        // scan direction is left to right
-        // start and end is back
-        readIStart = size / 2 - size / 5;
-        readIEnd = size / 2 + size / 5;
-        readIFront = size / 2;
-    }
+    // sim: scan direction is right to left; start/end is back (0;size)
+    readIFront = size / 2;
+    readIStart = readIFront - size / 5;
+    readIEnd   = readIFront + size / 5;
+
+    // real: scan direction is left to right
+    // flip values w.r.t. center (to keep the same logic below)
+    //if (!sim) todo work on this, read-only issues (deep copy or duplicate for loops)
+    //    std::reverse(msg->ranges.begin(), msg->ranges.end());
 
     minDx = msg->ranges[readIStart];
     maxDx = msg->ranges[readIStart];
