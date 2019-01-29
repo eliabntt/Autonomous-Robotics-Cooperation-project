@@ -32,8 +32,13 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(corridorEntrance);
 
     ROS_INFO_STREAM("Try to go inside corridor");
-    corridorInside.target_pose.pose.position.x = 0.58; // little to the left, because planner is crap
-    corridorInside.target_pose.pose.position.y = -1;
+    if (sim) { // fixme temporary workaround
+        corridorInside.target_pose.pose.position.x = 0.5; // little to the left, because planner is crap
+        corridorInside.target_pose.pose.position.y = -1.35;
+    } else {
+        corridorInside.target_pose.pose.position.x = 0.58;
+        corridorInside.target_pose.pose.position.y = -1;
+    }
     corridorInside.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                           corridorInside.target_pose.pose.orientation);
@@ -362,7 +367,7 @@ void G01Move::followerCallback(bool forward) {
         // fixme it may not return aligned: transition must be as smooth as possible
         // fixme also true that it may crash before turning right to be aligned whp
         isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
-        lateralMinDist = (isNearLoadPoint ? 0.27 : 0.3); // todo test in lab if 30 is ok
+        //lateralMinDist = (isNearLoadPoint ? 0.27 : 0.3); // todo test in lab if 30 is ok; keep 30 for tests, it works
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
