@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system filesystem date_time thread)
 
+# Perception headers
+find_package(g01_perception REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -122,6 +124,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(${catkin_INCLUDE_DIRS} include)
+include_directories(${g01_perception_INCLUDE_DIRS} include)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

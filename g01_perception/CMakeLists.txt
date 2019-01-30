@@ -130,7 +130,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/discover.cpp include/tags.h)
+add_executable(${PROJECT_NAME} src/discover.cpp include/g01_perception/tags.h)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
