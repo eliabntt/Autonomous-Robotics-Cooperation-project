@@ -24,13 +24,14 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(nearCorridor);
 
     ROS_INFO_STREAM("Align with corridor entrance");
-    corridorEntrance.target_pose.pose.position.x = 0.45;
-    corridorEntrance.target_pose.pose.position.y = -1.5;
+    corridorEntrance.target_pose.pose.position.x = 0.48;
+    corridorEntrance.target_pose.pose.position.y = -1.45;
     corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 3),
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 5 * PI / 12),
                           corridorEntrance.target_pose.pose.orientation);
     success = moveToGoal(corridorEntrance);
 
+    //todo maybe add one more
     ROS_INFO_STREAM("Try to go inside corridor");
     if (sim) { // fixme temporary workaround
         corridorInside.target_pose.pose.position.x = 0.6; // little to the left, because planner is crap
@@ -313,7 +314,7 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     // sim: scan direction is right to left; start/end is back (0;size)
     readIFront = size / 2;
     readIStart = readIFront - size / 5;
-    readIEnd   = readIFront + size / 5;
+    readIEnd = readIFront + size / 5;
 
     // real: scan direction is left to right
     // flip values w.r.t. center (to keep the same logic below)
