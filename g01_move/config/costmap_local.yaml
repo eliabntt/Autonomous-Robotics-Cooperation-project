@@ -1,9 +1,8 @@
-global_frame: marrtino_map
+global_frame: odom
 rolling_window: true
 static_map: false
-planner_frequency: 8.0
-planner_patiente: 2.0
-update_frequency: 10.0
+update_frequency: 5.0 #10
+publish_frequency: 2.0
 
 inflation_layer:
   cost_scaling_factor:  0.1  # exponential rate at which the obstacle cost drops off (default: 10)
@@ -11,5 +10,5 @@ inflation_layer:
 
 
 plugins:
-  - {name: obstacle_layer,                  type: "costmap_2d::ObstacleLayer"}
+  - {name: obstacle_layer,                  type: "costmap_2d::VoxelLayer"}
   - {name: inflation_layer,                 type: "costmap_2d::InflationLayer"}
