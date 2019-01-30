@@ -16,6 +16,10 @@ G01Gripper::G01Gripper() : command(), n() {
     }
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
 
+    // state
+    stateSub = n.subscribe<std_msgs::UInt16>(STATE_TOPIC, 2, &G01Gripper::stateCallback, this);
+    statePub = n.advertise<std_msgs::UInt16>(STATE_TOPIC, 2);
+
     // manipulator
     moveit::planning_interface::MoveGroupInterface group(PLANNING_GROUP);
 
@@ -25,11 +29,8 @@ G01Gripper::G01Gripper() : command(), n() {
     fakeGripperCommandPub = n.advertise<std_msgs::UInt16>("/angle_motor", 1);
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
-
-    //marrtino pose
+    // marrtino pose
     marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrOdomCallback, this);
-
-    ros::Duration(1).sleep();
 
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
@@ -46,6 +47,10 @@ G01Gripper::G01Gripper() : command(), n() {
         addCollisionWalls();
         planningSceneIF.addCollisionObjects(collObjects);
     }
+
+    // wait until marrtino is in position before moving objects
+    while (currState != STATE_UR10_LOAD)
+        ros::Duration(1).sleep();
 
     // move to a home position and wait for perception module
     ROS_INFO_STREAM("Waiting to receive tags of objects...");
@@ -165,10 +170,17 @@ G01Gripper::G01Gripper() : command(), n() {
             finish = false;
         }
 
-        if (finish) {} // finish will be true only if all three list are empty
-
         goHome(group);
+
+        // send new state signal: finish is true only if all the three lists are empty
+        stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
+        statePub.publish(stateCommand);
     }
+}
+
+void G01Gripper::stateCallback(const std_msgs::UInt16::ConstPtr &msg) {
+    // just save current state to the class variable
+    currState = msg->data;
 }
 
 // Movement
