@@ -58,6 +58,10 @@ G01Move::G01Move() : n(), spinner(2) {
                               corridorInside.target_pose.pose.orientation);
         success = moveToGoal(corridorInside);
 
+        // publish wake up command
+        stateCommand.data = STATE_UR10_WAKE;
+        statePub.publish(stateCommand);
+
         ROS_INFO_STREAM("Following the wall");
         wallFollower(true);
 
