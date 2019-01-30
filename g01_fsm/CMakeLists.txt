@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(g01_move)
+project(g01_fsm)
 ##
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -11,15 +11,11 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     roslib
     cmake_modules
-    geometry_msgs
-    move_base_msgs
-    actionlib
-    tf2
 )
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system filesystem date_time thread)
-find_package(g01_fsm REQUIRED)
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -52,9 +48,7 @@ find_package(g01_fsm REQUIRED)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
+#     FILES
 # )
 
 ## Generate services in the 'srv' folder
@@ -73,8 +67,8 @@ find_package(g01_fsm REQUIRED)
 
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
-#   DEPENDENCIES
-#   std_msgs
+#     DEPENDENCIES
+#     std_msgs
 # )
 
 ################################################
@@ -119,18 +113,17 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(${catkin_INCLUDE_DIRS} include)
-include_directories(${g01_fsm_INCLUDE_DIRS} include)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/g01_move.cpp
+#   src/${PROJECT_NAME}/g01_fsm.cpp
 # )
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/move.cpp src/g01_move.cpp)
+add_executable(${PROJECT_NAME} src/fsm.cpp include/g01_fsm/states.h)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -190,11 +183,10 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_g01_move.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_g01_fsm.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
-
