@@ -209,13 +209,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         objY = obj.pose.position.y;
         curX = group.getCurrentPose().pose.position.x;
         curY = group.getCurrentPose().pose.position.y;
-        ROS_INFO_STREAM("pre-ref:" << curX << " | " << curY);
         while (fabs(objX - curX) > 0.03 || fabs(objY - curY) > 0.03) {
             pose = group.getCurrentPose().pose;
             pose.position.x += objX - curX;
             pose.position.y += objY - curY;
-            ROS_INFO_STREAM("postref:" << pose.position.x << " | " << pose.position.y);
-
+        
             group.setPoseTarget(pose);
             if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
                 group.move();
