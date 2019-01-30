@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-    <name>g01_gripper</name>
+    <name>g01_fsm</name>
     <version>1.0.0</version>
-    <description>The g01_gripper package</description>
+    <description>The g01_fsm package</description>
 
     <!-- One maintainer tag required, multiple allowed, one person per tag -->
     <!-- Example:  -->
@@ -21,7 +21,7 @@
     <!-- Url tags are optional, but multiple are allowed, one per tag -->
     <!-- Optional attribute type can be: website, bugtracker, or repository -->
     <!-- Example: -->
-    <!-- <url type="website">http://wiki.ros.org/g01_gripper.html</url> -->
+    <!-- <url type="website">http://wiki.ros.org/g01_fsm</url> -->
 
 
     <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -54,29 +54,9 @@
     <build_depend>roscpp</build_depend>
     <build_depend>roslib</build_depend>
     <build_depend>cmake_modules</build_depend>
-    <build_depend>gazebo_ros_link_attacher</build_depend>
-    <build_depend>tf</build_depend>
-    <build_depend>tf2</build_depend>
-    <build_depend>tf2_ros</build_depend>
-    <build_depend>std_msgs</build_depend>
-    <build_depend>geometry_msgs</build_depend>
-    <build_depend>nav_msgs</build_depend>
-    <build_depend>robotiq_s_model_control</build_depend>
-    <build_depend>g01_perception</build_depend>
-    <build_depend>g01_fsm</build_depend>
     <exec_depend>roscpp</exec_depend>
     <exec_depend>roslib</exec_depend>
     <exec_depend>cmake_modules</exec_depend>
-    <exec_depend>gazebo_ros_link_attacher</exec_depend>
-    <exec_depend>tf</exec_depend>
-    <exec_depend>tf2</exec_depend>
-    <exec_depend>tf2_ros</exec_depend>
-    <exec_depend>std_msgs</exec_depend>
-    <exec_depend>geometry_msgs</exec_depend>
-    <exec_depend>nav_msgs</exec_depend>
-    <exec_depend>robotiq_s_model_control</exec_depend>
-    <exec_depend>g01_perception</exec_depend>
-    <exec_depend>g01_fsm</exec_depend>
 
     <!-- The export tag contains other, unspecified, tags -->
     <export>
