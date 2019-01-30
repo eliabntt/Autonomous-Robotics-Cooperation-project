@@ -33,8 +33,8 @@ G01Move::G01Move() : n(), spinner(2) {
 
     ROS_INFO_STREAM("Try to go inside corridor");
     if (sim) { // fixme temporary workaround
-        corridorInside.target_pose.pose.position.x = 0.5; // little to the left, because planner is crap
-        corridorInside.target_pose.pose.position.y = -1.35;
+        corridorInside.target_pose.pose.position.x = 0.6; // little to the left, because planner is crap
+        corridorInside.target_pose.pose.position.y = -0.9;
     } else {
         corridorInside.target_pose.pose.position.x = 0.58;
         corridorInside.target_pose.pose.position.y = -1;
@@ -181,7 +181,7 @@ void G01Move::changeVel(bool negative) {
     dynamic_reconfigure::Config conf;
 
     double_param.name = "min_vel_x";
-    double_param.value = negative ? -0.2 : 0.1;
+    double_param.value = negative ? -0.4 : 0.1;
     conf.doubles.push_back(double_param);
     srv_req.config = conf;
     ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
