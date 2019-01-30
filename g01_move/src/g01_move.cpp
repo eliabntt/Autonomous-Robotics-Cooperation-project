@@ -13,6 +13,9 @@ G01Move::G01Move() : n(), spinner(2) {
     scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
 
+    stateSub = n.subscribe<std_msgs::UInt16>(STATE_TOPIC, 2, &G01Move::stateCallback, this);
+    statePub = n.advertise<std_msgs::UInt16>(STATE_TOPIC, 2);
+
     clearMapsClient = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
 
     spinner.start();
@@ -23,95 +26,114 @@ G01Move::G01Move() : n(), spinner(2) {
     // wait to get an update of the map
     ros::Duration(2).sleep();//fixme don't know if necessary
 
-    // move near the corridor area using subsequent goals
-    ROS_INFO_STREAM("Go near corridor");
-    nearCorridor.target_pose.pose.position.x = 0.15;
-    nearCorridor.target_pose.pose.position.y = -1.54; // fixme need to tune(too near the entrance)
-    nearCorridor.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
-                          nearCorridor.target_pose.pose.orientation);
-    success = moveToGoal(nearCorridor);
+    // start the loop
+    while(anotherRoundNeeded) {
+        // publish state (going to load point)
+        stateCommand.data = STATE_MARR_RUN;
+        statePub.publish(stateCommand);
 
-    ROS_INFO_STREAM("Align with corridor entrance");
-    corridorEntrance.target_pose.pose.position.x = 0.48;
-    corridorEntrance.target_pose.pose.position.y = -1.45;
-    corridorEntrance.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 5 * PI / 12),
-                          corridorEntrance.target_pose.pose.orientation);
-    success = moveToGoal(corridorEntrance);
+        // move near the corridor area using subsequent goals
+        ROS_INFO_STREAM("Go near corridor");
+        nearCorridor.target_pose.pose.position.x = 0.15;
+        nearCorridor.target_pose.pose.position.y = -1.6;
+        nearCorridor.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
+                              nearCorridor.target_pose.pose.orientation);
+        success = moveToGoal(nearCorridor);
 
-    //todo maybe add one more
-    ROS_INFO_STREAM("Try to go inside corridor");
-    corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
-    corridorInside.target_pose.pose.position.y = -0.9;
-    corridorInside.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
-                          corridorInside.target_pose.pose.orientation);
-    success = moveToGoal(corridorInside);
+        ROS_INFO_STREAM("Align with corridor entrance");
+        corridorEntrance.target_pose.pose.position.x = 0.48;
+        corridorEntrance.target_pose.pose.position.y = -1.45;
+        corridorEntrance.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 5 * PI / 12),
+                              corridorEntrance.target_pose.pose.orientation);
+        success = moveToGoal(corridorEntrance);
 
-    ROS_INFO_STREAM("Following the wall");
-    wallFollower(true);
+        //todo maybe add one more
+        ROS_INFO_STREAM("Try to go inside corridor");
+        corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
+        corridorInside.target_pose.pose.position.y = -0.9;
+        corridorInside.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
+                              corridorInside.target_pose.pose.orientation);
+        success = moveToGoal(corridorInside);
 
-    ROS_INFO_STREAM("Docking");
-    docking();
+        ROS_INFO_STREAM("Following the wall");
+        wallFollower(true);
 
-    // loading
-    ROS_INFO_STREAM("Wait for loading...");
-    ros::Duration(2).sleep();
+        ROS_INFO_STREAM("Docking");
+        docking();
 
-    // rotation
-    ROS_INFO_STREAM("Rotate, going back to unload point");
-    rotateRight();
+        // loading: publish load command and wait
+        ROS_INFO_STREAM("Wait for loading...");
+        stateCommand.data = STATE_UR10_LOAD;
+        statePub.publish(stateCommand);
 
-    // move to the entrance of the corridor - back
-    ROS_INFO_STREAM("Intermediate through the funnel");
-    plannerGoal.target_pose.pose.position.x = 0.65;//fixme still to tune
-    plannerGoal.target_pose.pose.position.y = 0.78;
-    plannerGoal.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
-                          plannerGoal.target_pose.pose.orientation);
-    success = moveToGoal(plannerGoal);
+        while (currState == STATE_UR10_LOAD)
+            ros::Duration(1).sleep();
 
+        // save if another round is needed
+        anotherRoundNeeded = (currState == STATE_UR10_TBC);
 
-    ROS_INFO_STREAM("Going near the entrance of the corridor");
-    plannerGoal.target_pose.pose.position.x = 0.55;
-    plannerGoal.target_pose.pose.position.y = 0.25;
-    plannerGoal.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
-                          plannerGoal.target_pose.pose.orientation);
-    success = moveToGoal(plannerGoal);
+        // publish new state (going to unload point)
+        stateCommand.data = STATE_MARR_RUN;
+        statePub.publish(stateCommand);
 
-    if (!clearMapsClient.call(empty))
-        ROS_INFO_STREAM("Cannot clear the costmaps!");
+        // rotation
+        ROS_INFO_STREAM("Rotate, going back to unload point");
+        rotateRight();
 
-    ROS_INFO_STREAM("Enter the corridor");
-    moveCommand.linear.x = 0.8;
-    moveCommand.angular.z = -0.1;
-    velPub.publish(moveCommand);
-    ros::Duration(0.5).sleep();
+        // move to the entrance of the corridor - back
+        ROS_INFO_STREAM("Intermediate through the funnel");
+        plannerGoal.target_pose.pose.position.x = 0.65;//fixme still to tune
+        plannerGoal.target_pose.pose.position.y = 0.78;
+        plannerGoal.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
+                              plannerGoal.target_pose.pose.orientation);
+        success = moveToGoal(plannerGoal);
 
-    // wall follower to exit corridor
-    ROS_INFO_STREAM("Following the wall");
-    wallFollower(false);
+        ROS_INFO_STREAM("Going near the entrance of the corridor");
+        plannerGoal.target_pose.pose.position.x = 0.55;
+        plannerGoal.target_pose.pose.position.y = 0.25;
+        plannerGoal.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
+                              plannerGoal.target_pose.pose.orientation);
+        success = moveToGoal(plannerGoal);
 
-    // slightly deviate right after the exit
-    deviateRight();
+        ROS_INFO_STREAM("Enter the corridor");
+        moveCommand.linear.x = 0.8;
+        moveCommand.angular.z = -0.1;
+        velPub.publish(moveCommand);
+        ros::Duration(0.5).sleep();
 
-    // back to prev goals
-    ROS_INFO_STREAM("Align with the arena");
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), nearCorridor.target_pose.pose.orientation);
-    success = moveToGoal(nearCorridor);
+        // wall follower to exit corridor
+        ROS_INFO_STREAM("Following the wall");
+        wallFollower(false);
 
-    ROS_INFO_STREAM("Go to the unload position... Final goal!");
-    unloadPoint.target_pose.pose.position.x = -1.6;
-    unloadPoint.target_pose.pose.position.y = -0.44;
-    unloadPoint.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
-    success = moveToGoal(unloadPoint);
+        // slightly deviate right after the exit
+        deviateRight();
+
+        // back to prev goals
+        ROS_INFO_STREAM("Align with the arena");
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), nearCorridor.target_pose.pose.orientation);
+        success = moveToGoal(nearCorridor);
+
+        ROS_INFO_STREAM("Go to the unload position... Final goal!");
+        unloadPoint.target_pose.pose.position.x = -1.6;
+        unloadPoint.target_pose.pose.position.y = -0.44;
+        unloadPoint.target_pose.pose.position.z = 0.0;
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
+        success = moveToGoal(unloadPoint);
+    }
 
     //fixme for real challenge MAYBE find clear space to start - ask
     spinner.stop();
     ros::shutdown();
+}
+
+void G01Move::stateCallback(const std_msgs::UInt16::ConstPtr &msg) {
+    // just save current state to the class variable
+    currState = msg->data;
 }
 
 bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
@@ -137,6 +159,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     }
 
     geometry_msgs::Pose currPose = marrPoseOdom;
+
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
         goal.target_pose.header.stamp = ros::Time::now();

@@ -4,6 +4,7 @@
 #include <utility>
 #include <math.h>
 #include <ros/ros.h>
+#include <std_msgs/UInt16.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -32,6 +33,14 @@ private:
     bool sim;
     ros::NodeHandle n;
     ros::AsyncSpinner spinner;
+
+    // state
+    bool anotherRoundNeeded = true;
+    unsigned short currState;
+    ros::Publisher statePub;
+    ros::Subscriber stateSub;
+    std_msgs::UInt16 stateCommand;
+    void stateCallback(const std_msgs::UInt16::ConstPtr &msg);
 
     // interesting poses
     move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, plannerGoal, unloadPoint;

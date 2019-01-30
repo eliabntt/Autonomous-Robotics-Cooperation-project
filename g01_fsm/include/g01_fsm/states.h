@@ -5,11 +5,12 @@
 #ifndef G01_FSM_STATES_H
 #define G01_FSM_STATES_H
 
-const int ERROR = -1,
-        MARR_FWD = 0,  // marrtino going to the loading zone
-        MARR_BWD = 1,  // marrtino going to the unloading point
-        UR10_LOAD = 2, // piece load start command
-        UR10_TBC  = 3, // load ok: another round is needed
-        UR10_DONE = 4; // load ok: finish
+const unsigned short
+        STATE_MARR_RUN  = 0, // marrtino moving in the arena
+        STATE_UR10_LOAD = 1, // objects load start command
+        STATE_UR10_TBC  = 2, // load ok but not finished: another round is needed
+        STATE_UR10_DONE = 3; // load ok: finish
+
+const std::string STATE_TOPIC = "/g01_fsm_state";
 
 #endif //G01_FSM_STATES_H

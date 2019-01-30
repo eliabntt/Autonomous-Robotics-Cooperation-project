@@ -34,6 +34,13 @@ public:
     G01Gripper();
 
 private:
+    // state
+    unsigned short currState;
+    ros::Publisher statePub;
+    ros::Subscriber stateSub;
+    std_msgs::UInt16 stateCommand;
+    void stateCallback(const std_msgs::UInt16::ConstPtr &msg);
+
     // gripper
     void gripperClose(int howMuch);
     void gripperOpen();
