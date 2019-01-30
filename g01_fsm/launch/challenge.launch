@@ -1,0 +1,19 @@
+<!-- launch file for challenge -->
+<launch>
+    <arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
+    <arg name="ids" default="" doc="The frame_ids to be detected. If empty all are considered valid"/>
+
+    <include file="$(find g01_gripper)/launch/grip_perc.launch">
+        <arg name="sim" value="$(arg sim)"/>
+        <arg name="ids" value="$(arg ids)"/>
+    </include>
+
+    <include file="$(find g01_move)/launch/move_nav.launch">
+        <arg name="sim" value="$(arg sim)"/>
+    </include>
+
+    <node name="g01_fsm" pkg="g01_fsm" type="g01_fsm" required="true" output="screen">
+        <param name="sim" value="$(arg sim)"/>
+        <param name="ids" value="$(arg ids)"/>
+    </node>
+</launch>
