@@ -63,7 +63,7 @@
     <build_depend>nav_msgs</build_depend>
     <build_depend>robotiq_s_model_control</build_depend>
     <build_depend>g01_perception</build_depend>
-    <build_depend>g01_fsm</build_depend>
+    <build_depend>g01_move</build_depend>
     <exec_depend>roscpp</exec_depend>
     <exec_depend>roslib</exec_depend>
     <exec_depend>cmake_modules</exec_depend>
@@ -76,7 +76,7 @@
     <exec_depend>nav_msgs</exec_depend>
     <exec_depend>robotiq_s_model_control</exec_depend>
     <exec_depend>g01_perception</exec_depend>
-    <exec_depend>g01_fsm</exec_depend>
+    <exec_depend>g01_move</exec_depend>
 
     <!-- The export tag contains other, unspecified, tags -->
     <export>
