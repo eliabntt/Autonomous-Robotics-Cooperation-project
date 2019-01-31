@@ -142,10 +142,10 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
-    std::vector <geometry_msgs::PoseStamped> remaining;
+    std::vector<geometry_msgs::PoseStamped> remaining;
 
     // generic poses and values to be used below
-    geometry_msgs::Pose objectPose, pose;
+    geometry_msgs::Pose pose;
     tf::Quaternion qEE;
     double objX, objY, curX, curY;
     double y, p, r, y_ee, p_ee, r_ee;
@@ -175,29 +175,26 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         index = std::find(tagnames.begin(), tagnames.end(), obj.header.frame_id) - tagnames.begin();
 
         // set target above the object
-        objectPose.position = obj.pose.position;
-        objectPose.position.z += 0.4;
-        //objectPose.orientation = initialPose.orientation;
+        pose.position = obj.pose.position;
+        pose.position.z += 0.4;
 
-        // end effector pose
-        geometry_msgs::Pose currentPose = group.getCurrentPose().pose;
-        qEE = tf::Quaternion(currentPose.orientation.x, currentPose.orientation.y, currentPose.orientation.z, currentPose.orientation.w);
         poseToYPR(obj.pose, &y, &p, &r);
-        poseToYPR(currentPose, &y_ee, &p_ee, &r_ee);
-
+        poseToYPR(group.getCurrentPose().pose, &y_ee, &p_ee, &r_ee);
         // end effector orientation correction
         // to get the right position for the fingers
+        // todo do this only if necessary
         double diff, diffAbs;
         diffAbs = std::min(fabs(r + p_ee), fabs(r - p_ee));
         if (fabs(y + p_ee) == diffAbs)
             diff = y + p_ee;
         else
             diff = y - p_ee;
-        // apply correction to pose.orientation
-        tf::Quaternion savedRotation = (qEE * tf::createQuaternionFromRPY(-diff, 0, 0)).normalize();
-        tf::quaternionTFToMsg(savedRotation, objectPose.orientation);
+
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r_ee, p_ee, y_ee) * tf::createQuaternionFromRPY(-diff, 0, 0),
+                              pose.orientation);
+
         // move or go back home
-        if (!moveManipulator(objectPose, group)) {
+        if (!moveManipulator(pose, group)) {
             goHome(group);
 
             remaining.emplace_back(obj);
@@ -213,7 +210,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose = group.getCurrentPose().pose;
             pose.position.x += objX - curX;
             pose.position.y += objY - curY;
-        
+
             group.setPoseTarget(pose);
             if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
                 group.move();
@@ -222,21 +219,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             curY = group.getCurrentPose().pose.position.y;
         }
 
-/* //just to get the right rotation...
-        if (!moveManipulator(pose, group)) {
-            ROS_INFO_STREAM("Error while trying to align to the object");
-        }
-*/
-
         // get the right altitude for gripper:
         // anti squish countermeasure
         if (obj.pose.position.z > 1.2)
             pose.position.z = obj.pose.position.z; // cylinders
         else
             pose.position.z = obj.pose.position.z * 1.1;
-
-        //tf::quaternionTFToMsg(savedRotation, pose.orientation);//janky rotation fix
-        pose.orientation = objectPose.orientation;
 
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
@@ -289,12 +277,17 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_INFO_STREAM("Cylinder will be tilted");
         }
 
+        //todo fixme
         poseToYPR(destPose, &y, &p, &r);
-        tf::Quaternion qRot = tf::createQuaternionFromYaw(y);
-        tf::quaternionTFToMsg(qRot * tf::Quaternion(group.getCurrentPose().pose.orientation.x,
-                                                    group.getCurrentPose().pose.orientation.y,
-                                                    group.getCurrentPose().pose.orientation.z,
-                                                    group.getCurrentPose().pose.orientation.w), destPose.orientation);
+        poseToYPR(group.getCurrentPose().pose, &y_ee, &p_ee, &r_ee);
+        diffAbs = std::min(fabs(r + p_ee), fabs(r - p_ee));
+        if (fabs(y + p_ee) == diffAbs)
+            diff = y + p_ee;
+        else
+            diff = y - p_ee;
+
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r_ee, p_ee, y_ee) * tf::createQuaternionFromRPY(-diff, 0, 0),
+                              destPose.orientation);
 
         if (!moveManipulator(destPose, group)) {
             // try to go back down (less to be in a safe position)
@@ -314,7 +307,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             obj.pose.position = group.getCurrentPose().pose.position;
             obj.pose.position.z -= 0.05;
 
-            std::vector <std::string> toRemove = {obj.header.frame_id};
+            std::vector<std::string> toRemove = {obj.header.frame_id};
             planningSceneIF.removeCollisionObjects(toRemove);
             //remaining.emplace_back(obj);
             continue;
@@ -343,7 +336,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         gripperOpen();
 
         // remove the corresponding collision object from the scene
-        std::vector <std::string> toRemove = {obj.header.frame_id};
+        std::vector<std::string> toRemove = {obj.header.frame_id};
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
