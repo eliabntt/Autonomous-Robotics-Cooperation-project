@@ -64,8 +64,8 @@ G01Gripper::G01Gripper() : command(), n() {
                 initialPose = group.getCurrentPose().pose;
 
                 // subscribe to receive tags poses
-                subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 10, &G01Gripper::grabCB, this);
-                subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 10, &G01Gripper::avoidCB, this);
+                subGrab = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_grab", 10, &G01Gripper::grabCB, this);
+                subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_avoid", 10, &G01Gripper::avoidCB, this);
 
                 // 5 seconds timeout, exit program
                 if (ros::Time::now().toSec() - begin > 5) {
