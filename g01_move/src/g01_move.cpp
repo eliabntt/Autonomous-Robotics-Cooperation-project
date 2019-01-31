@@ -73,8 +73,9 @@ G01Move::G01Move() : n(), spinner(2) {
         stateCommand.data = STATE_UR10_LOAD;
         statePub.publish(stateCommand);
 
+        // todo change
         while (currState == STATE_UR10_LOAD)
-            ros::Duration(1).sleep();
+            ros::Duration(0.5).sleep();
 
         // save if another round is needed
         anotherRoundNeeded = (currState == STATE_UR10_TBC);

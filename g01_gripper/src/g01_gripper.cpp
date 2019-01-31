@@ -177,7 +177,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
                 statePub.publish(stateCommand);
             }
-        } else ros::Duration(1).sleep();
+        } else ros::Duration(0.5).sleep();
     }
 }
 
