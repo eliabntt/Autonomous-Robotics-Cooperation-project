@@ -51,33 +51,28 @@ G01Gripper::G01Gripper() : command(), n() {
     while (!finish) {
         if (currState == STATE_UR10_WAKE) {
             // marrtino is approaching the corridor: start object detection
-
-            // move to a home position and wait for perception module
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
-            double begin = ros::Time::now().toSec();
-            while (ros::ok() && !finish) {
-                // start from home position
-                ROS_INFO_STREAM(group.getCurrentPose().pose);
-                goHome(group);
 
-                // save pose for later (was hardcoded as joints angles)
-                initialPose = group.getCurrentPose().pose;
+            // move to a home position
+            goHome(group);
 
-                // subscribe to receive tags poses
-                subGrab = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_grab", 10, &G01Gripper::grabCB, this);
-                subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_avoid", 10, &G01Gripper::avoidCB, this);
+            // save pose for later (was hardcoded as joints angles)
+            initialPose = group.getCurrentPose().pose;
 
-                // 5 seconds timeout, exit program
-                if (ros::Time::now().toSec() - begin > 5) {
+            // subscribe to receive tags poses
+            subGrab = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_grab", 10, &G01Gripper::grabCB, this);
+            subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_avoid", 10, &G01Gripper::avoidCB, this);
+
+            // wait for perception module
+            bool stop = false;
+            while (ros::ok() && !stop)
+                if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
+                    // objects detected, proceed to next step
                     subGrab.shutdown();
                     subAvoid.shutdown();
-                    ros::shutdown();
-                    return;
+                    stop = true;
+                    ROS_INFO_STREAM("Tags received");
                 }
-
-                // objects detected, proceed to next step
-                ROS_INFO_STREAM("Tags received");
-            }
 
             // add objects as collision items (elaborated in callbacks)
             // also add walls if in simulation (manipulator already moved to home)
@@ -90,8 +85,8 @@ G01Gripper::G01Gripper() : command(), n() {
 
         } else if (currState == STATE_UR10_LOAD) {
             // marrtino is in position: move objects
-
             ROS_INFO_STREAM("Pick and place starting...");
+
             // strategy: if planning fails objects are placed in the return vector;
             // retry the call for max 5 times if needed
 

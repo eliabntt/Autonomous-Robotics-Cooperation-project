@@ -3,18 +3,14 @@
     <arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
     <arg name="ids" default="" doc="The frame_ids to be detected. If empty all are considered valid"/>
 
-    <include file="$(find challenge_arena)/launch/apriltag.launch">
-        <arg name="output" default="log"/>
-        <arg name="sim" value="$(arg sim)"/>
-    </include>
-    
+    <include file="$(find challenge_arena)/launch/apriltag.launch"/>
+
     <include file="$(find g01_gripper)/launch/grip_perc.launch">
         <arg name="sim" value="$(arg sim)"/>
         <arg name="ids" value="$(arg ids)"/>
     </include>
 
     <include file="$(find ur10_platform_challenge_moveit_config)/launch/ur10_platform_challenge_moveit_planning_execution.launch">
-        <arg name="output" default="log"/>
         <arg name="sim" value="$(arg sim)"/>
     </include>
     
@@ -22,7 +18,7 @@
         <arg name="sim" value="$(arg sim)"/>
     </include>
 
-    <node name="g01_move" pkg="g01_move" type="g01_move" required="true" output="screen">
+    <node name="g01_challenge" pkg="g01_move" type="g01_move" required="true" output="screen">
         <param name="sim" value="$(arg sim)"/>
         <param name="ids" value="$(arg ids)"/>
     </node>
