@@ -76,12 +76,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 }
 
                 // objects detected, proceed to next step
-                if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
-                    subGrab.shutdown();
-                    subAvoid.shutdown();
-                    ROS_INFO_STREAM("Tags received");
-                    finish = true;
-                }
+                ROS_INFO_STREAM("Tags received");
             }
 
             // add objects as collision items (elaborated in callbacks)
@@ -98,9 +93,8 @@ G01Gripper::G01Gripper() : command(), n() {
 
             if (odomReceived) {
                 ObjectBox box = ObjectBox(LZPose);
+                finish = true; // can change later
                 full = false; // the box is empty
-                finish = true;
-                int count = 0;
 
                 /*
                 ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
