@@ -28,15 +28,16 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     tf::Vector3 centralOffset = tf::quatRotate(rotation, widthVector);
     rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
     tf::Vector3 trasversalOffset = tf::quatRotate(rotation, lengthVector);
+    //todo fix orientation
     for (int i = 0; i < 3; i++) {
         center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
         center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
-        center.position.z = 1.2;
+        center.position.z = 0.4;
         possiblePoses.emplace_back(center);
         for (int j = 0; j < 2; j++) {
             temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.x();
             temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.y();
-            temp.position.z = 1.2;
+            temp.position.z = 0.4;
             poses.emplace_back(temp);
         }
     }
