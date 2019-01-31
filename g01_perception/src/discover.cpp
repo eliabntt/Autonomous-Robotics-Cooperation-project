@@ -213,8 +213,8 @@ int main(int argc, char *argv[]) {
     ros::Subscriber sub = n.subscribe<apriltags_ros::AprilTagDetectionArray>("/tag_detections", 100,
                                                                              detectionsCallback);
     // initialize publishers of results
-    pubGrab = n.advertise<g01_perception::PoseStampedArray>("/tags_to_grab", 1000);
-    pubAvoid = n.advertise<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000);
+    pubGrab = n.advertise<g01_perception::PoseStampedArray>("/g01_tags_grab", 10);
+    pubAvoid = n.advertise<g01_perception::PoseStampedArray>("/g01_tags_avoid", 10);
 
     // in single-shot mode, a single spinOnce call won't work, so
     // repeat it until first detection message arrives, then stop;
