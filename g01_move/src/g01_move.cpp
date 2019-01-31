@@ -78,8 +78,8 @@ G01Move::G01Move() : n(), spinner(2) {
         statePub.publish(stateCommand);
         ROS_INFO_STREAM("Load command issued. Waiting...");
 
-        while (currState == STATE_UR10_LOAD)
-            ros::Duration(0.5).sleep();
+        do ros::Duration(0.5).sleep(); // wait for msg propagation
+        while (currState == STATE_UR10_LOAD);
 
         // save if another round is needed
         anotherRoundNeeded = (currState == STATE_UR10_TBC);
