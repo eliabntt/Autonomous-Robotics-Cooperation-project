@@ -1,4 +1,3 @@
-
 //
 // Created by eliabntt on 28/11/18.
 //
@@ -49,149 +48,142 @@ G01Gripper::G01Gripper() : command(), n() {
     }
 
     // start the loop
-    while(stillPiecesToMove) {
-        // wait until marrtino is approaching the corridor to start object detection
-        while (currState != STATE_UR10_WAKE)
-            ros::Duration(1).sleep();
+    while (!finish) {
+        if (currState == STATE_UR10_WAKE) {
+            // marrtino is approaching the corridor: start object detection
 
-        // move to a home position and wait for perception module
-        ROS_INFO_STREAM("Waiting to receive tags of objects...");
-        double begin = ros::Time::now().toSec();
-        bool finish = false;
-        while (ros::ok() && !finish) {
-
-            // start from home position
-            goHome(group);
             // move to a home position and wait for perception module
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
             double begin = ros::Time::now().toSec();
-            bool finish = false;
             while (ros::ok() && !finish) {
                 // start from home position
                 ROS_INFO_STREAM(group.getCurrentPose().pose);
                 goHome(group);
 
-            // save pose for later (was hardcoded as joints angles)
-            initialPose = group.getCurrentPose().pose;
+                // save pose for later (was hardcoded as joints angles)
+                initialPose = group.getCurrentPose().pose;
 
-            // subscribe to receive tags poses
-            subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 1000, &G01Gripper::grabCB, this);
-            subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 1000, &G01Gripper::avoidCB, this);
+                // subscribe to receive tags poses
+                subGrab = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_grab", 10, &G01Gripper::grabCB, this);
+                subAvoid = n.subscribe<g01_perception::PoseStampedArray>("/tags_to_avoid", 10, &G01Gripper::avoidCB, this);
 
-            // 5 seconds timeout, exit program
-            if (ros::Time::now().toSec() - begin > 5) {
-                subGrab.shutdown();
-                subAvoid.shutdown();
-                ros::shutdown();
-                return;
+                // 5 seconds timeout, exit program
+                if (ros::Time::now().toSec() - begin > 5) {
+                    subGrab.shutdown();
+                    subAvoid.shutdown();
+                    ros::shutdown();
+                    return;
+                }
+
+                // objects detected, proceed to next step
+                if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
+                    subGrab.shutdown();
+                    subAvoid.shutdown();
+                    ROS_INFO_STREAM("Tags received");
+                    finish = true;
+                }
             }
 
-            // objects detected, proceed to next step
-            if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
-                subGrab.shutdown();
-                subAvoid.shutdown();
-                ROS_INFO_STREAM("Tags received");
+            // add objects as collision items (elaborated in callbacks)
+            // also add walls if in simulation (manipulator already moved to home)
+            if (sim) addCollisionWalls();
+            planningSceneIF.addCollisionObjects(collObjects);
+
+        } else if (currState == STATE_UR10_LOAD) {
+            // marrtino is in position: move objects
+
+            ROS_INFO_STREAM("Pick and place starting...");
+            // strategy: if planning fails objects are placed in the return vector;
+            // retry the call for max 5 times if needed
+
+            if (odomReceived) {
+                ObjectBox box = ObjectBox(LZPose);
+                full = false; // the box is empty
                 finish = true;
+                int count = 0;
+
+                /*
+                ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
+                ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2",1);
+                ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3",1);
+                ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4",1);
+                ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5",1);
+                ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6",1);
+                geometry_msgs::PoseStamped a;
+                a.header.frame_id = "world";
+
+                while (1) {
+                    a.pose = box.poses.at(0);
+                    a.header.stamp = ros::Time::now();
+                    p1.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(1);
+                    a.header.stamp = ros::Time::now();
+                    p2.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(2);
+                    a.header.stamp = ros::Time::now();
+                    p3.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(3);
+                    a.header.stamp = ros::Time::now();
+                    p4.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(4);
+                    a.header.stamp = ros::Time::now();
+                    p5.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(5);
+                    a.header.stamp = ros::Time::now();
+                    p6.publish(a);
+                    ros::Duration(1).sleep();
+                }*/
+
+                // move cylinders (hexagons)
+                int count = 0;
+                while (!cylToGrab.empty() && count < 5 && !box.isFull()) {
+                    cylToGrab = moveObjects(group, cylToGrab, box, true);
+                    count += 1;
+                }
+                if (!cylToGrab.empty()) {
+                    ROS_ERROR_STREAM("Error, " << cylToGrab.size() << " Hexagon(s) cannot be placed");
+                    finish = false;
+                }
+
+                // move cubes
+                count = 0;
+                while (!cubeToGrab.empty() && count < 5 && !box.isFull()) {
+                    cubeToGrab = moveObjects(group, cubeToGrab, box);
+                    count += 1;
+                }
+                if (!cubeToGrab.empty()) {
+                    ROS_ERROR_STREAM("Error, " << cubeToGrab.size() << " Cube(s) cannot be placed");
+                    finish = false;
+                }
+
+                // move prisms
+                count = 0;
+                while (!triToGrab.empty() && count < 5 && !box.isFull()) {
+                    triToGrab = moveObjects(group, triToGrab, box);
+                    count += 1;
+                }
+                if (!triToGrab.empty()) {
+                    ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
+                    finish = false;
+                }
+
+                goHome(group);
+
+                // send new state signal: finish is true only if all the three lists are empty
+                stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
+                statePub.publish(stateCommand);
             }
-        }
-
-        // add objects as collision items (elaborated in callbacks)
-        // also add walls if in simulation (manipulator already moved to home)
-        if (sim) addCollisionWalls();
-        planningSceneIF.addCollisionObjects(collObjects);
-
-        // wait until marrtino is in position before moving objects
-        while (currState != STATE_UR10_LOAD)
-            ros::Duration(1).sleep();
-
-        ROS_INFO_STREAM("Pick and place starting...");
-        // strategy: if planning fails objects are placed in the return vector;
-        // retry the call for max 5 times if needed
-
-        if (odomReceived) {
-            ObjectBox box = ObjectBox(LZPose);
-            full = false; // the box is empty
-            finish = true;
-            int count = 0;
-    /*
-            ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1", 10);
-            ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2", 10);
-            ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3", 10);
-            ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4", 10);
-            ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5", 10);
-            ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6", 10);
-            geometry_msgs::PoseStamped a;
-            a.header.frame_id = "world";
-
-            while (1) {
-                a.pose = box.poses.at(0);
-                a.header.stamp = ros::Time::now();
-                p1.publish(a);
-                ros::Duration(1).sleep();
-
-                a.pose = box.poses.at(1);
-                a.header.stamp = ros::Time::now();
-                p2.publish(a);
-                ros::Duration(1).sleep();
-
-                a.pose = box.poses.at(2);
-                a.header.stamp = ros::Time::now();
-                p3.publish(a);
-                ros::Duration(1).sleep();
-
-                a.pose = box.poses.at(3);
-                a.header.stamp = ros::Time::now();
-                p4.publish(a);
-                ros::Duration(1).sleep();
-
-                a.pose = box.poses.at(4);
-                a.header.stamp = ros::Time::now();
-                p5.publish(a);
-                ros::Duration(1).sleep();
-
-                a.pose = box.poses.at(5);
-                a.header.stamp = ros::Time::now();
-                p6.publish(a);
-                ros::Duration(1).sleep();
-            }*/
-
-            // move cylinders (hexagons)
-            while (!cylToGrab.empty() && count < 5 && !full) {
-                cylToGrab = moveObjects(group, cylToGrab, box, true);
-                count += 1;
-            }
-            if (!cylToGrab.empty()) {
-                ROS_ERROR_STREAM("Error, " << cylToGrab.size() << " Hexagon(s) cannot be placed");
-                finish = false;
-            }
-            // move cubes
-            count = 0;
-            while (!cubeToGrab.empty() && count < 5 && !full) {
-                cubeToGrab = moveObjects(group, cubeToGrab, box);
-                count += 1;
-            }
-            if (!cubeToGrab.empty()) {
-                ROS_ERROR_STREAM("Error, " << cubeToGrab.size() << " Cube(s) cannot be placed");
-                finish = false;
-            }
-            // move prisms
-            count = 0;
-            while (!triToGrab.empty() && count < 5 && !full) {
-                triToGrab = moveObjects(group, triToGrab, box);
-                count += 1;
-            }
-            if (!triToGrab.empty()) {
-                ROS_ERROR_STREAM("Error, " << triToGrab.size() << " Trapezoid(s) cannot be placed");
-                finish = false;
-            }
-
-            goHome(group);
-
-            // send new state signal: finish is true only if all the three lists are empty
-            stillPiecesToMove = !finish;
-            stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
-            statePub.publish(stateCommand);
-        }
+        } else ros::Duration(1).sleep();
     }
 }
 
@@ -233,7 +225,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             canPlace = box.getCubePose(destPose);
         if (!canPlace) {
             ROS_ERROR_STREAM("Cannot move to box, no place to put object");
-            full = true;
             remaining.emplace_back(obj);
             break;
         }
@@ -288,7 +279,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // close the gripper, adjust rviz and gazebo:
         // go on closing until gripper feedback assure correct grasp
-        // todo add the other gripper
         int howMuch = 100;
         gripperClose(howMuch);
         ROS_INFO_STREAM("Closing the gripper");
@@ -823,6 +813,7 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
         group.move();
 }
 
+// todo delete
 void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
     // set joint values and move
     ROS_INFO_STREAM("Moving to LZ");
