@@ -84,6 +84,10 @@ G01Gripper::G01Gripper() : command(), n() {
             if (sim) addCollisionWalls();
             planningSceneIF.addCollisionObjects(collObjects);
 
+            // send ready state signal
+            stateCommand.data = STATE_UR10_RDY;
+            statePub.publish(stateCommand);
+
         } else if (currState == STATE_UR10_LOAD) {
             // marrtino is in position: move objects
 

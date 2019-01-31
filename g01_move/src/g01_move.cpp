@@ -68,12 +68,16 @@ G01Move::G01Move() : n(), spinner(2) {
         ROS_INFO_STREAM("Docking");
         docking();
 
-        // loading: publish load command and wait
-        ROS_INFO_STREAM("Wait for loading...");
+        // arrived at loading point: wait for objects detection before
+        // issuing the load command and waiting for a response from ur10
+        ROS_INFO_STREAM("Waiting for UR10 to be ready...");
+        while (currState != STATE_UR10_RDY)
+            ros::Duration(0.5).sleep();
+
         stateCommand.data = STATE_UR10_LOAD;
         statePub.publish(stateCommand);
+        ROS_INFO_STREAM("Load command issued. Waiting...");
 
-        // todo change
         while (currState == STATE_UR10_LOAD)
             ros::Duration(0.5).sleep();
 
