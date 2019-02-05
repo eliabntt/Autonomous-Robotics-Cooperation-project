@@ -52,6 +52,9 @@ G01Move::G01Move() : n(), spinner(2) {
     ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
 
+    ROS_INFO_STREAM("Docking");
+    docking();
+
     // loading
     ROS_INFO_STREAM("Wait for loading...");
     ros::Duration(2).sleep();
@@ -244,6 +247,7 @@ void G01Move::alignCorridor() {
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
+    // fixme if it is safe to remove/relax this I can reuse this func for docking
     moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.3 : 0.0;
 
     if (fabs(0.4 * PI - y) > 0.2) {
@@ -255,6 +259,45 @@ void G01Move::alignCorridor() {
         moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
     ros::Duration(0.4).sleep();
+}
+
+void G01Move::docking() {
+    // stay near to wall
+    moveCommand.linear.x = 0.2;
+    moveCommand.angular.z = 0.4;
+    velPub.publish(moveCommand);
+    ros::Duration(0.3).sleep(); // todo tune
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+
+    // align
+    double r, p, y;
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    if (fabs(0.4 * PI - y) > 0.2) {
+        if ((0.4 * PI - y) > 0)
+            moveCommand.angular.z = -0.2;
+        else
+            moveCommand.angular.z = 0.2;
+    } else
+        moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+    ros::Duration(0.4).sleep(); // todo tune
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+
+    // go on until loading zone is reached
+    while (frontWallDist > 1.15) { // todo tune
+        moveCommand.linear.x = 0.2; // todo tune
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
+        ros::Duration(0.2).sleep(); // todo tune
+    }
 }
 
 void G01Move::rotateRight() {
@@ -360,15 +403,11 @@ void G01Move::followerCallback(bool forward) {
     ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
                           << " Y " << marrPoseOdom.position.y);
 
+    // if going forward, stop earlier for docking
+    frontWallDist = ((forward) ? 1.4 : 1.15); // todo tune
+
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
-
-        // stay near to wall if near load point
-        // fixme pay attention: if it is lowered when too near frontWallDist
-        // fixme it may not return aligned: transition must be as smooth as possible
-        // fixme also true that it may crash before turning right to be aligned whp
-        isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
-        //lateralMinDist = (isNearLoadPoint ? 0.27 : 0.3); // todo test in lab if 30 is ok; keep 30 for tests, it works
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
