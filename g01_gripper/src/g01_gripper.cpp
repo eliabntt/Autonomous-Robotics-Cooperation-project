@@ -4,6 +4,8 @@
 //
 #include "g01_gripper.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
 G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better
     ros::AsyncSpinner spinner(2);
@@ -96,27 +98,46 @@ G01Gripper::G01Gripper() : command(), n() {
         full = false; // the box is empty
         finish = true;
         int count = 0;
-       /* while(1)
+
+/*
+        ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
+        ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2",1);
+        ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3",1);
+        ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4",1);
+        ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5",1);
+        ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6",1);
+        geometry_msgs::PoseStamped a;
+        a.header.frame_id = "world";
+
+       while(1)
         {
-            ros::Publisher p1= n.advertise<geometry_msgs::PoseStamped>("/p1",1);
-            ros::Publisher p2= n.advertise<geometry_msgs::PoseStamped>("/p2",1);
-            ros::Publisher p3= n.advertise<geometry_msgs::PoseStamped>("/p3",1);
-            ros::Publisher p4= n.advertise<geometry_msgs::PoseStamped>("/p4",1);
-            ros::Publisher p5= n.advertise<geometry_msgs::PoseStamped>("/p5",1);
-            ros::Publisher p6= n.advertise<geometry_msgs::PoseStamped>("/p6",1);
-            geometry_msgs::PoseStamped a;
-            a.header.frame_id = "world";
-            a.header.stamp = ros::Time::now();
+
             a.pose = box.poses.at(0);
-            p1.publish(a);a.pose = box.poses.at(1);
             a.header.stamp = ros::Time::now();
-            p2.publish(a);a.pose = box.poses.at(2);
+            p1.publish(a);
+            ros::Duration(1).sleep();
+
+            a.pose = box.poses.at(1);
             a.header.stamp = ros::Time::now();
-            p3.publish(a);a.pose = box.poses.at(3);
+            p2.publish(a);
+            ros::Duration(1).sleep();
+
+            a.pose = box.poses.at(2);
             a.header.stamp = ros::Time::now();
-            p4.publish(a);a.pose = box.poses.at(4);
+            p3.publish(a);
+            ros::Duration(1).sleep();
+
+            a.pose = box.poses.at(3);
             a.header.stamp = ros::Time::now();
-            p5.publish(a);a.pose = box.poses.at(5);
+            p4.publish(a);
+            ros::Duration(1).sleep();
+
+            a.pose = box.poses.at(4);
+            a.header.stamp = ros::Time::now();
+            p5.publish(a);
+            ros::Duration(1).sleep();
+
+            a.pose = box.poses.at(5);
             a.header.stamp = ros::Time::now();
             p6.publish(a);
             ros::Duration(1).sleep();
@@ -793,3 +814,4 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
         ROS_ERROR_STREAM("transform not found");
     }
 }
+#pragma clang diagnostic pop

@@ -15,9 +15,7 @@
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     geometry_msgs::Pose center, temp;
     //todo check if necessary
-    temp.orientation.x = 0;
-    temp.orientation.y = 0;
-    temp.orientation.z = 0;
+    //deleted x y z, the quaternion is declared as (0, 0, 0, 0) so you just need to set w.
     temp.orientation.w = 1;
     tf::Quaternion rotation(robotPose.orientation.x, robotPose.orientation.y,
                             robotPose.orientation.z, robotPose.orientation.w);
@@ -28,16 +26,17 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     tf::Vector3 centralOffset = tf::quatRotate(rotation, widthVector);
     rotation = rotation * tf::createQuaternionFromYaw(3.14 / 2);
     tf::Vector3 trasversalOffset = tf::quatRotate(rotation, lengthVector);
-    //todo fix orientation
+
     for (int i = 0; i < 3; i++) {
         center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
         center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
-        center.position.z = 0.4;
+        center.position.z = 0.7;
         possiblePoses.emplace_back(center);
         for (int j = 0; j < 2; j++) {
             temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.x();
             temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.y();
-            temp.position.z = 0.4;
+            temp.position.z = 0.7;
+            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0).normalize() * rotation, temp.orientation);//fixme if rotation is wrong just edit the empty RPY, otherwise you can delete it
             poses.emplace_back(temp);
         }
     }
