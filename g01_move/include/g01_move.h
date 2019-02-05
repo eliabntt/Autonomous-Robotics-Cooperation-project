@@ -4,6 +4,7 @@
 #include <utility>
 #include <math.h>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/UInt16.h>
 #include <actionlib/client/simple_action_client.h>
 #include <geometry_msgs/Twist.h>
@@ -35,12 +36,15 @@ private:
     ros::AsyncSpinner spinner;
 
     // state
-    bool anotherRoundNeeded = true;
+    bool proceed = true, anotherRoundNeeded = true;
     unsigned short currState;
     ros::Publisher statePub;
     ros::Subscriber stateSub;
+    ros::Subscriber startSub;
     std_msgs::UInt16 stateCommand;
+    std_msgs::Bool startCommand;
     void stateCallback(const std_msgs::UInt16::ConstPtr &msg);
+    void startCallback(const std_msgs::Bool::ConstPtr &msg);
 
     // interesting poses
     move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, plannerGoal, unloadPoint;

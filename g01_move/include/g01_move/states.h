@@ -13,6 +13,8 @@ const unsigned short
         STATE_UR10_TBC  = 4, // load ok but not finished: another round is needed
         STATE_UR10_DONE = 5; // load ok: finish
 
-const std::string STATE_TOPIC = "/g01_fsm_state";
+const std::string
+        STATE_TOPIC = "/g01_fsm_state", // state transmitter
+        START_TOPIC = "/g01_start_run"; // to start when another run is needed
 
 #endif //G01_FSM_STATES_H
