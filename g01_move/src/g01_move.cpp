@@ -13,6 +13,7 @@ G01Move::G01Move() : n(), spinner(2) {
     scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
 
+    startSub = n.subscribe<std_msgs::Bool>  (START_TOPIC, 2, &G01Move::startCallback, this);
     stateSub = n.subscribe<std_msgs::UInt16>(STATE_TOPIC, 2, &G01Move::stateCallback, this);
     statePub = n.advertise<std_msgs::UInt16>(STATE_TOPIC, 2);
 
@@ -28,6 +29,10 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // start the loop
     while(anotherRoundNeeded) {
+        // wait for proceed command (useful from second run onward)
+        while (!proceed)
+            ros::Duration(1.0).sleep();
+
         // publish state (going to load point)
         stateCommand.data = STATE_MARR_RUN;
         statePub.publish(stateCommand);
@@ -81,8 +86,11 @@ G01Move::G01Move() : n(), spinner(2) {
         do ros::Duration(0.5).sleep(); // wait for msg propagation
         while (currState == STATE_UR10_LOAD);
 
-        // save if another round is needed
+        // save if another round is needed:
+        // yes: set to wait for manual restart after unload
+        // no:  bypass = set to true
         anotherRoundNeeded = (currState == STATE_UR10_TBC);
+        proceed = !anotherRoundNeeded;
 
         // publish new state (going to unload point)
         stateCommand.data = STATE_MARR_RUN;
@@ -143,6 +151,10 @@ G01Move::G01Move() : n(), spinner(2) {
 void G01Move::stateCallback(const std_msgs::UInt16::ConstPtr &msg) {
     // just save current state to the class variable
     currState = msg->data;
+}
+
+void G01Move::startCallback(const std_msgs::Bool::ConstPtr &msg) {
+    proceed = msg->data;
 }
 
 bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {

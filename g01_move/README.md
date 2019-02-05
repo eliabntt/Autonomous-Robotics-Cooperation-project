@@ -1,4 +1,4 @@
-# Homework 3 - Marrtino
+# Homework 3 - Marrtino, 4 - FSM
 
 Questo homework per funzionare necessita delle versioni più aggiornate dei package dell'arena e di marrtino.
 
@@ -12,8 +12,14 @@ Il ritorno avviene inizialmente utilizzando il planner sfruttando la buona local
 Successivamente, cercando di seguire sempre il muro sinistro, si prosegue fino all'uscita.
 Marrtino viene fatto poi deviare leggermente a destra e ritorna quindi sui suoi passi, raggiungendo tramite planner le prime due posizioni intermedie in ordine inverso, e poi viene indirizzato verso la zona di scarico.
 
-Sono presenti attualmente tre configurazioni differenti in tre branch separati `hw3`, `hw3-ver2`, `hw3-ver3`.
-La cosa essenziale è fare il checkout e nel caso delle versioni 2 e 3 sostituire l'amcl ufficiale con quello modificato che si può trovare all'interno della cartella launch.
+In questo homework è stata aggiunta la macchina a stati finiti per comandare lo svolgimento dell'intera challenge.
+Funziona tramite lo scambio di messaggi tra questo e il modulo del manipolatore sul topic `g01_fsm_state`.
+
+Quando marrtino raggiunge l'imboccatura del corridoio viene pubblicato il comando di risveglio della parte percettiva del modulo del manipolatore: le posizioni dei tag vengono lette e elaborate.
+Quando marrtino raggiunge la zona di carico, viene dato il via libera allo spostamento degli oggetti al manipolatore:
+in base allo stato di occupazione della scatola posta in cima a marrtino, il modulo del manipolatore comunicherà se è necessario un secondo giro per completare il trasferimento di tutti i pezzi.
+In caso positivo, una volta raggiunta la zona di scarico marrtino rimarrà in attesa sul topic `g01_start_run` del via libera per poter cominciare un altro giro.
+Questi comportamenti vengono ripetuti in loop fino al completo trasferimento degli oggetti necessari.
 
 ## Modalità di funzionamento (in simulazione)
 
@@ -39,6 +45,14 @@ oppure con un singolo comando (l'output della navigazione va su log file):
 ```
 roslaunch g01_move move_nav.launch sim:=true
 ```
+
+Per far cominciare un secondo giro, quando servono ulteriori pezzi, usare il comando
+
+```
+rostopic pub --once g01_start_run std_msgs/Bool 'true'
+```
+
+Non ha effetto se il task è stato completato correttamente.
 
 ### Note aggiuntive
 
