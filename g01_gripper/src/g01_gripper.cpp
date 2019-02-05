@@ -93,7 +93,7 @@ G01Gripper::G01Gripper() : command(), n() {
             if (odomReceived) {
                 ObjectBox box = ObjectBox(LZPose);
                 finish = true; // can change later
-                full = false; // the box is empty
+                full = false;  // empty box
 
                 /*
                 ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
@@ -139,7 +139,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 // move cylinders (hexagons)
                 int count = 0;
-                while (!cylToGrab.empty() && count < 5 && !box.isFull()) {
+                while (!cylToGrab.empty() && count < 5 && !full) {
                     cylToGrab = moveObjects(group, cylToGrab, box, true);
                     count += 1;
                 }
@@ -150,7 +150,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 // move cubes
                 count = 0;
-                while (!cubeToGrab.empty() && count < 5 && !box.isFull()) {
+                while (!cubeToGrab.empty() && count < 5 && !full) {
                     cubeToGrab = moveObjects(group, cubeToGrab, box);
                     count += 1;
                 }
@@ -161,7 +161,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 // move prisms
                 count = 0;
-                while (!triToGrab.empty() && count < 5 && !box.isFull()) {
+                while (!triToGrab.empty() && count < 5 && !full) {
                     triToGrab = moveObjects(group, triToGrab, box);
                     count += 1;
                 }
@@ -219,6 +219,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         if (!canPlace) {
             ROS_ERROR_STREAM("Cannot move to box, no place to put object");
             remaining.emplace_back(obj);
+            full = true;
             break;
         }
 
