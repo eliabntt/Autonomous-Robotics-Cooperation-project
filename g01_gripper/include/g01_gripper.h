@@ -72,10 +72,11 @@ private:
 
     // manipulator
     std::string PLANNING_GROUP = "manipulator";
+    double PI = 3.1415926535897931;
 
-    // joints' angles for fixed points  base         shoulder       elbow         wr1          wr2          wr3
-    std::vector<double> HOME_JOINT_POS {3.1415 / 2,  -3.1415 / 2,   -3.1415 / 2,  -3.1415 / 2, 3.14/2, 0};
-    std::vector<double> LZ_JOINT_POS   {-3.1415,     -3.1415 / 2.8, 3.1415 / 2.8, -3.1415 / 2, -3.1415 / 2, 0};
+    // joints' angles for fixed points  base    shoulder   elbow     wr1      wr2      wr3
+    std::vector<double> HOME_JOINT_POS {PI / 2, -PI / 2,   -PI / 2,  -PI / 2, PI / 2,  0};
+    std::vector<double> LZ_JOINT_POS   {-PI,    -PI / 2.8, PI / 2.8, -PI / 2, -PI / 2, 0};
     geometry_msgs::Pose LZPose;
     geometry_msgs::Pose initialPose; // not in joints here
     std::string planFrameId, endEffId;

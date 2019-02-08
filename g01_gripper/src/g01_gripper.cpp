@@ -296,7 +296,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // calculate the new orientation of the "wrist"
         if (rotate) {
-            r = 0, p = -3.14 / 3, y = 0;
+            r = 0, p = -PI / 3, y = 0;
             ROS_INFO_STREAM("Cylinder will be tilted");
         }
 
@@ -468,22 +468,22 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
     // remove extra rotations of the gripper
     Rdiff = (Rto - Rfrom);
-    while (Rdiff > 3.14)
-        Rdiff -= 3.14;
-    while (Rdiff < -3.14)
-        Rdiff += 3.14;
+    while (Rdiff > PI)
+        Rdiff -= PI;
+    while (Rdiff < -PI)
+        Rdiff += PI;
 
     Pdiff = (Pto - Pfrom);
-    while (Pdiff > 3.14)
-        Pdiff -= 3.14;
-    while (Pdiff < -3.14)
-        Pdiff += 3.14;
+    while (Pdiff > PI)
+        Pdiff -= PI;
+    while (Pdiff < -PI)
+        Pdiff += PI;
 
     Ydiff = (Yto - Yfrom);
-    while (Ydiff > 3.14)
-        Ydiff -= 3.14;
-    while (Ydiff < -3.14)
-        Ydiff += 3.14;
+    while (Ydiff > PI)
+        Ydiff -= PI;
+    while (Ydiff < -PI)
+        Ydiff += PI;
 
     // step measures to add
     double step[] = {(Rto - Rfrom) / nSteps,
@@ -708,7 +708,7 @@ moveit_msgs::CollisionObject G01Gripper::addCollisionBlock(geometry_msgs::Pose p
         // rotate the previous pose by 45* about Z because of mesh orientation
         tf::Quaternion qOriginal, qRotation, qFinal;
         qOriginal = tf::createQuaternionFromRPY(r, p, y);
-        r = 0, p = 0, y = 3.1415 / 2;
+        r = 0, p = 0, y = PI / 2;
         qRotation = tf::createQuaternionFromRPY(r, p, y);
         qRotation.normalize();
 
