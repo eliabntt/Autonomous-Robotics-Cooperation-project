@@ -58,14 +58,25 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(corridorInside);
 
     // try to align with the corridor if needed
+    /*
     ROS_INFO_STREAM("In-place alignment");
     alignCorridor();
+*/
+    //todo test
+    /*
+    plannerGoal.target_pose.pose.position.x = 0.5;
+    plannerGoal.target_pose.pose.position.y = 1.2;
+    plannerGoal.target_pose.pose.position.z = 0.0;
+    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
+                          plannerGoal.target_pose.pose.orientation);
+    success = moveToGoal(plannerGoal);*/
 
     ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
 
     ROS_INFO_STREAM("Docking");
-    docking();
+    // todo add planning
+    // docking();
 
     // loading
     ROS_INFO_STREAM("Wait for loading...");
@@ -183,6 +194,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 changeVel(true);
                 allowNeg = true;
             } else if (!reloc) {
+                // todo check meaningful trigger
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
