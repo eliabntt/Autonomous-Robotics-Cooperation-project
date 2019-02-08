@@ -1,6 +1,6 @@
 image: arena.pgm
-resolution: 0.050000
-origin: [-100.000000, -100.000000, 0.000000]
+resolution: 0.010000
+origin: [-3.20000, -2.6600000, 0.000000] # verso sx alzare x(verso lo 0) #verso avanti alzare y (verso lo 0)
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196

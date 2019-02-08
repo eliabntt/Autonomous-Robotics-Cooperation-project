@@ -5,7 +5,7 @@
 	<arg name="map_frame" default="$(arg prefix)map"/>
 	<arg name="output" default="screen"/>
 	<!-- Run the map server -->
-  <node name="map_server" pkg="map_server" type="map_server" args="$(find marrtino_navigation)/maps/$(arg map_file)" output="$(arg output)">
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find g01_move)/maps/$(arg map_file)" output="$(arg output)">
 		<param name="frame_id" value="$(arg map_frame)"/>
   </node>
 

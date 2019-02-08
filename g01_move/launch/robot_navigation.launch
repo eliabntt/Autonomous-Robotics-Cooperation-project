@@ -7,7 +7,7 @@
 
 	<arg name="marrtino_ns" default="/marrtino" />
 	<arg name="robot_id" default="$(arg marrtino_ns)"/>
-	<arg name="prefix" default="/marrtino_"/>
+	<arg name="prefix" default="marrtino_"/>
 
 	<arg name="scan_topic" default="scan" />
 	<arg name="map_topic" default="map" />
@@ -22,6 +22,18 @@
  <!-- Initial Posizion -->
 	<group ns="$(arg robot_id)">
 
+	<include unless="$(arg mapping)" file="$(find g01_move)/launch/amcl.launch">
+		<arg name="prefix" value="$(arg prefix)"/>
+		<arg name="scan_topic" value="$(arg scan_topic)" />
+		<arg name="map_topic" value="$(arg map_topic)" />
+		<arg name="global_frame" value="$(arg global_frame)" />
+		<arg name="odom_frame" value="$(arg odom_frame)" />
+		<arg name="base_frame" value="$(arg base_frame)" />
+		<arg name="x" value="$(arg x)"/>
+		<arg name="y" value="$(arg y)"/>
+		<arg name="z" value="$(arg z)"/>
+		<arg name="yaw" value="$(arg yaw)"/>
+	</include>
 	<!-- Map Server -->
 	<include unless="$(arg mapping)" file="$(find g01_move)/launch/map_server.launch">
 		<arg name="map_file" value="$(arg map_file)"/>
@@ -38,5 +50,6 @@
 		<arg name="static_map" value="true"/>
 		<arg name="output" value="$(arg output)"/>
 	</include>
+	
 	</group>
 </launch>
