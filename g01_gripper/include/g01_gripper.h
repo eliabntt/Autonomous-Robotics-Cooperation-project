@@ -74,7 +74,7 @@ private:
     std::string PLANNING_GROUP = "manipulator";
 
     // joints' angles for fixed points  base         shoulder       elbow         wr1          wr2          wr3
-    std::vector<double> HOME_JOINT_POS {-3.1415 / 2, -3.1415 / 2,   3.1415 / 2,   -3.1415 / 2, -3.1415 / 2, 0};
+    std::vector<double> HOME_JOINT_POS {3.1415 / 2,  -3.1415 / 2,   -3.1415 / 2,  -3.1415 / 2, 3.14/2, 0};
     std::vector<double> LZ_JOINT_POS   {-3.1415,     -3.1415 / 2.8, 3.1415 / 2.8, -3.1415 / 2, -3.1415 / 2, 0};
     geometry_msgs::Pose LZPose;
     geometry_msgs::Pose initialPose; // not in joints here

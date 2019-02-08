@@ -31,12 +31,13 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
         center.position.x = robotPose.position.x - (i - 1) * centralOffset.x();
         center.position.y = robotPose.position.y - (i - 1) * centralOffset.y();
         center.position.z = 0.7;
+        tf::quaternionTFToMsg(rotation, center.orientation);
         possiblePoses.emplace_back(center);
         for (int j = 0; j < 2; j++) {
             temp.position.x = center.position.x - std::pow(-1, j) * trasversalOffset.x();
             temp.position.y = center.position.y - std::pow(-1, j) * trasversalOffset.y();
             temp.position.z = 0.7;
-            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0).normalize() * rotation, temp.orientation);//fixme if rotation is wrong just edit the empty RPY, otherwise you can delete it
+            temp.orientation = center.orientation;
             poses.emplace_back(temp);
         }
     }
