@@ -62,14 +62,6 @@ G01Move::G01Move() : n(), spinner(2) {
     ROS_INFO_STREAM("In-place alignment");
     alignCorridor();
 */
-    //todo test
-    /*
-    plannerGoal.target_pose.pose.position.x = 0.5;
-    plannerGoal.target_pose.pose.position.y = 1.2;
-    plannerGoal.target_pose.pose.position.z = 0.0;
-    tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
-                          plannerGoal.target_pose.pose.orientation);
-    success = moveToGoal(plannerGoal);*/
 
     ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
@@ -433,8 +425,27 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
 void G01Move::wallFollower(bool forward) {
     isManualModeDone = false;
     first = true;
+    MoveBaseClient client("marrtino/move_base", false);
+    while (!client.waitForServer(ros::Duration(5.0)))
+        ROS_INFO_STREAM("Waiting for the move_base action server to come up");
+    if (forward) {
+        //todo test
+
+        plannerGoal.target_pose.pose.position.x = 0.5;
+        plannerGoal.target_pose.pose.position.y = 0.6;
+        plannerGoal.target_pose.pose.position.z = 0.0;
+        plannerGoal.target_pose.header.frame_id = "marrtino_map";
+        plannerGoal.target_pose.header.stamp = ros::Time::now();
+
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
+                              plannerGoal.target_pose.pose.orientation);
+        client.sendGoal(plannerGoal);
+    }
+
     while (!isManualModeDone)
         followerCallback(forward);
+    client.cancelAllGoals();
+    client.waitForResult();
 }
 
 void G01Move::followerCallback(bool forward) {
