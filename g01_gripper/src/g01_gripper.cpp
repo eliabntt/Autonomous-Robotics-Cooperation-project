@@ -4,8 +4,6 @@
 //
 #include "g01_gripper.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
 G01Gripper::G01Gripper() : command(), n() {
     //fixme maybe 4 better
     ros::AsyncSpinner spinner(2);
@@ -98,20 +96,17 @@ G01Gripper::G01Gripper() : command(), n() {
         full = false; // the box is empty
         finish = true;
         int count = 0;
-
 /*
-        ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
-        ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2",1);
-        ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3",1);
-        ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4",1);
-        ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5",1);
-        ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6",1);
+        ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1", 10);
+        ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2", 10);
+        ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3", 10);
+        ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4", 10);
+        ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5", 10);
+        ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6", 10);
         geometry_msgs::PoseStamped a;
         a.header.frame_id = "world";
 
-       while(1)
-        {
-
+        while (1) {
             a.pose = box.poses.at(0);
             a.header.stamp = ros::Time::now();
             p1.publish(a);
@@ -174,8 +169,6 @@ G01Gripper::G01Gripper() : command(), n() {
         if (finish) {} // finish will be true only if all three list are empty
 
         goHome(group);
-        spinner.stop(); // fixme for fsm!
-        ros::shutdown(); // fixme for fsm!
     }
 }
 
@@ -216,6 +209,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             remaining.emplace_back(obj);
             break;
         }
+        ROS_INFO_STREAM(destPose);
+        ROS_INFO_STREAM(box.poses.at(0));
 
         // get index of object's name to extract Gazebo's object and link names
         index = std::find(tagnames.begin(), tagnames.end(), obj.header.frame_id) - tagnames.begin();
@@ -230,7 +225,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // to get the right position for the fingers
         // todo do this only if necessary
         double diff, diffAbs;
-        diffAbs = std::min(fabs(r + p_ee), fabs(r - p_ee));
+        diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
         if (fabs(y + p_ee) == diffAbs)
             diff = y + p_ee;
         else
@@ -245,24 +240,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
             remaining.emplace_back(obj);
             continue; // next object
-        }
-
-        // position refinement (another plan step, just to be sure)
-        objX = obj.pose.position.x;
-        objY = obj.pose.position.y;
-        curX = group.getCurrentPose().pose.position.x;
-        curY = group.getCurrentPose().pose.position.y;
-        while (fabs(objX - curX) > 0.03 || fabs(objY - curY) > 0.03) {
-            pose = group.getCurrentPose().pose;
-            pose.position.x += objX - curX;
-            pose.position.y += objY - curY;
-
-            group.setPoseTarget(pose);
-            if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
-                group.move();
-            else break;
-            curX = group.getCurrentPose().pose.position.x;
-            curY = group.getCurrentPose().pose.position.y;
         }
 
         // get the right altitude for gripper:
@@ -318,49 +295,74 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
 
         // calculate the new orientation of the "wrist"
-        if (rotate) { //todo move in goOverLz
+        if (rotate) {
             r = 0, p = -3.14 / 3, y = 0;
             ROS_INFO_STREAM("Cylinder will be tilted");
         }
 
         //todo fixme
-        poseToYPR(destPose, &y, &p, &r);
+/*        poseToYPR(destPose, &y, &p, &r);
         poseToYPR(group.getCurrentPose().pose, &y_ee, &p_ee, &r_ee);
-        diffAbs = std::min(fabs(r + p_ee), fabs(r - p_ee));
+        diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
         if (fabs(y + p_ee) == diffAbs)
             diff = y + p_ee;
         else
             diff = y - p_ee;
 
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r_ee, p_ee, y_ee) * tf::createQuaternionFromRPY(-diff, 0, 0),
-                              destPose.orientation);
+                              destPose.orientation);*/
 
-        if (!moveManipulator(destPose, group)) {
-            // try to go back down (less to be in a safe position)
-            ROS_INFO_STREAM("Error trying to get into placement position");
+        // fixme safe altitude
+        destPose.position.z += 0.6;
+        destPose.orientation = group.getCurrentPose().pose.orientation;
+        moveManipulator(destPose, group);
+
+        // fixme temp to go in right position while(group.getCurrentPose().pose.position.x)
+        // position refinement (another plan step, just to be sure)
+        objX = destPose.position.x;
+        objY = destPose.position.y;
+        curX = group.getCurrentPose().pose.position.x;
+        curY = group.getCurrentPose().pose.position.y;
+        while (fabs(objX - curX) > 0.03 || fabs(objY - curY) > 0.03) {
             pose = group.getCurrentPose().pose;
+            pose.position.x += objX - curX;
+            pose.position.y += objY - curY;
 
-            pose.position.z -= 0.1;
-            moveManipulator(pose, group);
-
-            // detach object
-            group.detachObject(obj.header.frame_id);
-            if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
-
-            goHome(group);
-
-            // save new object position
-            obj.pose.position = group.getCurrentPose().pose.position;
-            obj.pose.position.z -= 0.05;
-
-            std::vector<std::string> toRemove = {obj.header.frame_id};
-            planningSceneIF.removeCollisionObjects(toRemove);
-            //remaining.emplace_back(obj);
-            continue;
-        } else {
-            ROS_INFO_STREAM("movement to placement position completed");
+            group.setPoseTarget(pose);
+            if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
+                group.move();
+            else break;
+            curX = group.getCurrentPose().pose.position.x;
+            curY = group.getCurrentPose().pose.position.y;
         }
+//fixme temp
+        /*  if (!moveManipulator(destPose, group)) {
+              // try to go back down (less to be in a safe position)
+              ROS_INFO_STREAM("Error trying to get into placement position");
+              pose = group.getCurrentPose().pose;
 
+              pose.position.z -= 0.1;
+              moveManipulator(pose, group);
+
+              // detach object
+              group.detachObject(obj.header.frame_id);
+              if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
+
+              goHome(group);
+
+              // save new object position
+              obj.pose.position = group.getCurrentPose().pose.position;
+              obj.pose.position.z -= 0.05;
+
+              std::vector<std::string> toRemove = {obj.header.frame_id};
+              planningSceneIF.removeCollisionObjects(toRemove);
+              //remaining.emplace_back(obj);
+              continue;
+          } else {
+              ROS_INFO_STREAM("movement to placement position completed");
+          }*/
+
+        ROS_INFO_STREAM(group.getCurrentPose().pose);
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.1;
@@ -448,6 +450,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     plan.trajectory_ = traj;
 
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
+
     return (resultCode.val == 1);
     // return true only if the movement is correct (most times: bad planning removed before)
 }
@@ -814,4 +817,3 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
         ROS_ERROR_STREAM("transform not found");
     }
 }
-#pragma clang diagnostic pop
