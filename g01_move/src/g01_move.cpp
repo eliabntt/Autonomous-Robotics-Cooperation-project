@@ -12,7 +12,19 @@ G01Move::G01Move() : n(), spinner(2) {
     marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100, &G01Move::subPoseOdomCallback, this);
     scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
+
+    clear_maps_client = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
+    bool cleared = false;
+
     spinner.start();
+
+    if (!cleared) {
+        if (!clear_maps_client.call(empty)) {
+            ROS_INFO_STREAM("I cannot clear the costmaps!");
+        } else {
+            cleared = true;
+        }
+    }
 
     // move near the corridor area using subsequent goals
     ROS_INFO_STREAM("Go near corridor");
@@ -121,6 +133,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     bool backed = false;
     bool rotated = false;
     bool allowNeg = false;
+    bool reloc = false;
 
     geometry_msgs::Pose currPose = marrPose;
     while (true) {
@@ -142,6 +155,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             rotated = false;
             allowNeg = false;
             changeVel(false);
+            reloc = false;
         }
 
         client.waitForResult();
@@ -152,6 +166,11 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
+            // todo check if useful
+            if (!clear_maps_client.call(empty)) {
+                ROS_INFO_STREAM("I cannot clear the costmaps!");
+            }
+
             if (!backed) {
                 client.stopTrackingGoal();
                 ROS_WARN_STREAM("Manual recovery: going back");
@@ -163,6 +182,13 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 ROS_WARN_STREAM("Manual recovery: allow negative velocities");
                 changeVel(true);
                 allowNeg = true;
+            } else if (!reloc) {
+                ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                        "/marrtino/request_nomotion_update");
+                for (int counter = 0; counter < 50; counter++) {
+                    ROS_INFO_STREAM(update_client.call(empty));
+                }
+                reloc = true;
             } else if (!rotated) {
                 ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
                 recoverManual(true);

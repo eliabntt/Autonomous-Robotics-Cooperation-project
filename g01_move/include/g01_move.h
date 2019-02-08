@@ -38,6 +38,8 @@ private:
     // pose subscription stuff
     geometry_msgs::Pose marrPose, marrPoseOdom;
     ros::Subscriber marrPoseSub, marrPoseOdomSub;
+    ros::ServiceClient clear_maps_client;
+    std_srvs::Empty empty;
 
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL);
     void subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom);
