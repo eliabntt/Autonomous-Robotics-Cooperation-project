@@ -304,17 +304,14 @@ void G01Move::docking() {
     velPub.publish(moveCommand);
 
     // align
-    double r, p, y;
+    double r, p, y, ty = PI / 2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    if (fabs(0.4 * PI - y) > 0.2) {
-        if ((0.4 * PI - y) > 0)
-            moveCommand.angular.z = -0.2;
-        else
-            moveCommand.angular.z = 0.2;
-    } else
-        moveCommand.angular.z = 0.0;
-    velPub.publish(moveCommand);
-    ros::Duration(0.4).sleep(); // todo tune
+    while (fabs(y - ty) > 0.1) {
+        moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
+        velPub.publish(moveCommand);
+        ros::Duration(0.08).sleep();
+        poseToYPR(marrPoseOdom, &y, &p, &r);
+    }
 
     // stop
     moveCommand.linear.x = 0.0;
@@ -328,6 +325,25 @@ void G01Move::docking() {
         velPub.publish(moveCommand);
         ros::Duration(0.2).sleep(); // todo tune
     }
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+
+    // align
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    while (fabs(y - ty) > 0.1) {
+        moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
+        velPub.publish(moveCommand);
+        ros::Duration(0.08).sleep();
+        poseToYPR(marrPoseOdom, &y, &p, &r);
+    }
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
 }
 
 void G01Move::rotateRight() {
