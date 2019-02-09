@@ -19,11 +19,10 @@ G01Move::G01Move() : n(), spinner(2) {
     spinner.start();
 
     if (!cleared) {
-        if (!clear_maps_client.call(empty)) {
-            ROS_INFO_STREAM("I cannot clear the costmaps!");
-        } else {
+        if (!clear_maps_client.call(empty))
+            ROS_INFO_STREAM("Cannot clear the costmaps!");
+        else
             cleared = true;
-        }
     }
 
     // move near the corridor area using subsequent goals
@@ -67,8 +66,7 @@ G01Move::G01Move() : n(), spinner(2) {
     wallFollower(true);
 
     ROS_INFO_STREAM("Docking");
-    // todo add planning
-    // docking();
+    docking();
 
     // loading
     ROS_INFO_STREAM("Wait for loading...");
@@ -292,22 +290,13 @@ void G01Move::alignCorridor() {
 }
 
 void G01Move::docking() {
-    // stay near to wall
-    moveCommand.linear.x = 0.2;
-    moveCommand.angular.z = 0.4;
-    velPub.publish(moveCommand);
-    ros::Duration(0.3).sleep(); // todo tune
-
-    // stop
-    moveCommand.linear.x = 0.0;
-    moveCommand.angular.z = 0.0;
-    velPub.publish(moveCommand);
-
-    // align
-    double r, p, y, ty = PI / 2;
+    ROS_INFO_STREAM("ROT");
+    // rot toward wall
+    double r, p, y, ty = PI / 2 + 0.2; // tune
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    while (fabs(y - ty) > 0.1) {
-        moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
+    moveCommand.linear.x = 0.01;
+    while (fabs(y - ty) > 0.01) {
+        moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3); // tune
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
@@ -318,12 +307,14 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
-    // go on until loading zone is reached
-    while (frontWallDist > 1.15) { // todo tune
-        moveCommand.linear.x = 0.2; // todo tune
+    ROS_INFO_STREAM("STRAIGHT");
+    // go near wall
+    while (marrPoseOdom.position.x > 0.57) { // todo tune (important)
+        ROS_INFO_STREAM("X " << marrPoseOdom.position.x);
+        moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
-        ros::Duration(0.2).sleep(); // todo tune
+        ros::Duration(0.08).sleep();
     }
 
     // stop
@@ -331,9 +322,12 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
+    ROS_INFO_STREAM("ALIGN");
     // align
+    ty = PI / 2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    while (fabs(y - ty) > 0.1) {
+    while (fabs(y - ty) > 0.01) {
+        ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
@@ -344,6 +338,38 @@ void G01Move::docking() {
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
+
+    ROS_INFO_STREAM("STRAIGHT");
+    // go on until loading zone is reached
+    while (forwardDist > 1.15) { // tune
+        ROS_INFO_STREAM("FW " << forwardDist << " Y " << marrPoseOdom.position.y);
+        moveCommand.linear.x = 0.2;
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
+        ros::Duration(0.1).sleep();
+    }
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+
+    ROS_INFO_STREAM("ALIGN");
+    // align
+    poseToYPR(marrPoseOdom, &y, &p, &r);
+    while (fabs(y - ty) > 0.01) {
+        ROS_INFO_STREAM("Y " << y << " TY " << ty);
+        moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
+        velPub.publish(moveCommand);
+        ros::Duration(0.08).sleep();
+        poseToYPR(marrPoseOdom, &y, &p, &r);
+    }
+
+    // stop
+    moveCommand.linear.x = 0.0;
+    moveCommand.angular.z = 0.0;
+    velPub.publish(moveCommand);
+    // todo if needed: marrtino pose at lz: 0.55, 1.55, 0; 0, 0, PI/2
 }
 
 void G01Move::rotateRight() {
@@ -407,6 +433,7 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
 
     // real: scan direction is left to right
     // flip values w.r.t. center (to keep the same logic below)
+    // TODO https://stackoverflow.com/questions/22488316/standard-way-for-reverse-pointer-iterators
     //if (!sim) todo work on this, read-only issues (deep copy or duplicate for loops)
     //    std::reverse(msg->ranges.begin(), msg->ranges.end());
 
@@ -441,13 +468,13 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
 void G01Move::wallFollower(bool forward) {
     isManualModeDone = false;
     first = true;
+
+    // pose for planner to help in movement
     MoveBaseClient client("marrtino/move_base", false);
     while (!client.waitForServer(ros::Duration(5.0)))
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
     if (forward) {
-        //todo test
-
-        plannerGoal.target_pose.pose.position.x = 0.5;
+        plannerGoal.target_pose.pose.position.x = 0.6; // fixme same story, 0.5 is in the lateral wall
         plannerGoal.target_pose.pose.position.y = 0.6;
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
@@ -455,11 +482,22 @@ void G01Move::wallFollower(bool forward) {
 
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                               plannerGoal.target_pose.pose.orientation);
-        client.sendGoal(plannerGoal);
-    }
+    } else {
+        plannerGoal.target_pose.pose.position.x = 0.6; // todo test this part
+        plannerGoal.target_pose.pose.position.y = -1.25;
+        plannerGoal.target_pose.pose.position.z = 0.0;
+        plannerGoal.target_pose.header.frame_id = "marrtino_map";
+        plannerGoal.target_pose.header.stamp = ros::Time::now();
 
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI * 3 / 2),
+                              plannerGoal.target_pose.pose.orientation);
+    }
+    client.sendGoal(plannerGoal);
+
+    // manual commands
     while (!isManualModeDone)
         followerCallback(forward);
+
     client.cancelAllGoals();
     client.waitForResult();
 }
@@ -469,8 +507,7 @@ void G01Move::followerCallback(bool forward) {
                           << " Y " << marrPoseOdom.position.y);
 
     // if going forward, stop earlier for docking
-    frontWallDist = ((forward) ? 1.4 : 1.15); // todo tune
-
+    frontWallDist = ((forward) ? 1.6 : 1.15);
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
@@ -488,7 +525,7 @@ void G01Move::followerCallback(bool forward) {
             }
         } else
             moveCommand.angular.z = 0.0;
-    } else if ((forward && marrPoseOdom.position.y < 1.1) || (!forward && marrPoseOdom.position.y > -1.05)) {
+    } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {
         // entrance and exit: just rotate a little
 
         moveCommand.linear.x = linVel * 1 / 3;
