@@ -126,8 +126,17 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     bool rotated = false;
     int reloc = 0;
 
-    geometry_msgs::Pose currPose = marrPoseOdom;
+    if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
+        ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                "/marrtino/request_nomotion_update");
+        for (int counter = 0; counter < 50; counter++) {
+            update_client.call(empty);
+            ros::Duration(0.02).sleep();
+        }
+        reloc += 1;
+    }
 
+    geometry_msgs::Pose currPose = marrPoseOdom;
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
         goal.target_pose.header.stamp = ros::Time::now();
@@ -160,7 +169,6 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             if (!clearMapsClient.call(empty))
                 ROS_INFO_STREAM("Cannot clear the costmaps!");
             ros::Duration(1).sleep();//fixme don't know if necessary
-            ROS_INFO_STREAM(marrPose.covariance.at(0) <<" " << marrPose.covariance.at(7));
             if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                         "/marrtino/request_nomotion_update");
@@ -170,7 +178,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 }
                 reloc += 1;
             }
-            if (reloc > 1 || reloc = 0) {
+            if (reloc > 1 || reloc == 0) {
                 if (!backed) {
                     client.cancelAllGoals();
                     client.waitForResult();
