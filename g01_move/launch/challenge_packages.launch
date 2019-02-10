@@ -1,0 +1,14 @@
+<!-- launch file for part of challenge: perception, gripper, move packages -->
+<launch>
+    <arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
+    <arg name="ids" default="" doc="The frame_ids to be detected. If empty all are considered valid"/>
+
+    <include file="$(find g01_gripper)/launch/grip_perc.launch">
+        <arg name="sim" value="$(arg sim)"/>
+        <arg name="ids" value="$(arg ids)"/>
+    </include>
+
+    <include file="$(find g01_move)/launch/move.launch">
+        <arg name="sim" value="$(arg sim)"/>
+    </include>
+</launch>
