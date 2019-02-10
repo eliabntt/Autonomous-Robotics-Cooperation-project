@@ -13,14 +13,14 @@ G01Move::G01Move() : n(), spinner(2) {
     scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
 
-    clear_maps_client = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
+    clearMapsClient = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
 
     spinner.start();
 
     //todo keep outside FSM
-    if (!clear_maps_client.call(empty))
+    if (!clearMapsClient.call(empty))
         ROS_INFO_STREAM("Cannot clear the costmaps!");
-    //wait for regetting the map
+    // wait to get an update of the map
     ros::Duration(1).sleep();
 
     // move near the corridor area using subsequent goals
@@ -42,19 +42,13 @@ G01Move::G01Move() : n(), spinner(2) {
 
     //todo maybe add one more
     ROS_INFO_STREAM("Try to go inside corridor");
-    if (sim) { // fixme temporary workaround
-        corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
-        corridorInside.target_pose.pose.position.y = -0.9;
-    } else {
-        corridorInside.target_pose.pose.position.x = 0.58;
-        corridorInside.target_pose.pose.position.y = -1;
-    }
+    corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
+    corridorInside.target_pose.pose.position.y = -0.9;
     corridorInside.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                           corridorInside.target_pose.pose.orientation);
     success = moveToGoal(corridorInside);
 
-    // try to align with the corridor if needed
     ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
 
@@ -87,10 +81,10 @@ G01Move::G01Move() : n(), spinner(2) {
                           plannerGoal.target_pose.pose.orientation);
     success = moveToGoal(plannerGoal);
 
-    if (!clear_maps_client.call(empty)) {
-        ROS_INFO_STREAM("I cannot clear the costmaps!");
-    }
+    if (!clearMapsClient.call(empty))
+        ROS_INFO_STREAM("Cannot clear the costmaps!");
 
+    ROS_INFO_STREAM("Enter the corridor");
     moveCommand.linear.x = 0.8;
     moveCommand.angular.z = -0.1;
     velPub.publish(moveCommand);
@@ -161,9 +155,8 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
-            if (!clear_maps_client.call(empty)) {
-                ROS_INFO_STREAM("I cannot clear the costmaps!");
-            }
+            if (!clearMapsClient.call(empty))
+                ROS_INFO_STREAM("Cannot clear the costmaps!");
 
             if (marrPose.covariance.at(0) > 0.3 || marrPose.covariance.at(7) > 0.3) {
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
@@ -262,11 +255,10 @@ void G01Move::recoverManual(bool rot) {
     }
 }
 
-void G01Move::alignCorridor() {
+void G01Move::alignCorridor() { // fixme sched for removal
     double r, p, y;
     poseToYPR(marrPoseOdom, &y, &p, &r);
 
-    // fixme if it is safe to remove/relax this I can reuse this func for docking
     moveCommand.linear.x = (marrPoseOdom.position.y < -1.2) ? 0.3 : 0.0;
 
     if (fabs(0.4 * PI - y) > 0.2) {
@@ -281,13 +273,12 @@ void G01Move::alignCorridor() {
 }
 
 void G01Move::docking() {
-    ROS_INFO_STREAM("ROT");
-    // rot toward wall
-    double r, p, y, ty = PI / 2 + 0.2; // tune
+    ROS_INFO_STREAM("Rotate toward left wall");
+    double r, p, y, ty = PI / 2 + 0.2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     moveCommand.linear.x = 0.01;
     while (fabs(y - ty) > 0.01) {
-        moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3); // tune
+        moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
@@ -298,10 +289,9 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
-    ROS_INFO_STREAM("STRAIGHT");
-    // go near wall
-    while (marrPoseOdom.position.x > 0.57) { // todo tune (important)
-        ROS_INFO_STREAM("X " << marrPoseOdom.position.x);
+    ROS_INFO_STREAM("Go on");
+    while (marrPoseOdom.position.x > 0.57) {
+        //ROS_INFO_STREAM("X " << marrPoseOdom.position.x);
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
@@ -313,12 +303,11 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
-    ROS_INFO_STREAM("ALIGN");
-    // align
+    ROS_INFO_STREAM("Realign");
     ty = PI / 2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     while (fabs(y - ty) > 0.01) {
-        ROS_INFO_STREAM("Y " << y << " TY " << ty);
+        //ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
@@ -330,10 +319,9 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
-    ROS_INFO_STREAM("STRAIGHT");
-    // go on until loading zone is reached
+    ROS_INFO_STREAM("Go to loading zone");
     while (forwardDist > 1.15) { // tune
-        ROS_INFO_STREAM("FW " << forwardDist << " Y " << marrPoseOdom.position.y);
+        //ROS_INFO_STREAM("FW " << forwardDist << " Y " << marrPoseOdom.position.y);
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
@@ -345,11 +333,10 @@ void G01Move::docking() {
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
-    ROS_INFO_STREAM("ALIGN");
-    // align
+    ROS_INFO_STREAM("Safety realign");
     poseToYPR(marrPoseOdom, &y, &p, &r);
     while (fabs(y - ty) > 0.01) {
-        ROS_INFO_STREAM("Y " << y << " TY " << ty);
+        //ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
@@ -364,7 +351,7 @@ void G01Move::docking() {
 }
 
 void G01Move::rotateRight() {
-    // go forward a little
+    // go forward a little, pushing away from wall
     moveCommand.linear.x = 0.2;
     moveCommand.angular.z = -twistVel;
     velPub.publish(moveCommand);
@@ -378,7 +365,7 @@ void G01Move::rotateRight() {
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.1;
     moveCommand.angular.z = -1.8 * twistVel;
-    while (fabs(y - ty) > 0.1) {
+    while (fabs(y - ty) > 0.05) {
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
@@ -458,7 +445,7 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
 
 void G01Move::wallFollower(bool forward) {
     isManualModeDone = false;
-    first = true;
+    // first = true; fixme sched for removal
 
     // pose for planner to help in movement
     MoveBaseClient client("marrtino/move_base", false);
@@ -474,7 +461,8 @@ void G01Move::wallFollower(bool forward) {
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                               plannerGoal.target_pose.pose.orientation);
     } else {
-        plannerGoal.target_pose.pose.position.x = 0.5; // todo test this part
+        // todo maybe simply use corridorEntrance or similar, with inverted orientation
+        plannerGoal.target_pose.pose.position.x = 0.6; // todo test this part
         plannerGoal.target_pose.pose.position.y = -1.5;
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
@@ -494,11 +482,12 @@ void G01Move::wallFollower(bool forward) {
 }
 
 void G01Move::followerCallback(bool forward) {
-//ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
-    //                        << " Y " << marrPoseOdom.position.y);
+    // ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
+    //              << " Y " << marrPoseOdom.position.y);
 
     // if going forward, stop earlier for docking
     frontWallDist = ((forward) ? 1.6 : 1.15);
+
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
@@ -509,11 +498,11 @@ void G01Move::followerCallback(bool forward) {
             first = false;
         } else if (avgSx > 1.02 * lateralMinDist) {
             moveCommand.angular.z = ((!isNearLoadPoint) ? +1.5 * twistVel : twistVel);
-            if (first) {
+            /*if (first) { fixme sched for removal
                 ROS_INFO_STREAM("First alignment near the wall");
-                moveCommand.angular.z = 3 * twistVel;
+                moveCommand.angular.z = 2 * twistVel;
                 moveCommand.linear.x = linVel * 0.6;
-            }
+            }*/
         } else
             moveCommand.angular.z = 0.0;
     } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {

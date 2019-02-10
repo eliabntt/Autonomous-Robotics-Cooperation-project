@@ -39,7 +39,7 @@ private:
     geometry_msgs::Pose marrPoseOdom;
     geometry_msgs::PoseWithCovariance marrPose;
     ros::Subscriber marrPoseSub, marrPoseOdomSub;
-    ros::ServiceClient clear_maps_client;
+    ros::ServiceClient clearMapsClient;
     std_srvs::Empty empty;
 
     void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL);
