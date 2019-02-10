@@ -495,8 +495,10 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
 // Gripper
 void G01Gripper::gripperOpen() {
-    /* fakeGripperOpen();
-     return;*/
+    if (!sim) {
+        fakeGripperOpen();
+        return;
+    }
 
     // code to be used with robotiq gripper
     command.rACT = 1;
@@ -538,8 +540,10 @@ bool G01Gripper::gazeboDetach(std::string name, std::string link) {
 }
 
 void G01Gripper::gripperClose(int howMuch) {
-    fakeGripperClose();
-    return;
+    if (!sim) {
+        fakeGripperClose();
+        return;
+    }
 
     // code to be used with robotiq gripper
     assert(howMuch > 0);
