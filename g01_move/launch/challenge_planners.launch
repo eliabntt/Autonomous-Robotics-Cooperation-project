@@ -1,0 +1,12 @@
+<!-- launch file for part of the challenge: apriltag, planners -->
+<launch>
+    <arg name="sim" default="true" doc="Define if it is simulation environment or not"/>
+
+    <include file="$(find challenge_arena)/launch/apriltag.launch"/>
+
+    <include file="$(find ur10_platform_challenge_moveit_config)/launch/ur10_platform_challenge_moveit_planning_execution.launch">
+        <arg name="sim" value="$(arg sim)"/>
+    </include>
+
+    <include file="$(find g01_move)/launch/robot_navigation.launch"/>
+</launch>

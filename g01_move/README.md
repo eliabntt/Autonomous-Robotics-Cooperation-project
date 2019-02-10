@@ -56,5 +56,15 @@ Non ha effetto se il task è stato completato correttamente.
 
 ### Note aggiuntive
 
-I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
+- I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
 L'unica eccezione è il launch file dell'amcl in quanto non sapevamo se la modifica fosse consentita.
+
+- Questo modulo contiene anche i due launch file necessari per far partire l'intera challenge: oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltag, moveit, marrtino) e poi quello di questi moduli:
+
+```
+roslaunch g01_move challenge_planners.launch sim:=true
+```
+
+```
+roslaunch g01_move challenge_packages.launch sim:=true ids:="[[frame_id],]"
+```
