@@ -466,7 +466,7 @@ void G01Move::wallFollower(bool forward) {
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
     if (forward) {
         plannerGoal.target_pose.pose.position.x = 0.6; // fixme same story, 0.5 is in the lateral wall
-        plannerGoal.target_pose.pose.position.y = 0.6;
+        plannerGoal.target_pose.pose.position.y = 0.6; // todo maybe place forward
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
         plannerGoal.target_pose.header.stamp = ros::Time::now();
