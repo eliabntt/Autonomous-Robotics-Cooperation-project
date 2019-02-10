@@ -14,21 +14,19 @@ G01Move::G01Move() : n(), spinner(2) {
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
 
     clear_maps_client = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
-    bool cleared = false;
 
     spinner.start();
 
-    if (!cleared) {
-        if (!clear_maps_client.call(empty))
-            ROS_INFO_STREAM("Cannot clear the costmaps!");
-        else
-            cleared = true;
-    }
+    //todo keep outside FSM
+    if (!clear_maps_client.call(empty))
+        ROS_INFO_STREAM("Cannot clear the costmaps!");
+    //wait for regetting the map
+    ros::Duration(1).sleep();
 
     // move near the corridor area using subsequent goals
     ROS_INFO_STREAM("Go near corridor");
     nearCorridor.target_pose.pose.position.x = 0.15;
-    nearCorridor.target_pose.pose.position.y = -1.6;
+    nearCorridor.target_pose.pose.position.y = -1.54;
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
                           nearCorridor.target_pose.pose.orientation);
@@ -45,7 +43,7 @@ G01Move::G01Move() : n(), spinner(2) {
     //todo maybe add one more
     ROS_INFO_STREAM("Try to go inside corridor");
     if (sim) { // fixme temporary workaround
-        corridorInside.target_pose.pose.position.x = 0.6; // little to the left, because planner is crap
+        corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
         corridorInside.target_pose.pose.position.y = -0.9;
     } else {
         corridorInside.target_pose.pose.position.x = 0.58;
@@ -57,11 +55,6 @@ G01Move::G01Move() : n(), spinner(2) {
     success = moveToGoal(corridorInside);
 
     // try to align with the corridor if needed
-    /*
-    ROS_INFO_STREAM("In-place alignment");
-    alignCorridor();
-*/
-
     ROS_INFO_STREAM("Following the wall");
     wallFollower(true);
 
@@ -73,12 +66,12 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::Duration(2).sleep();
 
     // rotation
-/*    ROS_INFO_STREAM("Rotate, going back to unload point");
+    ROS_INFO_STREAM("Rotate, going back to unload point");
     rotateRight();
 
     // move to the entrance of the corridor - back
     ROS_INFO_STREAM("Intermediate through the funnel");
-    plannerGoal.target_pose.pose.position.x = 0.72;
+    plannerGoal.target_pose.pose.position.x = 0.68;
     plannerGoal.target_pose.pose.position.y = 0.78;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
@@ -87,12 +80,16 @@ G01Move::G01Move() : n(), spinner(2) {
 
 
     ROS_INFO_STREAM("Going near the entrance of the corridor");
-    plannerGoal.target_pose.pose.position.x = 0.626;
+    plannerGoal.target_pose.pose.position.x = 0.6;
     plannerGoal.target_pose.pose.position.y = 0.25;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
                           plannerGoal.target_pose.pose.orientation);
     success = moveToGoal(plannerGoal);
+
+    if (!clear_maps_client.call(empty)) {
+        ROS_INFO_STREAM("I cannot clear the costmaps!");
+    }
 
     moveCommand.linear.x = 0.8;
     moveCommand.angular.z = -0.1;
@@ -117,7 +114,7 @@ G01Move::G01Move() : n(), spinner(2) {
     unloadPoint.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
     success = moveToGoal(unloadPoint);
-*/
+
     //fixme for real challenge MAYBE find clear space to start - ask
     spinner.stop();
     ros::shutdown();
@@ -133,10 +130,9 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
-    bool allowNeg = false;
-    bool reloc = false;
 
-    geometry_msgs::Pose currPose = marrPose;
+    geometry_msgs::Pose currPose = marrPoseOdom;
+
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
         goal.target_pose.header.stamp = ros::Time::now();
@@ -154,9 +150,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
             backed = false;
             rotated = false;
-            allowNeg = false;
             changeVel(false);
-            reloc = false;
         }
 
         client.waitForResult();
@@ -167,40 +161,36 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             ROS_INFO_STREAM("Move successful");
             return true;
         } else {
-            // todo check if useful
             if (!clear_maps_client.call(empty)) {
                 ROS_INFO_STREAM("I cannot clear the costmaps!");
             }
 
-            if (!backed) {
-                client.stopTrackingGoal();
-                ROS_WARN_STREAM("Manual recovery: going back");
-                recoverManual();
-                backed = true;
-                currPose = marrPoseOdom;
-                ros::Duration(0.2).sleep();
-            } else if (!allowNeg) {
-                ROS_WARN_STREAM("Manual recovery: allow negative velocities");
-                changeVel(true);
-                allowNeg = true;
-            } else if (!reloc) {
-                // todo check meaningful trigger
+            if (marrPose.covariance.at(0) > 0.3 || marrPose.covariance.at(7) > 0.3) {
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
-                    ROS_INFO_STREAM(update_client.call(empty));
+                    update_client.call(empty);
+                    ros::Duration(0.02).sleep();
                 }
-                reloc = true;
-            } else if (!rotated) {
-                ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
-                recoverManual(true);
-                rotated = true;
-                currPose = marrPoseOdom;
             } else {
-                // todo try with a relocalization
-                ROS_ERROR_STREAM("Error, robot failed moving");
-                changeVel(false);
-                return false;
+                if (!backed) {
+                    client.cancelAllGoals();
+                    client.waitForResult();
+                    ROS_WARN_STREAM("Manual recovery: going back");
+                    recoverManual();
+                    backed = true;
+                    currPose = marrPoseOdom;
+                } else if (!rotated) {
+                    ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
+                    recoverManual(true);
+                    rotated = true;
+                    currPose = marrPoseOdom;
+                } else {
+                    // todo try with a relocalization
+                    ROS_ERROR_STREAM("Error, robot failed moving");
+                    changeVel(false);
+                    return false;
+                }
             }
         }
     }
@@ -253,7 +243,7 @@ void G01Move::recoverManual(bool rot) {
 
         changeVel(true);
         move_base_msgs::MoveBaseGoal goal_temp;
-        goal_temp.target_pose.header.frame_id = "marrtino_odom"; //fixme or marrtino_map, but odom seems working better for recovery
+        goal_temp.target_pose.header.frame_id = "marrtino_map";
         goal_temp.target_pose.header.stamp = ros::Time::now();
         goal_temp.target_pose.pose = marrPoseOdom;
         //apply the shift
@@ -268,6 +258,7 @@ void G01Move::recoverManual(bool rot) {
             ROS_INFO_STREAM("Backup goal reached");
         }
         client_temp.cancelGoal();
+        client_temp.waitForResult();
     }
 }
 
@@ -483,8 +474,8 @@ void G01Move::wallFollower(bool forward) {
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                               plannerGoal.target_pose.pose.orientation);
     } else {
-        plannerGoal.target_pose.pose.position.x = 0.6; // todo test this part
-        plannerGoal.target_pose.pose.position.y = -1.25;
+        plannerGoal.target_pose.pose.position.x = 0.5; // todo test this part
+        plannerGoal.target_pose.pose.position.y = -1.5;
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
         plannerGoal.target_pose.header.stamp = ros::Time::now();
@@ -503,8 +494,8 @@ void G01Move::wallFollower(bool forward) {
 }
 
 void G01Move::followerCallback(bool forward) {
-    ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
-                          << " Y " << marrPoseOdom.position.y);
+//ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
+    //                        << " Y " << marrPoseOdom.position.y);
 
     // if going forward, stop earlier for docking
     frontWallDist = ((forward) ? 1.6 : 1.15);
@@ -545,7 +536,7 @@ void G01Move::followerCallback(bool forward) {
 }
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
-    marrPose = msgAMCL->pose.pose;
+    marrPose = msgAMCL->pose;
 }
 
 void G01Move::subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
