@@ -26,7 +26,7 @@ G01Move::G01Move() : n(), spinner(2) {
     // move near the corridor area using subsequent goals
     ROS_INFO_STREAM("Go near corridor");
     nearCorridor.target_pose.pose.position.x = 0.15;
-    nearCorridor.target_pose.pose.position.y = -1.54;
+    nearCorridor.target_pose.pose.position.y = -1.54; // fixme need to tune(too near the entrance)
     nearCorridor.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
                           nearCorridor.target_pose.pose.orientation);
@@ -65,7 +65,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // move to the entrance of the corridor - back
     ROS_INFO_STREAM("Intermediate through the funnel");
-    plannerGoal.target_pose.pose.position.x = 0.65;
+    plannerGoal.target_pose.pose.position.x = 0.65;//fixme still to tune
     plannerGoal.target_pose.pose.position.y = 0.78;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
