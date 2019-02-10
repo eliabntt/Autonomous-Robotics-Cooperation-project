@@ -21,7 +21,6 @@ G01Move::G01Move() : n(), spinner(2) {
 
     spinner.start();
 
-    //todo keep outside FSM
     if (!clearMapsClient.call(empty))
         ROS_INFO_STREAM("Cannot clear the costmaps!");
     // wait to get an update of the map
@@ -40,7 +39,7 @@ G01Move::G01Move() : n(), spinner(2) {
         // move near the corridor area using subsequent goals
         ROS_INFO_STREAM("Go near corridor");
         nearCorridor.target_pose.pose.position.x = 0.15;
-        nearCorridor.target_pose.pose.position.y = -1.6;
+        nearCorridor.target_pose.pose.position.y = -1.54; // fixme need to tune(too near the entrance
         nearCorridor.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
                               nearCorridor.target_pose.pose.orientation);
@@ -116,6 +115,9 @@ G01Move::G01Move() : n(), spinner(2) {
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
                               plannerGoal.target_pose.pose.orientation);
         success = moveToGoal(plannerGoal);
+
+        if (!clearMapsClient.call(empty))
+            ROS_INFO_STREAM("Cannot clear the costmaps!");
 
         ROS_INFO_STREAM("Enter the corridor");
         moveCommand.linear.x = 0.8;

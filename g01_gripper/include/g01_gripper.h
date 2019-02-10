@@ -35,7 +35,6 @@ public:
 
 private:
     // state
-    bool stillPiecesToMove = true;
     unsigned short currState;
     ros::Publisher statePub;
     ros::Subscriber stateSub;
