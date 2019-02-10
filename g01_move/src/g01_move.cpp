@@ -126,7 +126,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     bool rotated = false;
     int reloc = 0;
 
-    if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
+    if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {//fixme check what's better
         ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                 "/marrtino/request_nomotion_update");
         for (int counter = 0; counter < 50; counter++) {
@@ -464,7 +464,7 @@ void G01Move::wallFollower(bool forward) {
     while (!client.waitForServer(ros::Duration(5.0)))
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
     if (forward) {
-        plannerGoal.target_pose.pose.position.x = 0.5; // fixme same story, 0.5 is in the lateral wall
+        plannerGoal.target_pose.pose.position.x = 0.5;
         plannerGoal.target_pose.pose.position.y = 1.0; // todo maybe place forward
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
