@@ -28,9 +28,6 @@ G01Gripper::G01Gripper() : command(), n() {
     fakeGripperCommandPub = n.advertise<std_msgs::UInt16>("/angle_motor", 1);
     gripperStatusSub = n.subscribe("/robotiq_hands/l_hand/SModelRobotInput", 1, &G01Gripper::gripperCB, this);
 
-    // marrtino pose
-    marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrOdomCallback, this);
-
     // gazebo fixes
     attacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/attach");
     detacher = n.serviceClient<gazebo_ros_link_attacher::Attach>("/link_attacher_node/detach");
@@ -87,6 +84,9 @@ G01Gripper::G01Gripper() : command(), n() {
             // marrtino is in position: move objects
             ROS_INFO_STREAM("Pick and place starting...");
 
+            // wait for marrtino pose and transform to come up
+            marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrOdomCallback, this);
+
             // strategy: if planning fails objects are placed in the return vector;
             // retry the call for max 5 times if needed
 
@@ -94,6 +94,48 @@ G01Gripper::G01Gripper() : command(), n() {
                 ObjectBox box = ObjectBox(LZPose);
                 finish = true; // can change later
                 full = false;  // empty box
+
+                /* // to view box poses
+                ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1", 10);
+                ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2", 10);
+                ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3", 10);
+                ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4", 10);
+                ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5", 10);
+                ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6", 10);
+                geometry_msgs::PoseStamped a;
+                a.header.frame_id = "world";
+
+                while (true) {
+                    a.pose = box.poses.at(0);
+                    a.header.stamp = ros::Time::now();
+                    p1.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(1);
+                    a.header.stamp = ros::Time::now();
+                    p2.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(2);
+                    a.header.stamp = ros::Time::now();
+                    p3.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(3);
+                    a.header.stamp = ros::Time::now();
+                    p4.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(4);
+                    a.header.stamp = ros::Time::now();
+                    p5.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(5);
+                    a.header.stamp = ros::Time::now();
+                    p6.publish(a);
+                    ros::Duration(1).sleep();
+                }*/
 
                 // move cylinders (hexagons)
                 int count = 0;
@@ -785,6 +827,6 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
         odomReceived = true;
         marrOdomSub.shutdown();
     } catch (tf2::TransformException &exception) {
-        ROS_ERROR_STREAM("transform not found");
+        ROS_ERROR_STREAM("Odom-World transform not found");
     }
 }

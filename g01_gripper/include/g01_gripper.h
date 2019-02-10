@@ -51,7 +51,7 @@ private:
 
     // manipulator
     std::vector<geometry_msgs::PoseStamped> moveObjects(moveit::planning_interface::MoveGroupInterface &group,
-                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox & box, bool rotate = false);
+                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox &box, bool rotate = false);
     bool moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long nSteps = 3);
