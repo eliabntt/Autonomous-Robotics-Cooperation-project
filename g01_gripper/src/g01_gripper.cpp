@@ -298,6 +298,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                   tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
                                                  destPose.orientation.z, destPose.orientation.w), destPose.orientation);
+            destPose.position.x -= 0.15;//fixme
         }
         moveManipulator(destPose, group);
 
