@@ -14,12 +14,11 @@
 
 
 class ObjectBox {
-private:
+public:
     const double W = 0.297, L = 0.210; // A4 paper size = shape of the box
     std::vector<bool> free = {true, true, true,
                               true, true, true};
 
-public:
     std::vector<geometry_msgs::Pose> poses, possiblePoses;
     ObjectBox();
     ObjectBox(geometry_msgs::Pose robotPose);

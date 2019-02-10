@@ -53,7 +53,6 @@ G01Gripper::G01Gripper() : command(), n() {
     bool finish = false;
     while (ros::ok() && !finish) {
         // start from home position
-        ROS_INFO_STREAM(group.getCurrentPose().pose);
         goHome(group);
 
         // save pose for later (was hardcoded as joints angles)
@@ -175,7 +174,7 @@ G01Gripper::G01Gripper() : command(), n() {
 // Movement
 std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
-                                                                ObjectBox box, bool rotate) {
+                                                                ObjectBox &box, bool rotate) {
     // settings //fixme with real ones
     group.setMaxVelocityScalingFactor(0.9);
     group.setGoalPositionTolerance(0.0001);
@@ -189,7 +188,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
     double objX, objY, curX, curY;
     double y, p, r, y_ee, p_ee, r_ee;
     long index;
-
     // just to be sure
     gripperOpen();
 
@@ -209,8 +207,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             remaining.emplace_back(obj);
             break;
         }
-        ROS_INFO_STREAM(destPose);
-        ROS_INFO_STREAM(box.poses.at(0));
 
         // get index of object's name to extract Gazebo's object and link names
         index = std::find(tagnames.begin(), tagnames.end(), obj.header.frame_id) - tagnames.begin();
@@ -293,31 +289,21 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-
-        // calculate the new orientation of the "wrist"
-        if (rotate) {
-            r = 0, p = -PI / 3, y = 0;
-            ROS_INFO_STREAM("Cylinder will be tilted");
-        }
-
-        //todo fixme
-/*        poseToYPR(destPose, &y, &p, &r);
-        poseToYPR(group.getCurrentPose().pose, &y_ee, &p_ee, &r_ee);
-        diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
-        if (fabs(y + p_ee) == diffAbs)
-            diff = y + p_ee;
-        else
-            diff = y - p_ee;
-
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r_ee, p_ee, y_ee) * tf::createQuaternionFromRPY(-diff, 0, 0),
-                              destPose.orientation);*/
-
         // fixme safe altitude
         destPose.position.z += 0.6;
-        destPose.orientation = group.getCurrentPose().pose.orientation;
+        destPose.orientation = initialPose.orientation;
+        // calculate the new orientation of the "wrist"
+        if (rotate) {//todo check if position is right
+            ROS_INFO_STREAM("Cylinder will be tilted");
+            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
+                                  tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
+                                                 destPose.orientation.z, destPose.orientation.w), destPose.orientation);
+        }
         moveManipulator(destPose, group);
 
-        // fixme temp to go in right position while(group.getCurrentPose().pose.position.x)
+
+
+
         // position refinement (another plan step, just to be sure)
         objX = destPose.position.x;
         objY = destPose.position.y;
@@ -365,7 +351,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         ROS_INFO_STREAM(group.getCurrentPose().pose);
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
-        pose.position.z -= 0.1;
+        pose.position.z -= 0.2;
+        if (!rotate) { pose.position.z -= 0.05; }
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)
         if (!moveManipulator(pose, group)) {
@@ -450,7 +437,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     plan.trajectory_ = traj;
 
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-
+    ROS_INFO_STREAM("bf " << bestFraction);
     return (resultCode.val == 1);
     // return true only if the movement is correct (most times: bad planning removed before)
 }
@@ -508,8 +495,8 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 
 // Gripper
 void G01Gripper::gripperOpen() {
-    fakeGripperOpen();
-    return;
+    /* fakeGripperOpen();
+     return;*/
 
     // code to be used with robotiq gripper
     command.rACT = 1;
