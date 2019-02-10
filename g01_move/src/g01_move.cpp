@@ -21,7 +21,7 @@ G01Move::G01Move() : n(), spinner(2) {
     if (!clearMapsClient.call(empty))
         ROS_INFO_STREAM("Cannot clear the costmaps!");
     // wait to get an update of the map
-    ros::Duration(1).sleep();
+    ros::Duration(2).sleep();//fixme don't know if necessary
 
     // move near the corridor area using subsequent goals
     ROS_INFO_STREAM("Go near corridor");
@@ -65,7 +65,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // move to the entrance of the corridor - back
     ROS_INFO_STREAM("Intermediate through the funnel");
-    plannerGoal.target_pose.pose.position.x = 0.68;
+    plannerGoal.target_pose.pose.position.x = 0.65;
     plannerGoal.target_pose.pose.position.y = 0.78;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 3),
@@ -74,7 +74,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
 
     ROS_INFO_STREAM("Going near the entrance of the corridor");
-    plannerGoal.target_pose.pose.position.x = 0.6;
+    plannerGoal.target_pose.pose.position.x = 0.55;
     plannerGoal.target_pose.pose.position.y = 0.25;
     plannerGoal.target_pose.pose.position.z = 0.0;
     tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI + PI / 2),
@@ -124,6 +124,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
+    bool reloc = false;
 
     geometry_msgs::Pose currPose = marrPoseOdom;
 
@@ -145,6 +146,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             backed = false;
             rotated = false;
             changeVel(false);
+            reloc = false;
         }
 
         client.waitForResult();
@@ -157,15 +159,18 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         } else {
             if (!clearMapsClient.call(empty))
                 ROS_INFO_STREAM("Cannot clear the costmaps!");
-
-            if (marrPose.covariance.at(0) > 0.3 || marrPose.covariance.at(7) > 0.3) {
+            ros::Duration(1).sleep();//fixme don't know if necessary
+            ROS_INFO_STREAM(marrPose.covariance.at(0) <<" " << marrPose.covariance.at(7));
+            if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
                     update_client.call(empty);
                     ros::Duration(0.02).sleep();
                 }
-            } else {
+                reloc = !reloc;
+            }
+            if (!reloc) {
                 if (!backed) {
                     client.cancelAllGoals();
                     client.waitForResult();
@@ -452,8 +457,8 @@ void G01Move::wallFollower(bool forward) {
     while (!client.waitForServer(ros::Duration(5.0)))
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
     if (forward) {
-        plannerGoal.target_pose.pose.position.x = 0.6; // fixme same story, 0.5 is in the lateral wall
-        plannerGoal.target_pose.pose.position.y = 0.6; // todo maybe place forward
+        plannerGoal.target_pose.pose.position.x = 0.5; // fixme same story, 0.5 is in the lateral wall
+        plannerGoal.target_pose.pose.position.y = 1.0; // todo maybe place forward
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
         plannerGoal.target_pose.header.stamp = ros::Time::now();
