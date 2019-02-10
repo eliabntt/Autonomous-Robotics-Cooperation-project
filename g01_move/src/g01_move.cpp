@@ -124,7 +124,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
-    bool reloc = false;
+    int reloc = 0;
 
     geometry_msgs::Pose currPose = marrPoseOdom;
 
@@ -146,7 +146,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             backed = false;
             rotated = false;
             changeVel(false);
-            reloc = false;
+            reloc = 0;
         }
 
         client.waitForResult();
@@ -168,9 +168,9 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     update_client.call(empty);
                     ros::Duration(0.02).sleep();
                 }
-                reloc = !reloc;
+                reloc += 1;
             }
-            if (!reloc) {
+            if (reloc > 1) {
                 if (!backed) {
                     client.cancelAllGoals();
                     client.waitForResult();
@@ -184,7 +184,6 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     rotated = true;
                     currPose = marrPoseOdom;
                 } else {
-                    // todo try with a relocalization
                     ROS_ERROR_STREAM("Error, robot failed moving");
                     changeVel(false);
                     return false;
