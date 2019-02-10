@@ -170,7 +170,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                 }
                 reloc += 1;
             }
-            if (reloc > 1) {
+            if (reloc > 1 || reloc = 0) {
                 if (!backed) {
                     client.cancelAllGoals();
                     client.waitForResult();
