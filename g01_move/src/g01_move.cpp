@@ -427,22 +427,28 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     maxSx = msg->ranges[readIEnd];
 
     // scan and save min avg and max for both sides
+    validCount = 0;
     for (int i = readIStart; i < readIStart + howMuchDataToUse; i++) {
         val = msg->ranges[i];
-        if (val > readThr) val = readThr; // cap values
-        if (val < minDx) minDx = val;
-        if (val > maxDx) maxDx = val;
-        avgDx += val;
+        if (val < readThr) {
+            if (val < minDx) minDx = val;
+            if (val > maxDx) maxDx = val;
+            avgDx += val;
+            validCount += 1;
+        }
     }
+    avgDx /= validCount;
+    validCount = 0;
     for (int i = readIEnd; i > readIEnd - howMuchDataToUse; i--) {
         val = msg->ranges[i];
-        if (val > readThr) val = readThr; // cap values
-        if (val < minSx) minSx = val;
-        if (val > maxSx) maxSx = val;
-        avgSx += val;
+        if (val < readThr) {
+            if (val < minSx) minSx = val;
+            if (val > maxSx) maxSx = val;
+            avgSx += val;
+            validCount += 1;
+        }
     }
-    avgDx /= howMuchDataToUse;
-    avgSx /= howMuchDataToUse;
+    avgSx /= validCount;
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
