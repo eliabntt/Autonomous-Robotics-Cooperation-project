@@ -25,9 +25,13 @@ public:
     bool isEmpty();
     bool isFull();
 
+    int poseToIndex(const geometry_msgs::Pose &pose);
+
     // bool returns if place is possible, pose contains the actual position
-    bool placeCylinder(geometry_msgs::Pose &valid);
-    bool placeCube(geometry_msgs::Pose &valid);
+    bool getCylinderPose(geometry_msgs::Pose &output);
+    bool markCylinderOcc(geometry_msgs::Pose &pose);
+    bool getCubePose(geometry_msgs::Pose &output);
+    bool markCubeOcc(geometry_msgs::Pose &pose);
 };
 
 #endif //PROJECT_OBJECTBOX_H

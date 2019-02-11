@@ -43,7 +43,11 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     }
 }
 
-bool ObjectBox::placeCylinder(geometry_msgs::Pose &pose) {
+int ObjectBox::poseToIndex(const geometry_msgs::Pose &pose) {
+    return (int) (std::find(poses.begin(), poses.end(), pose) - poses.begin());
+}
+
+bool ObjectBox::getCylinderPose(geometry_msgs::Pose &output) {
     // return first available positions
     if (isFull()) return false;
 
@@ -51,9 +55,7 @@ bool ObjectBox::placeCylinder(geometry_msgs::Pose &pose) {
     int first = 0, second = 1;
     while (first <= 4 && second <= 5)
         if (free[first] && free[second]) {
-            pose = poses[first]; // fixme ERROR
-            free[first] = false;
-            free[second] = false;
+            output = poses[first]; // fixme ERROR
             return true;
         } else {
             first += 2;
@@ -62,19 +64,40 @@ bool ObjectBox::placeCylinder(geometry_msgs::Pose &pose) {
     return false;
 }
 
-bool ObjectBox::placeCube(geometry_msgs::Pose &pose) {
+bool ObjectBox::markCylinderOcc(geometry_msgs::Pose &pose) {
+    // get index of given pose in the array
+    int index = poseToIndex(pose);
+    if (!free[index] && !free[index+1])
+        return false;
+
+    // mark as occupied
+    free[index] = false;
+    free[index+1] = false;
+    return true;
+}
+
+bool ObjectBox::getCubePose(geometry_msgs::Pose &output) {
     if (isFull()) return false;
 
     // cubes can go in first available (single) place
     for (int i = 0; i < 6; i++)
         if (free[i]) {
-            pose = poses[i];
-            free[i] = false;
+            output = poses[i];
             return true;
         }
     return false;
 }
 
+bool ObjectBox::markCubeOcc(geometry_msgs::Pose &pose) {
+    // get index of given pose in the array
+    int index = poseToIndex(pose);
+    if (!free[index])
+        return false;
+
+    // mark as occupied
+    free[index] = false;
+    return true;
+}
 
 bool ObjectBox::isEmpty() {
     // all true in free vector

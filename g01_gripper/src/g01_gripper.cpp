@@ -193,14 +193,14 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
     // loop through objects
     for (geometry_msgs::PoseStamped obj : objectList) {
-        // first thing check if space available
+        // first thing check if there is available space
         // retrieve destination point
         bool canPlace;
         geometry_msgs::Pose destPose;
         if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
-            canPlace = box.placeCylinder(destPose);
+            canPlace = box.getCylinderPose(destPose);
         else
-            canPlace = box.placeCube(destPose);
+            canPlace = box.getCubePose(destPose);
         if (!canPlace) {
             ROS_ERROR_STREAM("Cannot move to box, no place to put object");
             full = true;
@@ -290,24 +290,25 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // fixme safe altitude
-        destPose.position.z += 0.6;
-        destPose.orientation = initialPose.orientation;
+        pose = destPose;
+        pose.position.z += 0.6;
+        pose.orientation = initialPose.orientation;
         // calculate the new orientation of the "wrist"
         if (rotate) {//todo check if position is right
             ROS_INFO_STREAM("Cylinder will be tilted");
             tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
-                                  tf::Quaternion(destPose.orientation.x, destPose.orientation.y,
-                                                 destPose.orientation.z, destPose.orientation.w), destPose.orientation);
-            destPose.position.x -= 0.15;//fixme
+                                  tf::Quaternion(pose.orientation.x, pose.orientation.y,
+                                                 pose.orientation.z, pose.orientation.w), pose.orientation);
+            pose.position.x -= 0.15;//fixme
         }
-        moveManipulator(destPose, group);
+        moveManipulator(pose, group);
 
 
 
 
         // position refinement (another plan step, just to be sure)
-        objX = destPose.position.x;
-        objY = destPose.position.y;
+        objX = pose.position.x;
+        objY = pose.position.y;
         curX = group.getCurrentPose().pose.position.x;
         curY = group.getCurrentPose().pose.position.y;
         while (fabs(objX - curX) > 0.03 || fabs(objY - curY) > 0.03) {
@@ -323,7 +324,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             curY = group.getCurrentPose().pose.position.y;
         }
 //fixme temp
-        /*  if (!moveManipulator(destPose, group)) {
+        /*  if (!moveManipulator(pose, group)) {
               // try to go back down (less to be in a safe position)
               ROS_INFO_STREAM("Error trying to get into placement position");
               pose = group.getCurrentPose().pose;
@@ -365,11 +366,15 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_INFO_STREAM("arm lowering completed");
         }
 
-        // open the gripper, adjust rviz and gazebo
+        // open the gripper, adjust rviz and gazebo, mark occupied space in the box
         group.detachObject(obj.header.frame_id);
         if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
         ROS_INFO_STREAM("Opening the gripper");
         gripperOpen();
+        if (rotate)
+            box.markCylinderOcc(destPose);
+        else
+            box.markCubeOcc(destPose);
 
         // remove the corresponding collision object from the scene
         std::vector<std::string> toRemove = {obj.header.frame_id};
