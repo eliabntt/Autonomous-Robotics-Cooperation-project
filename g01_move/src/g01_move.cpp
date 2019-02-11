@@ -416,16 +416,10 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     avgDx = 0;
     avgSx = 0;
 
-    // sim: scan direction is right to left; start/end is back (0;size)
+    // scan direction is right to left; start/end is back (0;size)
     readIFront = size / 2;
     readIStart = readIFront - size / 5;
     readIEnd = readIFront + size / 5;
-
-    // real: scan direction is left to right
-    // flip values w.r.t. center (to keep the same logic below)
-    // TODO https://stackoverflow.com/questions/22488316/standard-way-for-reverse-pointer-iterators
-    //if (!sim) todo work on this, read-only issues (deep copy or duplicate for loops)
-    //    std::reverse(msg->ranges.begin(), msg->ranges.end());
 
     minDx = msg->ranges[readIStart];
     maxDx = msg->ranges[readIStart];
