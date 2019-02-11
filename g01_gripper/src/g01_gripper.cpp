@@ -85,7 +85,11 @@ G01Gripper::G01Gripper() : command(), n() {
             ROS_INFO_STREAM("Pick and place starting...");
 
             // wait for marrtino pose and transform to come up
-            marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1, &G01Gripper::marrOdomCallback, this);
+            if (sim)
+                marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1,
+                                          &G01Gripper::marrOdomCallback, this);
+            else
+                marrOdomSub = n.subscribe("/odom", 1, &G01Gripper::marrOdomCallback, this);
 
             // strategy: if planning fails objects are placed in the return vector;
             // retry the call for max 5 times if needed
@@ -314,6 +318,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                  pose.orientation.z, pose.orientation.w), pose.orientation);
             pose.position.x -= 0.15;//fixme
         }
+
+        // add offsets due to map inconsistencies fixme remove when map will be adjusted
+        if (!sim) {
+            pose.position.x += 0.32;
+            pose.position.y += 0.15;
+        }
         moveManipulator(pose, group);
 
         // position refinement (another plan step, just to be sure)
@@ -373,9 +383,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
             goHome(group);
             continue;
-        } else {
-            ROS_INFO_STREAM("arm lowering completed");
-        }
+        } else
+            ROS_INFO_STREAM("Arm lowering completed");
 
         // open the gripper, adjust rviz and gazebo, mark occupied space in the box
         group.detachObject(obj.header.frame_id);
@@ -412,8 +421,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
                                  moveit::planning_interface::MoveGroupInterface &group) {
     // cartesian path parameters
-    const double JUMP_THRESH = (sim ? 0.0 : 0.1); //fixme no idea if it is a good value
-    const double EEF_STEP = 0.1;
+    const double JUMP_THRESH = 0.0; // fixme check if good values
+    const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory traj, trajTemp;
 
     // planning trials parameters (thresholds and temp)
