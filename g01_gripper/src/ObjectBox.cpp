@@ -61,7 +61,7 @@ bool ObjectBox::getCylinderPose(geometry_msgs::Pose &output) {
     int first = 0, second = 1;
     while (first <= 4 && second <= 5)
         if (free[first] && free[second]) {
-            output = poses[first]; // fixme ERROR
+            output = poses[first];
             return true;
         } else {
             first += 2;

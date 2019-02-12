@@ -818,17 +818,6 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
         group.move();
 }
 
-// todo delete
-void G01Gripper::goOverLZ(moveit::planning_interface::MoveGroupInterface &group) {
-    // set joint values and move
-    ROS_INFO_STREAM("Moving to LZ");
-    group.setJointValueTarget(LZ_JOINT_POS);
-    if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
-        group.move();
-    else
-        ROS_INFO_STREAM("MOVEMENT TO LZ BY JOINTS FAILED");
-}
-
 void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) {
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
