@@ -241,15 +241,16 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         poseToYPR(obj.pose, &y, &p, &r);
         poseToYPR(group.getCurrentPose().pose, &y_ee, &p_ee, &r_ee);
-        // end effector orientation correction
-        // to get the right position for the fingers
-        // todo do this only if necessary
         double diff, diffAbs;
+
         diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
-        if (fabs(y + p_ee) == diffAbs)
-            diff = y + p_ee;
-        else
-            diff = y - p_ee;
+        //todo test this if
+        if (diffAbs - PI / 2 > 0.1 || diffAbs > 0.1) {
+            if (fabs(y + p_ee) == diffAbs)
+                diff = y + p_ee;
+            else
+                diff = y - p_ee;
+        }
 
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(r_ee, p_ee, y_ee) * tf::createQuaternionFromRPY(-diff, 0, 0),
                               pose.orientation);
@@ -267,7 +268,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         if (obj.pose.position.z > 1.2)
             pose.position.z = obj.pose.position.z; // cylinders
         else
-            pose.position.z = obj.pose.position.z * 1.1;
+            pose.position.z = obj.pose.position.z * 1.12;
 
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
@@ -407,12 +408,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
-        /*if (rotate) {
-            pose.position.x -= 0.4;
-            pose.position.y -= 0.4;
-            pose.orientation = initialPose.orientation;
-        }*/
         pose.position.z += 0.6;
+        pose.orientation = initialPose.orientation;
 
         // here just need to go home
         if (!moveManipulator(pose, group)) {
