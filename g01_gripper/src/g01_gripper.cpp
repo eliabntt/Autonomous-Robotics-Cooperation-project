@@ -47,6 +47,8 @@ G01Gripper::G01Gripper() : command(), n() {
     // start the loop
     while (!finish) {
         if (currState == STATE_UR10_WAKE) {
+            if (tagsReceived) continue;
+
             // marrtino is approaching the corridor: start object detection
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
 
@@ -79,8 +81,11 @@ G01Gripper::G01Gripper() : command(), n() {
             // send ready state signal
             stateCommand.data = STATE_UR10_RDY;
             statePub.publish(stateCommand);
+            tagsReceived = true;
 
         } else if (currState == STATE_UR10_LOAD) {
+            if (!tagsReceived) continue;
+
             // marrtino is in position: move objects
             ROS_INFO_STREAM("Pick and place starting...");
 
@@ -179,6 +184,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // send new state signal: finish is true only if all the three lists are empty
                 stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
                 statePub.publish(stateCommand);
+                tagsReceived = false;
             }
         } else ros::Duration(0.5).sleep();
     }
