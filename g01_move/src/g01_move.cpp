@@ -24,7 +24,6 @@ G01Move::G01Move() : n(), spinner(2) {
     clearMapsClient = n.serviceClient<std_srvs::Empty>("/marrtino/move_base/clear_costmaps");
 
     spinner.start();
-    bool first = true;
 
     if (!clearMapsClient.call(empty))
         ROS_INFO_STREAM("Cannot clear the costmaps!");
@@ -33,9 +32,13 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // start the loop
     while(anotherRoundNeeded) {
-        //todo if second run rotate where no obstacle, inplace
-        if(!first)
-        {
+        // wait for proceed command (useful from second run onward)
+        while (!proceed)
+            ros::Duration(0.5).sleep();
+
+        // from second run onward, rotate where there are no obstacles, in-place
+        if (!firstRun) {
+            // todo maybe think about reusing proceed, check logic
             //read left span
             //read right span
             //read back span
@@ -43,11 +46,8 @@ G01Move::G01Move() : n(), spinner(2) {
             //perform in place rotation
             //relocalize(same loop as always)
         }
-        // wait for proceed command (useful from second run onward)
-        while (!proceed)
-            ros::Duration(0.5).sleep();
+        firstRun = false;
 
-        first = false;
         // publish state (going to load point)
         stateCommand.data = STATE_MARR_RUN;
         statePub.publish(stateCommand);
@@ -100,7 +100,7 @@ G01Move::G01Move() : n(), spinner(2) {
             update_client.call(empty);
             ros::Duration(0.02).sleep();
         }
-        ROS_INFO_STREAM(marrPoseOdom);
+        ROS_INFO_STREAM(marrPoseOdom); // todo delete debug prints
         ROS_INFO_STREAM(frontWallDist);
 
         stateCommand.data = STATE_UR10_LOAD;
