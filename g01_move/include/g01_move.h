@@ -42,7 +42,7 @@ private:
     ros::Subscriber stateSub;
     ros::Subscriber startSub;
     std_msgs::UInt16 stateCommand;
-    std_msgs::Bool startCommand;
+    std_msgs::Bool startCommand; //fixme never used @rig8f
     void stateCallback(const std_msgs::UInt16::ConstPtr &msg);
     void startCallback(const std_msgs::Bool::ConstPtr &msg);
 
@@ -78,10 +78,8 @@ private:
     int validCount, size, readIStart, readIEnd, readIFront, howMuchDataToUse = 25; // angle span to consider
     geometry_msgs::Twist moveCommand;
     bool success, isManualModeDone = false, isNearLoadPoint = false;
-    bool first = true;
 
     // laser-based moving methods
-    void alignCorridor();
     void wallFollower(bool forward);
     void docking();
     void rotateRight();
