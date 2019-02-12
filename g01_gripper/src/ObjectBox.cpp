@@ -44,7 +44,13 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
 }
 
 int ObjectBox::poseToIndex(const geometry_msgs::Pose &pose) {
-    return (int) (std::find(poses.begin(), poses.end(), pose) - poses.begin());
+    int i = 0;
+    for (auto p: poses) {
+        if (p.position.x == pose.position.x && p.position.y == pose.position.y)
+            return i;
+        i += 1;
+    }
+    return -1;
 }
 
 bool ObjectBox::getCylinderPose(geometry_msgs::Pose &output) {
@@ -67,12 +73,12 @@ bool ObjectBox::getCylinderPose(geometry_msgs::Pose &output) {
 bool ObjectBox::markCylinderOcc(geometry_msgs::Pose &pose) {
     // get index of given pose in the array
     int index = poseToIndex(pose);
-    if (!free[index] && !free[index+1])
+    if (!free[index] && !free[index + 1])
         return false;
 
     // mark as occupied
     free[index] = false;
-    free[index+1] = false;
+    free[index + 1] = false;
     return true;
 }
 
