@@ -17,4 +17,6 @@ const std::string
         STATE_TOPIC = "/g01_fsm_state", // state transmitter
         START_TOPIC = "/g01_start_run"; // to start when another run is needed
 
+const double STATE_SLEEP_TIME = 0.3; // wait time when fsm checks/loops are involved
+
 #endif //G01_FSM_STATES_H

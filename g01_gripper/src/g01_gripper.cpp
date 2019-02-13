@@ -186,7 +186,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 goHome(group);
             }
-        } else ros::Duration(0.5).sleep();
+        } else ros::Duration(STATE_SLEEP_TIME).sleep();
     }
 }
 

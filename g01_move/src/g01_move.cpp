@@ -35,7 +35,7 @@ G01Move::G01Move() : n(), spinner(2) {
     while (anotherRoundNeeded) {
         // wait for proceed command (useful from second run onward)
         while (!proceed)
-            ros::Duration(0.5).sleep();
+            ros::Duration(STATE_SLEEP_TIME).sleep();
 
         // from second run onward, rotate where there are no obstacles, in-place
         if (!firstRun) {
@@ -121,7 +121,7 @@ G01Move::G01Move() : n(), spinner(2) {
         // issuing the load command and waiting for a response from ur10
         ROS_INFO_STREAM("Waiting for UR10 to be ready...");
         while (currState != STATE_UR10_RDY)
-            ros::Duration(0.5).sleep();
+            ros::Duration(STATE_SLEEP_TIME).sleep();
 
         ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                 "/marrtino/request_nomotion_update");
@@ -136,7 +136,7 @@ G01Move::G01Move() : n(), spinner(2) {
         statePub.publish(stateCommand);
         ROS_INFO_STREAM("Load command issued. Waiting...");
 
-        do ros::Duration(0.5).sleep(); // wait for msg propagation
+        do ros::Duration(STATE_SLEEP_TIME).sleep(); // wait for msg propagation
         while (currState == STATE_UR10_LOAD);
 
         // save if another round is needed:
@@ -273,7 +273,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         ROS_INFO_STREAM("Sending global goal");
 
         client.sendGoal(goal);
-        ros::Duration(3).sleep();
+        ros::Duration(3).sleep(); // fixme needed?
 
         double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
         double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
