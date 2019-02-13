@@ -1,6 +1,6 @@
 #footprint: [[-0.14, -0.17], [-0.14, 0.17], [0.01, 0.17], [0.01,0.21], [0.14,0.21], [0.14, -0.21], [0.01,-0.21], [0.01,-0.17]] still under testing gives problem with update
-footprint: [[-0.14, -0.20], [-0.14, 0.20], [0.14,0.20],[0.14, -0.20]]
-footprint_padding: 0.02
+footprint: [[-0.14, -0.17], [-0.14, 0.17], [0.14,0.20],[0.14, -0.20]] #17 and 21 vs 20
+footprint_padding: 0.025 #0.02
 
 robot_base_frame: marrtino_base_footprint
 
@@ -39,5 +39,5 @@ obstacle_layer:
 #cost_scaling_factor and inflation_radius were now moved to the inflation_layer ns
 inflation_layer:
   cost_scaling_factor:  5.58  # exponential rate at which the obstacle cost drops off (default: 10)
-  inflation_radius:     0.65  # max distance from an obstacle at which costs are incurred for planning paths
+  inflation_radius:     0.5  # 0.65 max distance from an obstacle at which costs are incurred for planning paths
 
