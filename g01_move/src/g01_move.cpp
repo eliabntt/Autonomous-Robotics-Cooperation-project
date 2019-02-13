@@ -9,15 +9,16 @@ G01Move::G01Move() : n(), spinner(2) {
 
     ROS_INFO_STREAM("Working in " << ((sim) ? "SIMULATION" : "REAL"));
     marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Move::subPoseCallback, this);
-    if(sim)
-        marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100, &G01Move::subPoseOdomCallback, this);
+    if (sim)
+        marrPoseOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 100,
+                                      &G01Move::subPoseOdomCallback, this);
     else
         marrPoseOdomSub = n.subscribe("/odom", 100, &G01Move::subPoseOdomCallback, this);
 
     scannerSub = n.subscribe<sensor_msgs::LaserScan>("/marrtino/scan", 2, &G01Move::readLaser, this);
     velPub = n.advertise<geometry_msgs::Twist>("marrtino/move_base/cmd_vel", 10);
 
-    startSub = n.subscribe<std_msgs::Bool>  (START_TOPIC, 2, &G01Move::startCallback, this);
+    startSub = n.subscribe<std_msgs::Bool>(START_TOPIC, 2, &G01Move::startCallback, this);
     stateSub = n.subscribe<std_msgs::UInt16>(STATE_TOPIC, 2, &G01Move::stateCallback, this);
     statePub = n.advertise<std_msgs::UInt16>(STATE_TOPIC, 2);
 
@@ -31,20 +32,48 @@ G01Move::G01Move() : n(), spinner(2) {
     ros::Duration(0.5).sleep();//fixme don't know if necessary
 
     // start the loop
-    while(anotherRoundNeeded) {
+    while (anotherRoundNeeded) {
         // wait for proceed command (useful from second run onward)
         while (!proceed)
             ros::Duration(0.5).sleep();
 
         // from second run onward, rotate where there are no obstacles, in-place
         if (!firstRun) {
-            // todo maybe think about reusing proceed, check logic
-            //read left span
-            //read right span
-            //read back span
-            //decide rotation
-            //perform in place rotation
-            //relocalize(same loop as always)
+            // costmaps clearing if needed
+            if (!clearMapsClient.call(empty))
+                ROS_INFO_STREAM("Cannot clear the costmaps!");
+
+            ROS_INFO_STREAM("Push away from the wall and rotate");
+            moveCommand.linear.x = -0.4; // pay attention bwd movement!
+            moveCommand.angular.z = 0.0; // todo if tuning needed, here
+            velPub.publish(moveCommand);
+            ros::Duration(0.5).sleep();
+
+            // stop
+            moveCommand.linear.x = 0.0;
+            moveCommand.angular.z = 0.0;
+            velPub.publish(moveCommand);
+
+            // planner pose for rotation
+            nearUnloadPoint.target_pose.pose.position.x = -1.5;
+            nearUnloadPoint.target_pose.pose.position.y = -0.4;
+            nearUnloadPoint.target_pose.pose.position.z = 0.0;
+            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearUnloadPoint.target_pose.pose.orientation);
+            success = moveToGoal(nearUnloadPoint);
+
+            // re-localization if needed
+            if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {//fixme check what's better
+                ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                        "/marrtino/request_nomotion_update");
+                for (int counter = 0; counter < 50; counter++) {
+                    update_client.call(empty);
+                    ros::Duration(0.02).sleep();
+                }
+            }
+
+            // costmaps clearing
+            if (!clearMapsClient.call(empty))
+                ROS_INFO_STREAM("Cannot clear the costmaps!");
         }
         firstRun = false;
 
@@ -159,12 +188,44 @@ G01Move::G01Move() : n(), spinner(2) {
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), nearCorridor.target_pose.pose.orientation);
         success = moveToGoal(nearCorridor);
 
-        ROS_INFO_STREAM("Go to the unload position... Final goal!");
+        ROS_INFO_STREAM("Go to the unload position");
         unloadPoint.target_pose.pose.position.x = -1.6;
         unloadPoint.target_pose.pose.position.y = -0.4;
         unloadPoint.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
         success = moveToGoal(unloadPoint);
+
+        ROS_INFO_STREAM("Align toward the wall");
+        double r, p, y, ty;
+        poseToYPR(marrPoseOdom, &y, &p, &r);
+        ty = (y > 0) ? PI : -PI; // damn discontinuities
+        moveCommand.linear.x = 0.01;
+        while (fabs(y - ty) > 0.01) {
+            ROS_INFO_STREAM("Y " << y << " TY " << ty);
+            moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
+            velPub.publish(moveCommand);
+            ros::Duration(0.08).sleep();
+            poseToYPR(marrPoseOdom, &y, &p, &r);
+        }
+
+        // stop
+        moveCommand.linear.x = 0.0;
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
+
+        ROS_INFO_STREAM("Advance toward the wall");
+        moveCommand.linear.x = 0.4; // todo if tuning needed, here
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
+        ros::Duration(0.5).sleep();
+
+        // stop
+        moveCommand.linear.x = 0.0;
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
+        ROS_INFO_STREAM("Done. Please manually unload objects from marrtino.");
+        if (anotherRoundNeeded)
+            ROS_INFO_STREAM("Another round is needed. Publish 'true' on /g01_start_run to proceed.");
     }
 
     //fixme for real challenge MAYBE find clear space to start - ask

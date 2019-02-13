@@ -46,7 +46,7 @@ private:
     void startCallback(const std_msgs::Bool::ConstPtr &msg);
 
     // interesting poses
-    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, plannerGoal, unloadPoint;
+    move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, plannerGoal, nearUnloadPoint, unloadPoint;
 
     // pose subscription stuff
     geometry_msgs::Pose marrPoseOdom;
