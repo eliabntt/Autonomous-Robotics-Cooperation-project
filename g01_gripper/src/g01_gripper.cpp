@@ -86,9 +86,6 @@ G01Gripper::G01Gripper() : command(), n() {
         } else if (currState == STATE_UR10_LOAD) {
             if (!tagsReceived) continue;
 
-            // marrtino is in position: move objects
-            ROS_INFO_STREAM("Pick and place starting...");
-
             // wait for marrtino pose and transform to come up
             if (sim)
                 marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1,
@@ -100,6 +97,9 @@ G01Gripper::G01Gripper() : command(), n() {
             // retry the call for max 5 times if needed
 
             if (odomReceived) {
+                // marrtino is in position: move objects
+                ROS_INFO_STREAM("Pick and place starting...");
+
                 ObjectBox box = ObjectBox(LZPose);
                 finish = true; // can change later
                 full = false;  // empty box
