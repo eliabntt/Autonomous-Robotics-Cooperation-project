@@ -46,7 +46,7 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Push away from the wall and rotate");
             moveCommand.linear.x = -0.4; // pay attention bwd movement!
             moveCommand.angular.z = 0.0; // todo if tuning needed, here
-            velPub.publish(moveCommand);
+            velPub.publish(moveCommand); // fixme very ugly, see in recovery if there is a better movement to replicate
             ros::Duration(0.8).sleep(); // note: not perfectly straight when going backward
 
             // stop
@@ -129,8 +129,8 @@ G01Move::G01Move() : n(), spinner(2) {
             update_client.call(empty);
             ros::Duration(0.02).sleep();
         }
-        ROS_INFO_STREAM(marrPoseOdom); // todo delete debug prints
-        ROS_INFO_STREAM(frontWallDist);
+        ROS_INFO_STREAM("MARR POSE " << marrPoseOdom); // todo delete debug prints
+        ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
 
         stateCommand.data = STATE_UR10_LOAD;
         statePub.publish(stateCommand);
@@ -474,7 +474,7 @@ void G01Move::docking() {
 
 void G01Move::rotateRight() {
     // go forward a little, pushing away from wall
-    moveCommand.linear.x = 0.2;
+    moveCommand.linear.x = 0.3;
     moveCommand.angular.z = -twistVel;
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
