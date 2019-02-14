@@ -40,14 +40,14 @@ G01Move::G01Move() : n(), spinner(2) {
         // from second run onward, rotate where there are no obstacles, in-place
         if (!firstRun) {
             // costmaps clearing if needed
-            if (!clearMapsClient.call(empty))
+            if (!clearMapsClient.call(empty)) // fixme maybe not needed
                 ROS_INFO_STREAM("Cannot clear the costmaps!");
 
             ROS_INFO_STREAM("Push away from the wall and rotate");
             moveCommand.linear.x = -0.4; // pay attention bwd movement!
             moveCommand.angular.z = 0.0; // todo if tuning needed, here
             velPub.publish(moveCommand);
-            ros::Duration(0.5).sleep();
+            ros::Duration(0.8).sleep(); // note: not perfectly straight when going backward
 
             // stop
             moveCommand.linear.x = 0.0;
@@ -136,7 +136,7 @@ G01Move::G01Move() : n(), spinner(2) {
         statePub.publish(stateCommand);
         ROS_INFO_STREAM("Load command issued. Waiting...");
 
-        do ros::Duration(STATE_SLEEP_TIME).sleep(); // wait for msg propagation
+        do { ros::Duration(STATE_SLEEP_TIME).sleep(); } // wait for msg propagation
         while (currState == STATE_UR10_LOAD);
 
         // save if another round is needed:
@@ -200,7 +200,7 @@ G01Move::G01Move() : n(), spinner(2) {
         poseToYPR(marrPoseOdom, &y, &p, &r);
         ty = (y > 0) ? PI : -PI; // damn discontinuities
         moveCommand.linear.x = 0.01;
-        while (fabs(y - ty) > 0.01) {
+        while (fabs(y - ty) > 0.1) {
             ROS_INFO_STREAM("Y " << y << " TY " << ty);
             moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
             velPub.publish(moveCommand);
