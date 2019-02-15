@@ -76,13 +76,17 @@ G01Move::G01Move() : n(), spinner(2) {
         statePub.publish(stateCommand);
 
         // move near the corridor area using subsequent goals
+
+
         ROS_INFO_STREAM("Go near corridor");
+        changeAnglePrec(true);
         nearCorridor.target_pose.pose.position.x = 0.15;
         nearCorridor.target_pose.pose.position.y = -1.54;
         nearCorridor.target_pose.pose.position.z = 0.0;
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI/4 + PI / 2 + PI), //todo test this angle!!
                               nearCorridor.target_pose.pose.orientation);
         success = moveToGoal(nearCorridor);
+        changeAnglePrec(false);
 
         ROS_INFO_STREAM("Align with corridor entrance");
         corridorEntrance.target_pose.pose.position.x = 0.48;
@@ -179,11 +183,13 @@ G01Move::G01Move() : n(), spinner(2) {
         success = moveToGoal(nearCorridor);
 
         ROS_INFO_STREAM("Go to the unload position");
+        changeAnglePrec(true);
         unloadPoint.target_pose.pose.position.x = -1.5;
         unloadPoint.target_pose.pose.position.y = -0.4;
         unloadPoint.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
         success = moveToGoal(unloadPoint);
+        changeAnglePrec(false);
 
         ROS_INFO_STREAM("Align toward the wall");
         double r, p, y, ty;
@@ -316,6 +322,19 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             }
         }
     }
+}
+
+void G01Move::changeAnglePrec(bool increase){
+    dynamic_reconfigure::ReconfigureRequest srv_req;
+    dynamic_reconfigure::ReconfigureResponse srv_resp;
+    dynamic_reconfigure::DoubleParameter double_param;
+    dynamic_reconfigure::Config conf;
+
+    double_param.name = "yaw_goal_tolerance";
+    double_param.value = increase ? 1.7 : 0.2;
+    conf.doubles.push_back(double_param);
+    srv_req.config = conf;
+    ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
 }
 
 void G01Move::changeVel(bool negative) {

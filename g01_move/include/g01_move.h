@@ -63,8 +63,9 @@ private:
     bool moveToGoal(move_base_msgs::MoveBaseGoal goal);
     void recoverManual(bool rot = false);
     void changeVel(bool negative);
+    void changeAnglePrec(bool increase);
 
-    // corridor part
+        // corridor part
     ros::Publisher velPub;
     ros::Subscriber scannerSub;
 
