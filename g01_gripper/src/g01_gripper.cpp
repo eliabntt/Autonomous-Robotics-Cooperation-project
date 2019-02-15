@@ -107,7 +107,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // move cylinders (hexagons)
                 int count = 0;
                 while (!cylToGrab.empty() && count < 5 && !full) {
-                    cylToGrab = moveObjects(group, cylToGrab, box, true);
+                    cylToGrab = moveObjects(group, cylToGrab, box, 2);
                     count += 1;
                 }
                 if (!cylToGrab.empty()) {
@@ -129,7 +129,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // move prisms
                 count = 0;
                 while (!triToGrab.empty() && count < 5 && !full) {
-                    triToGrab = moveObjects(group, triToGrab, box);
+                    triToGrab = moveObjects(group, triToGrab, box, 1);
                     count += 1;
                 }
                 if (!triToGrab.empty()) {
@@ -156,7 +156,7 @@ void G01Gripper::stateCallback(const std_msgs::UInt16::ConstPtr &msg) {
 // Movement
 std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
-                                                                ObjectBox &box, bool rotate) {
+                                                                ObjectBox &box, int rotate) {
     // settings //fixme with real ones
     group.setMaxVelocityScalingFactor(0.9);
     group.setGoalPositionTolerance(0.0001);
@@ -179,10 +179,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // retrieve destination point
         bool canPlace;
         geometry_msgs::Pose destPose;
-        if (rotate) // bad hack to distinguish cylinders from cubes _and_ triangles fixme use better check
+        bool indexEven = true;
+        if (rotate == 2)
             canPlace = box.getCylinderPose(destPose);
         else
-            canPlace = box.getCubePose(destPose);
+            canPlace = box.getCubePose(destPose, &indexEven);
         if (!canPlace) {
             ROS_ERROR_STREAM("Cannot move to box, no place to put object");
             remaining.emplace_back(obj);
@@ -277,11 +278,27 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         pose.orientation = initialPose.orientation;
         // calculate the new orientation of the "wrist"
         if (rotate) {//todo check if position is right
-            ROS_INFO_STREAM("Cylinder will be tilted");
-            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
-                                  tf::Quaternion(pose.orientation.x, pose.orientation.y,
-                                                 pose.orientation.z, pose.orientation.w), pose.orientation);
-            pose.position.x -= 0.15;//fixme
+            ROS_INFO_STREAM("Cylinder will be tilted");//fixme
+            ROS_INFO_STREAM(indexEven);
+            ROS_INFO_STREAM(box.free.at(0));
+            ROS_INFO_STREAM(box.free.at(1));
+            ROS_INFO_STREAM(box.free.at(2));
+            ROS_INFO_STREAM(box.free.at(3));
+            ROS_INFO_STREAM(box.free.at(4));
+            ROS_INFO_STREAM("cacca");
+            if (rotate == 0 || !indexEven) {
+                tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
+                                      tf::Quaternion(pose.orientation.x, pose.orientation.y,
+                                                     pose.orientation.z, pose.orientation.w), pose.orientation);
+                pose.position.x -= 0.15;
+            } else {
+                tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, PI / 3, 0) *
+                                      tf::Quaternion(pose.orientation.x, pose.orientation.y,
+                                                     pose.orientation.z, pose.orientation.w), pose.orientation);
+                pose.position.x += 0.15;//fixme
+
+            }
+
         }
 
         // add offsets due to real map inconsistencies fixme remove when map will be adjusted
@@ -351,10 +368,13 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // open the gripper, adjust rviz and gazebo, mark occupied space in the box
         group.detachObject(obj.header.frame_id);
-        if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
+        if (sim) {
+            gazeboDetach(linknames[index][0], linknames[index][1]);
+            gazeboAttach(linknames[index][0], linknames[index][1], false);
+        }
         ROS_INFO_STREAM("Opening the gripper");
         gripperOpen();
-        if (rotate)
+        if (rotate == 2)
             box.markCylinderOcc(destPose);
         else
             box.markCubeOcc(destPose);
@@ -563,10 +583,15 @@ void G01Gripper::fakeGripperClose() {
     fakeGripperCommandPub.publish(command);
 }
 
-bool G01Gripper::gazeboAttach(std::string name, std::string link) {
+bool G01Gripper::gazeboAttach(std::string name, std::string link, bool robot) {
     gazebo_ros_link_attacher::AttachRequest req;
-    req.model_name_1 = "robot";
-    req.link_name_1 = "wrist_3_link";
+    if (robot) {
+        req.model_name_1 = "robot";
+        req.link_name_1 = "wrist_3_link";
+    } else {
+        req.model_name_1 = "/marrtino";
+        req.link_name_1 = "/marrtino_base_footprint";
+    }
     req.model_name_2 = std::move(name);
     req.link_name_2 = std::move(link);
     gazebo_ros_link_attacher::AttachResponse res;
