@@ -279,7 +279,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // calculate the new orientation of the "wrist"
         if (rotate) {//todo check if position is right
             ROS_INFO_STREAM((rotate==2 ? "Cylinder" : "\"Triangle\"") << "will be tilted");
-            if (rotate == 0 || !indexEven) {
+            if (rotate == 2 || !indexEven) {
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                       tf::Quaternion(pose.orientation.x, pose.orientation.y,
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
