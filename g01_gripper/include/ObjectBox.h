@@ -20,7 +20,6 @@ public:
                               true, true, true};
 
     std::vector<geometry_msgs::Pose> poses, possiblePoses;
-    ObjectBox();
     ObjectBox(geometry_msgs::Pose robotPose);
     bool isEmpty();
     bool isFull();
@@ -30,7 +29,7 @@ public:
     // bool returns if place is possible, pose contains the actual position
     bool getCylinderPose(geometry_msgs::Pose &output);
     bool markCylinderOcc(geometry_msgs::Pose &pose);
-    bool getCubePose(geometry_msgs::Pose &output, bool * indexEven);
+    bool getCubePose(geometry_msgs::Pose &output, bool *indexEven);
     bool markCubeOcc(geometry_msgs::Pose &pose);
 };
 

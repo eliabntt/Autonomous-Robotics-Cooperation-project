@@ -106,7 +106,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // move cylinders (hexagons)
                 int count = 0;
                 while (!cylToGrab.empty() && count < 5 && !full) {
-                    cylToGrab = moveObjects(group, cylToGrab, box, 2);
+                    cylToGrab = moveObjects(group, cylToGrab, box, ROT_CYL);
                     count += 1;
                 }
                 if (!cylToGrab.empty()) {
@@ -117,7 +117,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // move cubes
                 count = 0;
                 while (!cubeToGrab.empty() && count < 5 && !full) {
-                    cubeToGrab = moveObjects(group, cubeToGrab, box);
+                    cubeToGrab = moveObjects(group, cubeToGrab, box, ROT_CUB);
                     count += 1;
                 }
                 if (!cubeToGrab.empty()) {
@@ -128,7 +128,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 // move prisms
                 count = 0;
                 while (!triToGrab.empty() && count < 5 && !full) {
-                    triToGrab = moveObjects(group, triToGrab, box, 1);
+                    triToGrab = moveObjects(group, triToGrab, box, ROT_TRI);
                     count += 1;
                 }
                 if (!triToGrab.empty()) {
@@ -179,7 +179,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         bool canPlace;
         geometry_msgs::Pose destPose;
         bool indexEven = true;
-        if (rotate == 2)
+        if (rotate == ROT_CYL)
             canPlace = box.getCylinderPose(destPose);
         else
             canPlace = box.getCubePose(destPose, &indexEven);
@@ -276,8 +276,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // calculate the new orientation of the "wrist"
         if (rotate) {
             //fixme if necessary
-            ROS_INFO_STREAM((rotate==2 ? "Cylinder" : "\"Triangle\"") << "will be tilted");
-            if (rotate == 2 || !indexEven) {
+            ROS_INFO_STREAM((rotate == ROT_CYL ? "Cylinder" : "\"Triangle\"") << " will be tilted");
+            if (rotate == ROT_CYL || !indexEven) {
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                       tf::Quaternion(pose.orientation.x, pose.orientation.y,
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
@@ -288,7 +288,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
                 pose.position.x += 0.15;
             }
-
         }
 
         // add offsets due to real map inconsistencies //fixme real
@@ -344,7 +343,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.2;
-        if (rotate != 2) pose.position.z -= 0.05;
+        if (rotate != ROT_CYL) pose.position.z -= 0.05;
 
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)
@@ -365,7 +364,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
         ROS_INFO_STREAM("Opening the gripper");
         gripperOpen();
-        if (rotate == 2)
+        if (rotate == ROT_CYL)
             box.markCylinderOcc(destPose);
         else
             box.markCubeOcc(destPose);

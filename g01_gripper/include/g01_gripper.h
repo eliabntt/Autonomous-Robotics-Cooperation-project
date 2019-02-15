@@ -50,8 +50,9 @@ private:
     bool gazeboDetach(std::string name, std::string link);
 
     // manipulator
+    static const int ROT_CUB = 0, ROT_TRI = 1, ROT_CYL = 2;
     std::vector<geometry_msgs::PoseStamped> moveObjects(moveit::planning_interface::MoveGroupInterface &group,
-                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox &box, int rotate = 0);
+                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox &box, int rotate = ROT_CUB);
     bool moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long nSteps = 3);

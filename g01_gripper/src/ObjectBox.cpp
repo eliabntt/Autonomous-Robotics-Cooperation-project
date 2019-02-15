@@ -83,7 +83,7 @@ bool ObjectBox::markCylinderOcc(geometry_msgs::Pose &pose) {
     return true;
 }
 
-bool ObjectBox::getCubePose(geometry_msgs::Pose &output, bool * indexEven) {
+bool ObjectBox::getCubePose(geometry_msgs::Pose &output, bool *indexEven) {
     if (isFull()) return false;
 
     // cubes can go in first available (single) place
