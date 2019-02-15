@@ -55,14 +55,15 @@ G01Move::G01Move() : n(), spinner(2) {
             velPub.publish(moveCommand);
 
             // planner pose for rotation
-            nearUnloadPoint.target_pose.pose.position.x = -1.5;
+            // fixme maybe better rotation inplace
+            nearUnloadPoint.target_pose.pose.position.x = -1.4;
             nearUnloadPoint.target_pose.pose.position.y = -0.4;
             nearUnloadPoint.target_pose.pose.position.z = 0.0;
             tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearUnloadPoint.target_pose.pose.orientation);
             success = moveToGoal(nearUnloadPoint);
 
             // re-localization if needed
-            if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {//fixme check what's better
+            if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {
                 ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
@@ -123,12 +124,6 @@ G01Move::G01Move() : n(), spinner(2) {
         while (currState != STATE_UR10_RDY)
             ros::Duration(STATE_SLEEP_TIME).sleep();
 
-        ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
-                "/marrtino/request_nomotion_update");
-        for (int counter = 0; counter < 50; counter++) {
-            update_client.call(empty);
-            ros::Duration(0.02).sleep();
-        }
         ROS_INFO_STREAM("MARR POSE " << marrPoseOdom); // todo delete debug prints
         ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
 
@@ -189,7 +184,7 @@ G01Move::G01Move() : n(), spinner(2) {
         success = moveToGoal(nearCorridor);
 
         ROS_INFO_STREAM("Go to the unload position");
-        unloadPoint.target_pose.pose.position.x = -1.6;
+        unloadPoint.target_pose.pose.position.x = -1.5;
         unloadPoint.target_pose.pose.position.y = -0.4;
         unloadPoint.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
@@ -469,6 +464,13 @@ void G01Move::docking() {
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
+
+    ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+            "/marrtino/request_nomotion_update");
+    for (int counter = 0; counter < 50; counter++) {
+        update_client.call(empty);
+        ros::Duration(0.02).sleep();
+    }
     // todo if needed: marrtino pose at lz: 0.55, 1.55, 0; 0, 0, PI/2
 }
 
