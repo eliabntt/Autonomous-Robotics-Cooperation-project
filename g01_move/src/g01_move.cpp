@@ -476,8 +476,8 @@ void G01Move::rotateRight() {
     ty = y;       // current yaw
     ty -= (3.24); // target yaw
 
-    moveCommand.linear.x = 0.25;
-    moveCommand.angular.z = -1.2 * twistVel;
+    moveCommand.linear.x = 0.25; //fixme 0.3
+    moveCommand.angular.z = -1.2 * twistVel; //fixme 1.3
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
 
@@ -488,7 +488,7 @@ void G01Move::rotateRight() {
     moveCommand.angular.z = -1.78 * twistVel;
     while (fabs(y - ty) > 0.05) {
         velPub.publish(moveCommand);
-        ros::Duration(0.08).sleep();
+        ros::Duration(0.06).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
 
