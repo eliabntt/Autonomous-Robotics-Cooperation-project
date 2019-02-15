@@ -4,7 +4,6 @@
 #include "g01_gripper.h"
 
 G01Gripper::G01Gripper() : command(), n() {
-    //fixme maybe 4 better
     ros::AsyncSpinner spinner(2);
     spinner.start();
 
@@ -158,7 +157,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
                                                                 ObjectBox &box, int rotate) {
     // settings //fixme with real ones
-    group.setMaxVelocityScalingFactor(0.9);
+    group.setMaxVelocityScalingFactor(0.9); //todo try 1 in real
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
@@ -203,7 +202,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         double diff, diffAbs;
 
         diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
-        //todo test this if
         if (diffAbs - PI / 2 > 0.1 || diffAbs > 0.1) {
             if (fabs(y + p_ee) == diffAbs)
                 diff = y + p_ee;
@@ -272,12 +270,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             continue;
         }
 
-        // fixme safe altitude
         pose = destPose;
         pose.position.z += 0.6;
         pose.orientation = initialPose.orientation;
         // calculate the new orientation of the "wrist"
-        if (rotate) {//todo check if position is right
+        if (rotate) {
+            //fixme if necessary
             ROS_INFO_STREAM((rotate==2 ? "Cylinder" : "\"Triangle\"") << "will be tilted");
             if (rotate == 2 || !indexEven) {
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
@@ -288,13 +286,12 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, PI / 3, 0) *
                                       tf::Quaternion(pose.orientation.x, pose.orientation.y,
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
-                pose.position.x += 0.15;//fixme
-
+                pose.position.x += 0.15;
             }
 
         }
 
-        // add offsets due to real map inconsistencies fixme remove when map will be adjusted
+        // add offsets due to real map inconsistencies //fixme real
         if (!sim) {
             pose.position.x += 0.32;
             pose.position.y += 0.15;
@@ -750,26 +747,6 @@ bool G01Gripper::isHeld(int howMuch) {
 
     return true; // fixme test on real one (come concordato con Elisa)
     /*
-    ros::Duration(1).sleep();
-
-    // all three in the same position but equal to howMuch
-    if ((int) status.gPOA >= howMuch &&
-        (int) status.gPOB == (int) status.gPOC &&
-        (int) status.gPOB == (int) status.gPOA)
-        return false;
-
-    // all fingers in a position != from the previous
-    int precA = -1, precB = -1, precC = -1;
-    while ((int) status.gPOA != precA && (int) status.gPOB != precB && (int) status.gPOC != precC) {
-        precA = status.gPOA;
-        precB = status.gPOB;
-        precC = status.gPOC;
-        ros::Duration(0.2).sleep();
-    }
-    return true;
-
-    //alternative method not working on simulation
-
     while(status.gSTA == 0)
     ros::Duration(0.2).sleep();
     return status.gSTA == 1 || status.gSTA == 2;

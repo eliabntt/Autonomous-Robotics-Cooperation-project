@@ -28,8 +28,6 @@ G01Move::G01Move() : n(), spinner(2) {
 
     if (!clearMapsClient.call(empty))
         ROS_INFO_STREAM("Cannot clear the costmaps!");
-    // wait to get an update of the map
-    ros::Duration(0.5).sleep();//fixme don't know if necessary
 
     // start the loop
     while (anotherRoundNeeded) {
@@ -83,7 +81,7 @@ G01Move::G01Move() : n(), spinner(2) {
         nearCorridor.target_pose.pose.position.x = 0.15;
         nearCorridor.target_pose.pose.position.y = -1.54;
         nearCorridor.target_pose.pose.position.z = 0.0;
-        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI/4 + PI / 2 + PI), //todo test this angle!!
+        tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 4 + PI / 2 + PI),
                               nearCorridor.target_pose.pose.orientation);
         success = moveToGoal(nearCorridor);
         changeAnglePrec(false);
@@ -224,7 +222,6 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Another round is needed. Publish 'true' on /g01_start_run to proceed.");
     }
 
-    //fixme for real challenge MAYBE find clear space to start - ask
     spinner.stop();
     ros::shutdown();
 }
@@ -250,7 +247,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
     bool rotated = false;
     int reloc = 0;
 
-    if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {//fixme check what's better
+    if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {
         ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                 "/marrtino/request_nomotion_update");
         for (int counter = 0; counter < 50; counter++) {
@@ -319,12 +316,23 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     changeVel(false);
                     return false;
                 }
+
+                if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
+                    ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                            "/marrtino/request_nomotion_update");
+                    for (int counter = 0; counter < 50; counter++) {
+                        update_client.call(empty);
+                        ros::Duration(0.02).sleep();
+                    }
+                    reloc += 1;
+                    currPose = marrPoseOdom;
+                }
             }
         }
     }
 }
 
-void G01Move::changeAnglePrec(bool increase){
+void G01Move::changeAnglePrec(bool increase) {
     dynamic_reconfigure::ReconfigureRequest srv_req;
     dynamic_reconfigure::ReconfigureResponse srv_resp;
     dynamic_reconfigure::DoubleParameter double_param;
@@ -485,7 +493,6 @@ void G01Move::docking() {
         update_client.call(empty);
         ros::Duration(0.02).sleep();
     }
-    // todo if needed: marrtino pose at lz: 0.55, 1.55, 0; 0, 0, PI/2
 }
 
 void G01Move::rotateRight() {
@@ -592,7 +599,7 @@ void G01Move::wallFollower(bool forward) {
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
     if (forward) {
         plannerGoal.target_pose.pose.position.x = 0.6;
-        plannerGoal.target_pose.pose.position.y = 1.1; // todo maybe place forward
+        plannerGoal.target_pose.pose.position.y = 1.1;
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
         plannerGoal.target_pose.header.stamp = ros::Time::now();
@@ -600,8 +607,7 @@ void G01Move::wallFollower(bool forward) {
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
                               plannerGoal.target_pose.pose.orientation);
     } else {
-        // todo maybe simply use corridorEntrance or similar, with inverted orientation
-        plannerGoal.target_pose.pose.position.x = 0.5; // todo test this part
+        plannerGoal.target_pose.pose.position.x = 0.5;
         plannerGoal.target_pose.pose.position.y = -1.5;
         plannerGoal.target_pose.pose.position.z = 0.0;
         plannerGoal.target_pose.header.frame_id = "marrtino_map";
