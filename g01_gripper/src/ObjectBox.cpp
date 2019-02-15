@@ -5,6 +5,7 @@
 #include <ObjectBox.h>
 
 /* Scheme of the box
+ * World coordinate
  * --------------> X
  * | 0 | 2 | 4 |
  * | 1 | 3 | 5 |
@@ -14,11 +15,11 @@
  */
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     geometry_msgs::Pose center, temp;
-    //todo check if necessary
-    //deleted x y z, the quaternion is declared as (0, 0, 0, 0) so you just need to set w.
     temp.orientation.w = 1;
     tf::Quaternion rotation(robotPose.orientation.x, robotPose.orientation.y,
                             robotPose.orientation.z, robotPose.orientation.w);
+    robotPose.position.y -= 0.01;//todo tune
+    robotPose.position.x -= 0.03;
     tf::Vector3 widthVector(W / 3, 0, 0);
     tf::Vector3 lengthVector(L / 4, 0, 0);
     //rotate the shift
@@ -82,13 +83,14 @@ bool ObjectBox::markCylinderOcc(geometry_msgs::Pose &pose) {
     return true;
 }
 
-bool ObjectBox::getCubePose(geometry_msgs::Pose &output) {
+bool ObjectBox::getCubePose(geometry_msgs::Pose &output, bool * indexEven) {
     if (isFull()) return false;
 
     // cubes can go in first available (single) place
     for (int i = 0; i < 6; i++)
         if (free[i]) {
             output = poses[i];
+            *indexEven = i%2==0;
             return true;
         }
     return false;

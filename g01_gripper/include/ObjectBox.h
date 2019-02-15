@@ -30,7 +30,7 @@ public:
     // bool returns if place is possible, pose contains the actual position
     bool getCylinderPose(geometry_msgs::Pose &output);
     bool markCylinderOcc(geometry_msgs::Pose &pose);
-    bool getCubePose(geometry_msgs::Pose &output);
+    bool getCubePose(geometry_msgs::Pose &output, bool * indexEven);
     bool markCubeOcc(geometry_msgs::Pose &pose);
 };
 
