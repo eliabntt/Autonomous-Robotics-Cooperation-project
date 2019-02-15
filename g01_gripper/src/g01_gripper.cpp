@@ -278,14 +278,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         pose.orientation = initialPose.orientation;
         // calculate the new orientation of the "wrist"
         if (rotate) {//todo check if position is right
-            ROS_INFO_STREAM("Cylinder will be tilted");//fixme
-            ROS_INFO_STREAM(indexEven);
-            ROS_INFO_STREAM(box.free.at(0));
-            ROS_INFO_STREAM(box.free.at(1));
-            ROS_INFO_STREAM(box.free.at(2));
-            ROS_INFO_STREAM(box.free.at(3));
-            ROS_INFO_STREAM(box.free.at(4));
-            ROS_INFO_STREAM("cacca");
+            ROS_INFO_STREAM((rotate==2 ? "Cylinder" : "\"Triangle\"") << "will be tilted");
             if (rotate == 0 || !indexEven) {
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                       tf::Quaternion(pose.orientation.x, pose.orientation.y,
@@ -354,7 +347,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.2;
-        if (!rotate) pose.position.z -= 0.05;
+        if (rotate != 2) pose.position.z -= 0.05;
 
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)
@@ -370,6 +363,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         group.detachObject(obj.header.frame_id);
         if (sim) {
             gazeboDetach(linknames[index][0], linknames[index][1]);
+            ros::Duration(0.5).sleep();
             gazeboAttach(linknames[index][0], linknames[index][1], false);
         }
         ROS_INFO_STREAM("Opening the gripper");
