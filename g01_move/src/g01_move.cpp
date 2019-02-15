@@ -37,25 +37,31 @@ G01Move::G01Move() : n(), spinner(2) {
 
         // from second run onward, rotate where there are no obstacles, in-place
         if (!firstRun) {
-
-            ROS_INFO_STREAM("Push away from the wall and rotate");
-            moveCommand.linear.x = -0.3; // pay attention bwd movement!
-            moveCommand.angular.z = 0.0; // todo if tuning needed, here
-            velPub.publish(moveCommand); // fixme very ugly, see in recovery if there is a better movement to replicate
-            ros::Duration(0.8).sleep(); // note: not perfectly straight when going backward
-
-            // stop
+            ROS_INFO_STREAM("Push away from the wall");
+            moveCommand.linear.x = -0.1;
+            moveCommand.angular.z = 0.0;
+            for (int i = 0; i < 20; i++) {
+                velPub.publish(moveCommand);
+                ros::Duration(0.1).sleep();
+            }
             moveCommand.linear.x = 0.0;
             moveCommand.angular.z = 0.0;
             velPub.publish(moveCommand);
 
-            // planner pose for rotation
-            // fixme maybe better rotation inplace
-            nearUnloadPoint.target_pose.pose.position.x = -1.4;
-            nearUnloadPoint.target_pose.pose.position.y = -0.4;
-            nearUnloadPoint.target_pose.pose.position.z = 0.0;
-            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, 0), nearUnloadPoint.target_pose.pose.orientation);
-            success = moveToGoal(nearUnloadPoint);
+            ROS_INFO_STREAM("In-place rotation");
+            double r, p, y, ty = 0;
+            poseToYPR(marrPoseOdom, &y, &p, &r);
+            moveCommand.linear.x = 0.01;
+            while (fabs(y - ty) > 0.1) {
+                //ROS_INFO_STREAM("Y " << y << " TY " << ty);
+                moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
+                velPub.publish(moveCommand);
+                ros::Duration(0.08).sleep();
+                poseToYPR(marrPoseOdom, &y, &p, &r);
+            }
+            moveCommand.linear.x = 0.0;
+            moveCommand.angular.z = 0.0;
+            velPub.publish(moveCommand);
 
             // re-localization if needed
             if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {
@@ -74,8 +80,6 @@ G01Move::G01Move() : n(), spinner(2) {
         statePub.publish(stateCommand);
 
         // move near the corridor area using subsequent goals
-
-
         ROS_INFO_STREAM("Go near corridor");
         changeAnglePrec(true);
         nearCorridor.target_pose.pose.position.x = 0.15;
@@ -195,14 +199,12 @@ G01Move::G01Move() : n(), spinner(2) {
         ty = (y > 0) ? PI : -PI; // damn discontinuities
         moveCommand.linear.x = 0.01;
         while (fabs(y - ty) > 0.1) {
-            ROS_INFO_STREAM("Y " << y << " TY " << ty);
+            //ROS_INFO_STREAM("Y " << y << " TY " << ty);
             moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
             velPub.publish(moveCommand);
             ros::Duration(0.08).sleep();
             poseToYPR(marrPoseOdom, &y, &p, &r);
         }
-
-        // stop
         moveCommand.linear.x = 0.0;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
@@ -212,11 +214,10 @@ G01Move::G01Move() : n(), spinner(2) {
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
         ros::Duration(0.5).sleep();
-
-        // stop
         moveCommand.linear.x = 0.0;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
+
         ROS_INFO_STREAM("Done. Please manually unload objects from marrtino.");
         if (anotherRoundNeeded)
             ROS_INFO_STREAM("Another round is needed. Publish 'true' on /g01_start_run to proceed.");
