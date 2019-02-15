@@ -104,48 +104,6 @@ G01Gripper::G01Gripper() : command(), n() {
                 finish = true; // can change later
                 full = false;  // empty box
 
-                /* // to view box poses
-                ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1", 10);
-                ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2", 10);
-                ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3", 10);
-                ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4", 10);
-                ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5", 10);
-                ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6", 10);
-                geometry_msgs::PoseStamped a;
-                a.header.frame_id = "world";
-
-                while (true) {
-                    a.pose = box.poses.at(0);
-                    a.header.stamp = ros::Time::now();
-                    p1.publish(a);
-                    ros::Duration(1).sleep();
-
-                    a.pose = box.poses.at(1);
-                    a.header.stamp = ros::Time::now();
-                    p2.publish(a);
-                    ros::Duration(1).sleep();
-
-                    a.pose = box.poses.at(2);
-                    a.header.stamp = ros::Time::now();
-                    p3.publish(a);
-                    ros::Duration(1).sleep();
-
-                    a.pose = box.poses.at(3);
-                    a.header.stamp = ros::Time::now();
-                    p4.publish(a);
-                    ros::Duration(1).sleep();
-
-                    a.pose = box.poses.at(4);
-                    a.header.stamp = ros::Time::now();
-                    p5.publish(a);
-                    ros::Duration(1).sleep();
-
-                    a.pose = box.poses.at(5);
-                    a.header.stamp = ros::Time::now();
-                    p6.publish(a);
-                    ros::Duration(1).sleep();
-                }*/
-
                 // move cylinders (hexagons)
                 int count = 0;
                 while (!cylToGrab.empty() && count < 5 && !full) {
@@ -274,9 +232,6 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // movement can stop anywhere between start and stop positions)
         if (!moveManipulator(pose, group)) {
             goHome(group);
-
-            obj.pose.position = group.getCurrentPose().pose.position;
-            obj.pose.position.z -= 0.05;
             remaining.emplace_back(obj);
             continue;
         }
@@ -301,14 +256,17 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // safe to open because still near the table
         if (!moveManipulator(pose, group)) {
             // detach object
+            gripperOpen();
             group.detachObject(obj.header.frame_id);
             if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
+
+            int z = obj.pose.position.z;
+            obj.pose.position = group.getCurrentPose().pose.position;
+            obj.pose.position.z = z;
 
             goHome(group);
 
             // save new object position
-            obj.pose.position = group.getCurrentPose().pose.position;
-            obj.pose.position.z -= 0.05;
             remaining.emplace_back(obj);
             continue;
         }
@@ -326,12 +284,37 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose.position.x -= 0.15;//fixme
         }
 
-        // add offsets due to map inconsistencies fixme remove when map will be adjusted
+        // add offsets due to real map inconsistencies fixme remove when map will be adjusted
         if (!sim) {
             pose.position.x += 0.32;
             pose.position.y += 0.15;
         }
-        moveManipulator(pose, group);
+
+        if (!moveManipulator(pose, group)) {
+            if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
+                group.move();
+            else {
+                // I do not know where I am
+                // try to go back down (less to be in a safe position)
+                ROS_INFO_STREAM("Error trying to get into placement position");
+                pose = group.getCurrentPose().pose;
+
+                pose.position.z -= 0.1;
+                moveManipulator(pose, group);
+
+                // detach object
+                group.detachObject(obj.header.frame_id);
+                if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
+
+                goHome(group);
+
+                std::vector<std::string> toRemove = {obj.header.frame_id};
+                planningSceneIF.removeCollisionObjects(toRemove);
+                continue;
+            }
+        } else {
+            ROS_INFO_STREAM("movement to placement position completed");
+        }
 
         // position refinement (another plan step, just to be sure)
         objX = pose.position.x;
@@ -350,34 +333,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             curX = group.getCurrentPose().pose.position.x;
             curY = group.getCurrentPose().pose.position.y;
         }
-//fixme temp
-        /*  if (!moveManipulator(pose, group)) {
-              // try to go back down (less to be in a safe position)
-              ROS_INFO_STREAM("Error trying to get into placement position");
-              pose = group.getCurrentPose().pose;
 
-              pose.position.z -= 0.1;
-              moveManipulator(pose, group);
-
-              // detach object
-              group.detachObject(obj.header.frame_id);
-              if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
-
-              goHome(group);
-
-              // save new object position
-              obj.pose.position = group.getCurrentPose().pose.position;
-              obj.pose.position.z -= 0.05;
-
-              std::vector<std::string> toRemove = {obj.header.frame_id};
-              planningSceneIF.removeCollisionObjects(toRemove);
-              //remaining.emplace_back(obj);
-              continue;
-          } else {
-              ROS_INFO_STREAM("movement to placement position completed");
-          }*/
-
-        ROS_INFO_STREAM(group.getCurrentPose().pose);
         // approach the LZ from above
         pose = group.getCurrentPose().pose;
         pose.position.z -= 0.2;
@@ -408,7 +364,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         planningSceneIF.removeCollisionObjects(toRemove);
 
         pose = group.getCurrentPose().pose;
-        pose.position.z += 0.6;
+        pose.position.z += 0.4;
         pose.orientation = initialPose.orientation;
 
         // here just need to go home
@@ -441,7 +397,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
         fraction = group.computeCartesianPath(makeWaypoints(group.getCurrentPose().pose, destination, steps),
                                               EEF_STEP, JUMP_THRESH, trajTemp, true, &errorCode);
         if (errorCode.val != 1)
-            ROS_INFO_STREAM("MOVEIT_ERROR_CODE:" << errorCode);
+            ROS_ERROR_STREAM("MOVEIT_ERROR_CODE:" << errorCode);
         if (fraction >= succThr) {
             // very good plan
             bestFraction = fraction;
@@ -466,7 +422,6 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     plan.trajectory_ = traj;
 
     moveit_msgs::MoveItErrorCodes resultCode = group.execute(plan);
-    ROS_INFO_STREAM("bf " << bestFraction);
     return (resultCode.val == 1);
     // return true only if the movement is correct (most times: bad planning removed before)
 }
@@ -823,7 +778,7 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     try {
         geometry_msgs::TransformStamped odom_to_world;
-        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0));
+        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
         tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
         odomReceived = true;
         marrOdomSub.shutdown();
