@@ -46,12 +46,12 @@ private:
     void gripperOpen();
     void fakeGripperClose();
     void fakeGripperOpen();
-    bool gazeboAttach(std::string name, std::string link);
+    bool gazeboAttach(std::string name, std::string link, bool robot = true);
     bool gazeboDetach(std::string name, std::string link);
 
     // manipulator
     std::vector<geometry_msgs::PoseStamped> moveObjects(moveit::planning_interface::MoveGroupInterface &group,
-                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox &box, bool rotate = false);
+                     std::vector<geometry_msgs::PoseStamped> objectList, ObjectBox &box, int rotate = 0);
     bool moveManipulator(geometry_msgs::Pose destination, moveit::planning_interface::MoveGroupInterface &group);
     std::vector<geometry_msgs::Pose> makeWaypoints(geometry_msgs::Pose from, geometry_msgs::Pose to,
                                                    unsigned long nSteps = 3);
