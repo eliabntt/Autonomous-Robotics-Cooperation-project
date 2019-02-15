@@ -39,12 +39,9 @@ G01Move::G01Move() : n(), spinner(2) {
 
         // from second run onward, rotate where there are no obstacles, in-place
         if (!firstRun) {
-            // costmaps clearing if needed
-            if (!clearMapsClient.call(empty)) // fixme maybe not needed
-                ROS_INFO_STREAM("Cannot clear the costmaps!");
 
             ROS_INFO_STREAM("Push away from the wall and rotate");
-            moveCommand.linear.x = -0.4; // pay attention bwd movement!
+            moveCommand.linear.x = -0.3; // pay attention bwd movement!
             moveCommand.angular.z = 0.0; // todo if tuning needed, here
             velPub.publish(moveCommand); // fixme very ugly, see in recovery if there is a better movement to replicate
             ros::Duration(0.8).sleep(); // note: not perfectly straight when going backward
@@ -71,10 +68,6 @@ G01Move::G01Move() : n(), spinner(2) {
                     ros::Duration(0.02).sleep();
                 }
             }
-
-            // costmaps clearing
-            if (!clearMapsClient.call(empty))
-                ROS_INFO_STREAM("Cannot clear the costmaps!");
         }
         firstRun = false;
 
@@ -99,7 +92,9 @@ G01Move::G01Move() : n(), spinner(2) {
                               corridorEntrance.target_pose.pose.orientation);
         success = moveToGoal(corridorEntrance);
 
-        //todo maybe add one more
+        if (!clearMapsClient.call(empty))
+            ROS_INFO_STREAM("Cannot clear the costmaps!");
+
         ROS_INFO_STREAM("Try to go inside corridor");
         corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
         corridorInside.target_pose.pose.position.y = -0.9;
@@ -124,8 +119,8 @@ G01Move::G01Move() : n(), spinner(2) {
         while (currState != STATE_UR10_RDY)
             ros::Duration(STATE_SLEEP_TIME).sleep();
 
-        ROS_INFO_STREAM("MARR POSE " << marrPoseOdom); // todo delete debug prints
-        ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
+        // ROS_INFO_STREAM("MARR POSE " << marrPoseOdom);
+        // ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
 
         stateCommand.data = STATE_UR10_LOAD;
         statePub.publish(stateCommand);
@@ -146,7 +141,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
         // rotation
         ROS_INFO_STREAM("Rotate, going back to unload point");
-        rotateRight();
+        rotateRight(); //fixme is this necessary?
 
         // move to the entrance of the corridor - back
         ROS_INFO_STREAM("Intermediate through the funnel");
@@ -476,19 +471,21 @@ void G01Move::docking() {
 
 void G01Move::rotateRight() {
     // go forward a little, pushing away from wall
-    moveCommand.linear.x = 0.3;
-    moveCommand.angular.z = -twistVel;
-    velPub.publish(moveCommand);
-    ros::Duration(1).sleep();
-
     double r, p, y, ty;
     poseToYPR(marrPoseOdom, &y, &p, &r);
     ty = y;       // current yaw
-    ty -= (3.34); // target yaw
+    ty -= (3.24); // target yaw
+
+    moveCommand.linear.x = 0.25;
+    moveCommand.angular.z = -1.2 * twistVel;
+    velPub.publish(moveCommand);
+    ros::Duration(1).sleep();
+
+
 
     // rotate until desired yaw is reached
-    moveCommand.linear.x = 0.1;
-    moveCommand.angular.z = -1.8 * twistVel;
+    moveCommand.linear.x = 0.11;
+    moveCommand.angular.z = -1.78 * twistVel;
     while (fabs(y - ty) > 0.05) {
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
