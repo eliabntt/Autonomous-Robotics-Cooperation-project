@@ -51,7 +51,8 @@ G01Move::G01Move() : n(), spinner(2) {
 
             ROS_INFO_STREAM("In-place rotation");
             moveCommand.linear.x = 0.01;
-            ty = std::min(fabs(y - PI), fabs(y + PI)) == fabs(y - PI) ? (y - PI) : (y + PI);//todo fixme
+            // set rotation of PI from current yaw (capping result in [-PI,PI])
+            ty = (std::min(fabs(y - PI), fabs(y + PI)) == fabs(y - PI)) ? (y - PI) : (y + PI);
             poseToYPR(marrPoseOdom, &y, &p, &r);
             while (fabs(y - ty) > 0.1) {
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
