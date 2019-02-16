@@ -15,7 +15,7 @@
 
 class ObjectBox {
 public:
-    const double W = 0.297, L = 0.210; // A4 paper size = shape of the box
+    const double W = 0.317, L = 0.210; // A4 paper size = shape of the box
     std::vector<bool> free = {true, true, true,
                               true, true, true};
 

@@ -253,6 +253,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
     bool backed = false;
     bool rotated = false;
+    bool cleaned = false;
     int reloc = 0;
 
     if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {
@@ -284,6 +285,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
             ROS_INFO_STREAM("Robot has moved somewhere, resetting recovery flags");
             backed = false;
             rotated = false;
+            cleaned = false;
             changeVel(false);
             reloc = 0;
         }
@@ -314,7 +316,17 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     recoverManual();
                     backed = true;
                     currPose = marrPoseOdom;
-                } else if (!rotated) {
+                }
+                else if (!cleaned){
+                    if (!clearMapsClient.call(empty))
+                        ROS_INFO_STREAM("Cannot clear the costmaps!");
+                    else
+                    {
+                        cleaned = true;
+                        ros::Duration(0.5).sleep();
+                    }
+                }
+                else if (!rotated) {
                     ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
                     recoverManual(true);
                     rotated = true;
@@ -325,7 +337,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     return false;
                 }
 
-                if (marrPose.covariance.at(0) > 0.2 || marrPose.covariance.at(7) > 0.2) {
+                if (marrPose.covariance.at(0) > 0.15 || marrPose.covariance.at(7) > 0.15) {
                     ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
                             "/marrtino/request_nomotion_update");
                     for (int counter = 0; counter < 50; counter++) {
