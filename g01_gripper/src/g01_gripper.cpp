@@ -274,10 +274,9 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         pose.position.z += 0.6;
         pose.orientation = initialPose.orientation;
         // calculate the new orientation of the "wrist"
-        if (rotate) {
-            //fixme if necessary
-            ROS_INFO_STREAM((rotate == ROT_CYL ? "Cylinder" : "\"Triangle\"") << " will be tilted");
-            if (rotate == ROT_CYL || !indexEven) {
+        if (rotate == ROT_TRI) {
+            ROS_INFO_STREAM("\"Triangle\" will be tilted");
+            if (!indexEven) {
                 tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                       tf::Quaternion(pose.orientation.x, pose.orientation.y,
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
@@ -288,6 +287,14 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
                 pose.position.x += 0.15;
             }
+        }
+        else if (rotate == ROT_CYL)
+        {
+            ROS_INFO_STREAM("Cylinder will be tilted");
+            tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
+                                  tf::Quaternion(pose.orientation.x, pose.orientation.y,
+                                                 pose.orientation.z, pose.orientation.w), pose.orientation);
+            pose.position.x -= 0.15;
         }
 
         // add offsets due to real map inconsistencies //fixme real
