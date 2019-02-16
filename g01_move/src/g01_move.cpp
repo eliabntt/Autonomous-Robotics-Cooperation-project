@@ -30,6 +30,8 @@ G01Move::G01Move() : n(), spinner(2) {
         ROS_INFO_STREAM("Cannot clear the costmaps!");
 
     // start the loop
+    double r, p, y, ty = 0;
+
     while (anotherRoundNeeded) {
         // wait for proceed command (useful from second run onward)
         while (!proceed)
@@ -49,9 +51,8 @@ G01Move::G01Move() : n(), spinner(2) {
             velPub.publish(moveCommand);
 
             ROS_INFO_STREAM("In-place rotation");
-            double r, p, y, ty = 0;
-            poseToYPR(marrPoseOdom, &y, &p, &r);
             moveCommand.linear.x = 0.01;
+            ty = std::min(y - PI, y + PI);
             while (fabs(y - ty) > 0.1) {
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
@@ -69,9 +70,12 @@ G01Move::G01Move() : n(), spinner(2) {
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
                     update_client.call(empty);
-                    ros::Duration(0.02).sleep();
+                    ros::Duration(0.01).sleep();
                 }
             }
+            if (!clearMapsClient.call(empty))
+                ROS_INFO_STREAM("Cannot clear the costmaps!");
+            ros::Duration(0.1).sleep();
         }
         firstRun = false;
 
@@ -191,6 +195,9 @@ G01Move::G01Move() : n(), spinner(2) {
         unloadPoint.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI), unloadPoint.target_pose.pose.orientation);
         success = moveToGoal(unloadPoint);
+
+        // save angle for the second run
+        poseToYPR(marrPoseOdom, &y, &p, &r);
         changeAnglePrec(false);
 
         ROS_INFO_STREAM("Align toward the wall");
@@ -267,7 +274,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         ROS_INFO_STREAM("Sending global goal");
 
         client.sendGoal(goal);
-        ros::Duration(3).sleep(); // fixme needed?
+        ros::Duration(3).sleep();
 
         double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
         double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
@@ -294,7 +301,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                         "/marrtino/request_nomotion_update");
                 for (int counter = 0; counter < 50; counter++) {
                     update_client.call(empty);
-                    ros::Duration(0.02).sleep();
+                    ros::Duration(0.01).sleep();
                 }
                 reloc += 1;
                 currPose = marrPoseOdom;
@@ -323,7 +330,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                             "/marrtino/request_nomotion_update");
                     for (int counter = 0; counter < 50; counter++) {
                         update_client.call(empty);
-                        ros::Duration(0.02).sleep();
+                        ros::Duration(0.01).sleep();
                     }
                     reloc += 1;
                     currPose = marrPoseOdom;
@@ -340,10 +347,11 @@ void G01Move::changeAnglePrec(bool increase) {
     dynamic_reconfigure::Config conf;
 
     double_param.name = "yaw_goal_tolerance";
-    double_param.value = increase ? 1.7 : 0.2;
+    double_param.value = increase ? 2 : 0.2;
     conf.doubles.push_back(double_param);
     srv_req.config = conf;
     ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
+    ros::Duration(0.2).sleep();
 }
 
 void G01Move::changeVel(bool negative) {
@@ -407,7 +415,7 @@ void G01Move::recoverManual(bool rot) {
             changeVel(false);
             ROS_INFO_STREAM("Backup goal reached");
         }
-        client_temp.cancelGoal();
+        client_temp.cancelAllGoals();
         client_temp.waitForResult();
     }
 }
