@@ -31,7 +31,6 @@ G01Move::G01Move() : n(), spinner(2) {
 
     // start the loop
     double r, p, y, ty = 0;
-
     while (anotherRoundNeeded) {
         // wait for proceed command (useful from second run onward)
         while (!proceed)
@@ -316,17 +315,14 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     recoverManual();
                     backed = true;
                     currPose = marrPoseOdom;
-                }
-                else if (!cleaned){
+                } else if (!cleaned) {
                     if (!clearMapsClient.call(empty))
                         ROS_INFO_STREAM("Cannot clear the costmaps!");
-                    else
-                    {
+                    else {
                         cleaned = true;
                         ros::Duration(0.5).sleep();
                     }
-                }
-                else if (!rotated) {
+                } else if (!rotated) {
                     ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
                     recoverManual(true);
                     rotated = true;
@@ -380,7 +376,7 @@ void G01Move::changeVel(bool negative) {
 }
 
 void G01Move::recoverManual(bool rot) {
-    //resetting previous moveCommand settings
+    // resetting previous moveCommand settings
     moveCommand.linear.x = 0;
     moveCommand.angular.z = 0;
     double defZ = 0.2, defX = 0.2;
@@ -404,11 +400,11 @@ void G01Move::recoverManual(bool rot) {
         velPub.publish(moveCommand);
         ros::Duration(2).sleep();
     } else {
-        //get odom direction
+        // get odom direction
         tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y,
                                 marrPoseOdom.orientation.z, marrPoseOdom.orientation.w);
         tf::Vector3 vector(0.25, 0, 0);
-        //rotate the shift
+        // rotate the shift
         tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
 
         changeVel(true);
@@ -416,7 +412,7 @@ void G01Move::recoverManual(bool rot) {
         goal_temp.target_pose.header.frame_id = "marrtino_map";
         goal_temp.target_pose.header.stamp = ros::Time::now();
         goal_temp.target_pose.pose = marrPoseOdom;
-        //apply the shift
+        // apply the shift
         goal_temp.target_pose.pose.position.x -= rotated_vector.getX();
         goal_temp.target_pose.pose.position.y -= rotated_vector.getY();
 
@@ -443,9 +439,7 @@ void G01Move::docking() {
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
-
-    // stop
-    moveCommand.linear.x = 0.0;
+    moveCommand.linear.x = 0.0; // stop
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
 
@@ -457,8 +451,6 @@ void G01Move::docking() {
         velPub.publish(moveCommand);
         ros::Duration(0.08).sleep();
     }
-
-    // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -473,8 +465,6 @@ void G01Move::docking() {
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
-
-    // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -487,8 +477,6 @@ void G01Move::docking() {
         velPub.publish(moveCommand);
         ros::Duration(0.1).sleep();
     }
-
-    // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -502,8 +490,6 @@ void G01Move::docking() {
         ros::Duration(0.08).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
-
-    // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -527,8 +513,6 @@ void G01Move::rotateRight() {
     moveCommand.angular.z = -1.2 * twistVel; //fixme 1.3
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
-
-
 
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.11;
@@ -559,8 +543,6 @@ void G01Move::deviateRight() {
     moveCommand.angular.z = -0.4;
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
-
-    // stop
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -618,6 +600,7 @@ void G01Move::wallFollower(bool forward) {
     MoveBaseClient client("marrtino/move_base", false);
     while (!client.waitForServer(ros::Duration(5.0)))
         ROS_INFO_STREAM("Waiting for the move_base action server to come up");
+
     if (forward) {
         plannerGoal.target_pose.pose.position.x = 0.6;
         plannerGoal.target_pose.pose.position.y = 1.1;

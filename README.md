@@ -4,12 +4,14 @@ Gruppo 01: Elia Bonetto, Matteo Dal Zovo, Filippo Rigotto
 
 Questo repository contiene i file da aggiungere al workspace ROS per la challenge.
 
-Ogni sottocartella Ë provvista di file README con le *istruzioni dettagliate* per l'uso dello specifico pacchetto.
+Ogni sottocartella √® provvista di file README con le *istruzioni dettagliate* per l'uso dello specifico pacchetto.
+
+I comandi per far partire la challenge completa sono contenuti nel file [README](g01_move/README.md) del modulo di marrtino.
 
 ## Setup
 
 Si assume che ROS sia installato e correttamente configurato.
-Si ipotizza che un workspace sia inizializzato in `~/ros_ws` per brevit‡ nei comandi successivi.
+Si ipotizza che un workspace sia inizializzato in `~/ros_ws` per brevit√† nei comandi successivi.
 
 ```bash
 cd ~/ros_ws/src/G01/
@@ -18,7 +20,7 @@ git remote add origin https://[USER]@bitbucket.org/iaslab-unipd/g01-bonetto-dal-
 git pull origin master
 ```
 
-Per utilizzare i pacchetti Ë necessario compilare il codice
+Per utilizzare i pacchetti √® necessario compilare il codice
 
 ```bash
 cd ~/ros_ws

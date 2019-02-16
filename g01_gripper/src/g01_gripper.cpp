@@ -259,7 +259,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             group.detachObject(obj.header.frame_id);
             if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
 
-            int z = obj.pose.position.z;
+            double z = obj.pose.position.z;
             obj.pose.position = group.getCurrentPose().pose.position;
             obj.pose.position.z = z;
 
@@ -287,9 +287,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                                                      pose.orientation.z, pose.orientation.w), pose.orientation);
                 pose.position.x += 0.15;
             }
-        }
-        else if (rotate == ROT_CYL)
-        {
+        } else if (rotate == ROT_CYL) {
             ROS_INFO_STREAM("Cylinder will be tilted");
             tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, -PI / 3, 0) *
                                   tf::Quaternion(pose.orientation.x, pose.orientation.y,
@@ -325,9 +323,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
                 planningSceneIF.removeCollisionObjects(toRemove);
                 continue;
             }
-        } else {
-            ROS_INFO_STREAM("movement to placement position completed");
-        }
+        } else
+            ROS_INFO_STREAM("Movement to placement position completed");
 
         // position refinement (another plan step, just to be sure)
         objX = pose.position.x;
@@ -414,7 +411,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
         fraction = group.computeCartesianPath(makeWaypoints(group.getCurrentPose().pose, destination, steps),
                                               EEF_STEP, JUMP_THRESH, trajTemp, true, &errorCode);
         if (errorCode.val != 1)
-            ROS_ERROR_STREAM("MOVEIT_ERROR_CODE:" << errorCode);
+            ROS_ERROR_STREAM("MoveIt error code:" << errorCode);
         if (fraction >= succThr) {
             // very good plan
             bestFraction = fraction;
@@ -429,7 +426,7 @@ bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
     //ROS_INFO_STREAM("Best_Fraction: " << bestFraction);
     // bad plan with all possible steps number, exit
     if (bestFraction < minThr) {
-        ROS_INFO_STREAM("PLANNING FAILED: result [" << bestFraction << "] under minimal threshold");
+        ROS_ERROR_STREAM("Planning FAILED: result [" << bestFraction << "] under minimal threshold");
         return false;
     }
 

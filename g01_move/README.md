@@ -15,11 +15,12 @@ Marrtino viene fatto poi deviare leggermente a destra e ritorna quindi sui suoi 
 In questo homework è stata aggiunta la macchina a stati finiti per comandare lo svolgimento dell'intera challenge.
 Funziona tramite lo scambio di messaggi tra questo e il modulo del manipolatore sul topic `g01_fsm_state`.
 
-Quando marrtino raggiunge l'imboccatura del corridoio viene pubblicato il comando di risveglio della parte percettiva del modulo del manipolatore: le posizioni dei tag vengono lette e elaborate in modo da ottimizzare i tempi di esecuzione(la lettura nel reale impiega 4-5 secondi in media).
-Quando marrtino raggiunge la zona di carico, viene dato il via libera allo spostamento degli oggetti al manipolatore. La posa del marrtino viene utilizzata per creare una matrice di posizioni dove dovranno essere poggiati gli oggetti:
+Quando marrtino raggiunge l'imboccatura del corridoio viene pubblicato il comando di risveglio della parte percettiva del modulo del manipolatore: le posizioni dei tag vengono lette e elaborate in modo da ottimizzare i tempi di esecuzione (la lettura nel reale impiega 4-5 secondi in media).
+Quando marrtino raggiunge la zona di carico, viene dato il via libera allo spostamento degli oggetti al manipolatore.
+La posa del marrtino viene utilizzata per creare una matrice di posizioni dove dovranno essere appoggiati gli oggetti:
 in base allo stato di occupazione della scatola posta in cima a marrtino e ai pezzi eventualmente mancanti, il modulo del manipolatore comunicherà se è necessario un secondo giro per completare il trasferimento di tutti i pezzi.
 In caso positivo, una volta raggiunta la zona di scarico marrtino rimarrà in attesa sul topic `g01_start_run` del via libera per poter cominciare un altro giro.
-Questi comportamenti vengono ripetuti in loop fino al completo trasferimento degli oggetti necessari.
+Questi comportamenti vengono ripetuti in loop fino al completo trasferimento di tutti gli oggetti necessari.
 
 ## Modalità di funzionamento (in simulazione)
 
@@ -54,12 +55,9 @@ rostopic pub --once g01_start_run std_msgs/Bool 'true'
 
 Non ha effetto se il task è stato completato correttamente.
 
-### Note aggiuntive
+## Challenge completa
 
-- I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
-L'unica eccezione è il launch file dell'amcl in quanto non sapevamo se la modifica fosse consentita.
-
-- Questo modulo contiene anche i due launch file necessari per far partire l'intera challenge: oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltag, moveit, marrtino) e poi quello di questi moduli:
+Questo modulo contiene anche i due launch file necessari per far partire l'intera challenge: oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltag, moveit, marrtino) e poi quello di questi moduli:
 
 ```
 roslaunch g01_move challenge_planners.launch sim:=true
@@ -68,3 +66,9 @@ roslaunch g01_move challenge_planners.launch sim:=true
 ```
 roslaunch g01_move challenge_packages.launch sim:=true ids:="[[frame_id],]"
 ```
+
+**IMPORTANTE**: con l'aggiunta della macchina a stati finiti, questo modulo dipende da quello del manipolatore e quindi non è più possibile utilizzarlo separatamente (ossia, i comandi alla sezione precedente *non* portano a fare un giro completo).
+
+### Note aggiuntive
+
+- I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
