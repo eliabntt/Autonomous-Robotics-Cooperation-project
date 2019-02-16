@@ -52,7 +52,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
             ROS_INFO_STREAM("In-place rotation");
             moveCommand.linear.x = 0.01;
-            ty = std::min(y - PI, y + PI);
+            ty = std::min(y - PI, y + PI);//todo fixme
             while (fabs(y - ty) > 0.1) {
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
