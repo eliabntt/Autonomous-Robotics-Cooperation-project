@@ -5,7 +5,7 @@ Questo homework per funzionare necessita della versione più aggiornata del prim
 ## Aspetti principali
 
 Verrà dapprima lanciata la parte di percezione che pubblicherà due topic separati: uno per gli oggetti che devono essere trasportati, uno per gli oggetti che devono essere evitati.
-Sono stati creati messaggi _custom_ per la comunicazione del nome dei tag insieme alla pose, e quindi ora i topic `/tags_to_grab|avoid` pubblicano un array di PoseStamped.
+Sono stati creati messaggi _custom_ per la comunicazione del nome dei tag insieme alla pose, e quindi ora i topic `/g01_tags_grab|avoid` pubblicano un array di PoseStamped.
 L'header principale del messaggio contiene il frame di riferimento delle letture, `/world`, e l'header di ogni oggetto PoseStamped contiene il nome del tag nel `frame_id`.
 
 Quando pronto, il robot si porterà in posizione "zero" con il gripper aperto;
@@ -23,10 +23,15 @@ I parallelepipedi a base esagonale sono stati modellati per comodità con una ba
 I prismi a sezione triangolare sono stati modellati tramite la rispettiva mesh presente all'interno della *challenge arena*.
 
 Una volta ottenuto la lista degli oggetti da spostare si procede partendo dai parallelepipedi, cioè gli oggetti più ingombranti,
-per poi procedere con i cubi e infine con i prismi triangolari trasportandoli tutti per il momento sopra la zona finale dove verranno rilasciati.
+per poi procedere con i cubi e infine con i prismi triangolari trasportandoli sopra la zona finale dove verranno rilasciati.
 
 Solo la posizione "zero" è data in angoli per ciascun giunto, le traiettorie dei movimenti nella routine *pick and place* vengono
 calcolate su punti cartesiani intermedi così da cercare di forzare un movimento lineare, minimizzando quindi le perdite di tempo per quanto possibile.
+
+In questo homework è stata aggiunta la macchina a stati finiti che consente al modulo di marrtino di comandare lo svolgimento dell'intera challenge.
+Le due macro aree (rilevamento tag e spostamento oggetti) vengono ora attivate tramite lo scambio di messaggi sul topic `g01_fsm_state`.
+Gli oggetti ora vengono spostati sulla posizione del marrtino:
+la posa viene utilizzata per creare una matrice di posizioni sulla scatola in cima a marrtino, e in base allo stato di occupazione e ai pezzi eventualmente mancanti, il modulo comunica se è necessario un secondo giro per completare il trasferimento di tutti i pezzi.
 
 ## Modalità di funzionamento (in simulazione)
 
