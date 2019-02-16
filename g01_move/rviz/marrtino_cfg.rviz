@@ -212,6 +212,331 @@ Visualization Manager:
       Topic: /marrtino/move_base/global_costmap/footprint
       Unreliable: false
       Value: true
+    - Class: moveit_rviz_plugin/PlanningScene
+      Enabled: true
+      Move Group Namespace: ""
+      Name: PlanningScene
+      Planning Scene Topic: move_group/monitored_planning_scene
+      Robot Description: /ur10/robot_description
+      Scene Geometry:
+        Scene Alpha: 0.899999976
+        Scene Color: 50; 230; 50
+        Scene Display Time: 0.200000003
+        Show Scene Geometry: true
+        Voxel Coloring: Z-Axis
+        Voxel Rendering: Occupied Voxels
+      Scene Robot:
+        Attached Body Color: 150; 50; 150
+        Links:
+          All Links Enabled: true
+          Expand Joint Details: false
+          Expand Link Details: false
+          Expand Tree: false
+          Link Tree Style: Links in Alphabetic Order
+          bar_support:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          base:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          base_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          camera_depth_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_depth_optical_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_ir_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_ir_optical_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          camera_rgb_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          camera_rgb_optical_frame:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          ee_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          forearm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          kinect_support:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          l_finger_1_link_0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_1:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_2:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_3:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_median_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_median_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_median_bar_underactuated:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_paradistal_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_paramedian_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_paraproximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_paraproximal_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_proximal_actuating_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_1_link_proximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_1:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_2:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_3:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_median_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_median_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_median_bar_underactuated:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_paradistal_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_paramedian_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_paraproximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_paraproximal_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_proximal_actuating_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_2_link_proximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_1:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_2:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_3:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_median_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_median_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_median_bar_underactuated:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_paradistal_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_paramedian_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_paraproximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_paraproximal_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_proximal_actuating_bar:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_finger_middle_link_proximal_actuating_hinge:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          l_palm:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          shoulder_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          support_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          table_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          tool0:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          upper_arm_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          world:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+          wrist_1_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wrist_2_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+          wrist_3_link:
+            Alpha: 1
+            Show Axes: false
+            Show Trail: false
+            Value: true
+        Robot Alpha: 1
+        Show Robot Collision: false
+        Show Robot Visual: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
