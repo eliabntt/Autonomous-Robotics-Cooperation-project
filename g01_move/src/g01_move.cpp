@@ -359,7 +359,7 @@ void G01Move::changeAnglePrec(bool increase) {
     dynamic_reconfigure::Config conf;
 
     double_param.name = "yaw_goal_tolerance";
-    double_param.value = increase ? 2 : 0.2;
+    double_param.value = increase ? PI : 0.2;
     conf.doubles.push_back(double_param);
     srv_req.config = conf;
     ros::service::call("/marrtino/move_base/DWAPlannerROS/set_parameters", srv_req, srv_resp);
