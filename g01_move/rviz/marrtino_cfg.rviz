@@ -208,7 +208,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: world
+    Fixed Frame: marrtino_map
     Frame Rate: 30
   Name: root
   Tools:
@@ -229,25 +229,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.481967
+      Distance: 10.6611738
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.98044848
-        Y: 0.133460522
-        Z: -1.6381954
+        X: -0.223492146
+        Y: -0.160281152
+        Z: -1.50748527
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 1.34979653
+      Pitch: 1.55979633
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.365392387
+      Yaw: 4.70857763
     Saved: ~
 Window Geometry:
   Displays:
