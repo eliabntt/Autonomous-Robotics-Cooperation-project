@@ -360,14 +360,15 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             ROS_INFO_STREAM("Arm lowering completed");
 
         // open the gripper, adjust rviz and gazebo, mark occupied space in the box
+        ROS_INFO_STREAM("Opening the gripper");
+        gripperOpen();
         group.detachObject(obj.header.frame_id);
         if (sim) {
             gazeboDetach(linknames[index][0], linknames[index][1]);
             ros::Duration(0.5).sleep();
             gazeboAttach(linknames[index][0], linknames[index][1], false);
         }
-        ROS_INFO_STREAM("Opening the gripper");
-        gripperOpen();
+
         if (rotate == ROT_CYL)
             box.markCylinderOcc(destPose);
         else
