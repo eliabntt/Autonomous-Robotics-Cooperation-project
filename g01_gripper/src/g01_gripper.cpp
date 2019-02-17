@@ -140,6 +140,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
                 statePub.publish(stateCommand);
                 tagsReceived = false;
+                odomReceived = false;
 
                 goHome(group);
             }
@@ -780,6 +781,7 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
         geometry_msgs::TransformStamped odom_to_world;
         odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
         tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
+        ROS_INFO_STREAM("Pose from marrtino received");
         odomReceived = true;
         marrOdomSub.shutdown();
     } catch (tf2::TransformException &exception) {
