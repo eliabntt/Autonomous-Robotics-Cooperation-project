@@ -136,6 +136,13 @@ G01Gripper::G01Gripper() : command(), n() {
                     finish = false;
                 }
 
+                cylToGrab.clear();
+                triToGrab.clear();
+                cubeToGrab.clear();
+                collObjects.clear();
+                objectsToAvoid.clear();
+                grabObjNames.clear();
+
                 // send new state signal: finish is true only if all the three lists are empty
                 stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
                 statePub.publish(stateCommand);
