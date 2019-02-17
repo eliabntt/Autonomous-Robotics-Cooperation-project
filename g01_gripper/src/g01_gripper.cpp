@@ -51,11 +51,8 @@ G01Gripper::G01Gripper() : command(), n() {
             // marrtino is approaching the corridor: start object detection
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
 
-            // move to a home position
+            // move to a position that does not break camera readings
             goHome(group, true);
-
-            // save pose for later (was hardcoded as joints angles)
-            initialPose = group.getCurrentPose().pose;
 
             // subscribe to receive tags poses
             subGrab = n.subscribe<g01_perception::PoseStampedArray>("/g01_tags_grab", 10, &G01Gripper::grabCB, this);
@@ -81,7 +78,13 @@ G01Gripper::G01Gripper() : command(), n() {
             stateCommand.data = STATE_UR10_RDY;
             statePub.publish(stateCommand);
             tagsReceived = true;
+
+            // move to true home position
             goHome(group);
+
+            // save pose for later (was hardcoded as joints angles)
+            initialPose = group.getCurrentPose().pose;
+
         } else if (currState == STATE_UR10_LOAD) {
             if (!tagsReceived) continue;
 
@@ -136,12 +139,13 @@ G01Gripper::G01Gripper() : command(), n() {
                     finish = false;
                 }
 
+                // clear vectors (needed for ev. next round)
                 cylToGrab.clear();
-                triToGrab.clear();
                 cubeToGrab.clear();
-                collObjects.clear();
+                triToGrab.clear();
                 objectsToAvoid.clear();
                 grabObjNames.clear();
+                collObjects.clear();
 
                 // send new state signal: finish is true only if all the three lists are empty
                 stateCommand.data = (finish ? STATE_UR10_DONE : STATE_UR10_TBC);
