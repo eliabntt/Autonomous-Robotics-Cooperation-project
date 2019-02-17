@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(g01_gripper)
+project(g01_challenge)
 ##
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -10,21 +10,11 @@ add_compile_options(-std=c++11)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     roslib
-    cmake_modules
-    geometry_msgs
-    moveit_ros_planning_interface
-    tf2
-    tf
-    robotiq_s_model_control
-    tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system filesystem date_time thread)
+# ADD find_package(Boost REQUIRED COMPONENTS system filesystem date_time thread)
 
-# Perception and fsm headers
-find_package(g01_perception REQUIRED)
-find_package(g01_challenge REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -57,9 +47,7 @@ find_package(g01_challenge REQUIRED)
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
+#     FILES
 # )
 
 ## Generate services in the 'srv' folder
@@ -78,8 +66,8 @@ find_package(g01_challenge REQUIRED)
 
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
-#   DEPENDENCIES
-#   std_msgs
+#     DEPENDENCIES
+#     std_msgs
 # )
 
 ################################################
@@ -124,30 +112,27 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(${catkin_INCLUDE_DIRS} include)
-include_directories(${g01_perception_INCLUDE_DIRS} include)
-include_directories(${g01_challenge_INCLUDE_DIRS} include)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/g01_gripper.cpp
-# )
+add_library(${PROJECT_NAME} include/${PROJECT_NAME}/states.h)
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/grip.cpp src/g01_gripper.cpp src/ObjectBox.cpp)
+#add_executable(${PROJECT_NAME} src/challenge.cpp include/g01_challenge/states.h)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 # set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES LINKER_LANGUAGE CXX)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -196,7 +181,7 @@ install(DIRECTORY include/${PROJECT_NAME}/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_g01_gripper.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_g01_challenge.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

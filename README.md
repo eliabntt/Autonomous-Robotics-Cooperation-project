@@ -6,7 +6,7 @@ Questo repository contiene i file da aggiungere al workspace ROS per la challeng
 
 Ogni sottocartella è provvista di file README con le *istruzioni dettagliate* per l'uso dello specifico pacchetto.
 
-I comandi per far partire la challenge completa sono contenuti nel file [README](g01_move/README.md) del modulo di marrtino.
+I comandi per far partire la challenge completa sono contenuti nel file [README](g01_challenge/README.md) del modulo `g01_challenge`.
 
 ## Setup
 

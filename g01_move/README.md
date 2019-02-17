@@ -37,8 +37,9 @@ oppure con un singolo comando (l'output della navigazione va su log file):
 roslaunch g01_move move_nav.launch sim:=true
 ```
 
-**IMPORTANTE**: con l'aggiunta della macchina a stati finiti, questo modulo dipende da quello del manipolatore e quindi non è più possibile utilizzarlo separatamente (ossia, i comandi alla sezione precedente *non* portano a fare un giro completo).
+**IMPORTANTE**: con l'aggiunta della macchina a stati finiti, questo modulo dipende da quello del manipolatore e quindi non è più possibile utilizzarlo separatamente
+(ossia, i comandi alla sezione precedente *non* portano a fare un giro completo).
 
 ### Note aggiuntive
 
-- I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
+I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
