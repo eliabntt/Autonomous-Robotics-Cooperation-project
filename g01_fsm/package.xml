@@ -1,0 +1,19 @@
+<package format="2">
+  <name>g01_fsm</name>
+  <version>1.0.0</version>
+  <description>
+  This package provides fsm capability to autonomous robotics other homeworks.
+  </description>
+  <maintainer email="bonettoe@dei.unipd.it">Elia Bonetto</maintainer>
+  <maintainer email="dalzovom@dei.unipd.it">Matteo Dal Zovo</maintainer>
+  <maintainer email="rigottof@dei.unipd.it">Filippo Rigotto</maintainer>
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+</package>
