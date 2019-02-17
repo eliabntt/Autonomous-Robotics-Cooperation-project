@@ -196,10 +196,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         else
             canPlace = box.getCubePose(destPose, &indexEven);
         if (!canPlace) {
-            ROS_ERROR_STREAM("Cannot move to box, no place to put object");
+            if (!full) // print only first time
+                ROS_ERROR_STREAM("Cannot move to box, no place to put object");
             remaining.emplace_back(obj);
             full = true;
-            break;
+            continue;
         }
 
         // get index of object's name to extract Gazebo's object and link names
