@@ -41,7 +41,7 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Push away from the wall");
             moveCommand.linear.x = -0.1;
             moveCommand.angular.z = 0.0;
-            for (int i = 0; i < 20; i++) {
+            while (forwardDist < 0.3) {
                 velPub.publish(moveCommand);
                 ros::Duration(0.1).sleep();
             }
@@ -218,16 +218,15 @@ G01Move::G01Move() : n(), spinner(2) {
         velPub.publish(moveCommand);
 
         ROS_INFO_STREAM("Advance toward the wall");
-        //todo check @Filippo
-        if (forwardDist > 0.8) {
-            moveCommand.linear.x = 0.4; // todo if tuning needed, here
-            moveCommand.angular.z = 0.0;
+        moveCommand.linear.x = 0.2; // todo if tuning needed, here
+        moveCommand.angular.z = 0.0;
+        while (forwardDist > 0.2) {
             velPub.publish(moveCommand);
-            ros::Duration(0.5).sleep();
-            moveCommand.linear.x = 0.0;
-            moveCommand.angular.z = 0.0;
-            velPub.publish(moveCommand);
+            ros::Duration(0.1).sleep();
         }
+        moveCommand.linear.x = 0.0;
+        moveCommand.angular.z = 0.0;
+        velPub.publish(moveCommand);
 
         ROS_INFO_STREAM("Done. Please manually unload objects from marrtino.");
         if (anotherRoundNeeded)
@@ -595,7 +594,13 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
-    forwardDist = msg->ranges[readIFront];
+    forwardDist = 0;
+    validCount = 0;
+    for (int i = readIFront - 5; i < readIFront + 5; i++) {
+        forwardDist += msg->ranges[i];
+        validCount++;
+    }
+    forwardDist /= validCount;
 }
 
 void G01Move::wallFollower(bool forward) {
