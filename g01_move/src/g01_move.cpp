@@ -219,7 +219,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
         ROS_INFO_STREAM("Advance toward the wall");
         //todo check @Filippo
-        if (frontWallDist > 0.8) {
+        if (forwardDist > 0.8) {
             moveCommand.linear.x = 0.4; // todo if tuning needed, here
             moveCommand.angular.z = 0.0;
             velPub.publish(moveCommand);
