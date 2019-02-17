@@ -18,7 +18,7 @@
 #include <dynamic_reconfigure/DoubleParameter.h>
 #include <dynamic_reconfigure/Reconfigure.h>
 #include <dynamic_reconfigure/Config.h>
-#include "g01_move/states.h"
+#include "g01_challenge/states.h"
 
 #ifndef G01_MOVE_G01_MOVE_H
 #define G01_MOVE_G01_MOVE_H

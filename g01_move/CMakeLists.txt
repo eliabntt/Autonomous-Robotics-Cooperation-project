@@ -20,6 +20,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system filesystem date_time thread)
 
+# fsm headers
+find_package(g01_challenge REQUIRED)
+
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -119,6 +122,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(${catkin_INCLUDE_DIRS} include)
+include_directories(${g01_challenge_INCLUDE_DIRS} include)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -128,7 +132,7 @@ include_directories(${catkin_INCLUDE_DIRS} include)
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/move.cpp src/g01_move.cpp include/g01_move/states.h)
+add_executable(${PROJECT_NAME} src/move.cpp src/g01_move.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries

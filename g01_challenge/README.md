@@ -2,8 +2,8 @@
 
 ## Aspetti principali
 
-In questo homework è stata aggiunta la macchina a stati finiti per comandare lo svolgimento dell'intera challenge.
-Funziona tramite lo scambio di messaggi tra questo e il modulo del manipolatore sul topic `g01_fsm_state`.
+La macchina a stati finiti comanda lo svolgimento dell'intera challenge.
+Funziona tramite lo scambio di messaggi tra i moduli di marrtino e del manipolatore sul topic `g01_fsm_state`.
 
 Quando marrtino raggiunge l'imboccatura del corridoio viene pubblicato il comando di risveglio della parte percettiva del modulo del manipolatore: le posizioni dei tag vengono lette e elaborate in modo da ottimizzare i tempi di esecuzione (la lettura nel reale impiega 4-5 secondi in media).
 Quando marrtino raggiunge la zona di carico, viene dato il via libera allo spostamento degli oggetti al manipolatore.
@@ -14,7 +14,16 @@ Questi comportamenti vengono ripetuti in loop fino al completo trasferimento di 
 
 ## Modalità di funzionamento (in simulazione)
 
-Questo modulo contiene anche i due launch file necessari per far partire l'intera challenge: oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltag, moveit, marrtino) e poi quello di questi moduli:
+Questo modulo contiene i due launch file necessari per far partire l'intera challenge: 
+oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltags, MoveIt, Marrtino) e poi quello dei package.
+
+```
+roslaunch challenge_arena challenge.launch sim:=true
+```
+
+```
+rosrun rviz rviz -d `rospack find g01_move`/rviz/marrtino_config.rviz
+```
 
 ```
 roslaunch g01_move challenge_planners.launch sim:=true
@@ -23,6 +32,8 @@ roslaunch g01_move challenge_planners.launch sim:=true
 ```
 roslaunch g01_move challenge_packages.launch sim:=true ids:="[[frame_id],]"
 ```
+
+I frame ID sono gli stessi in input al pacchetto della percezione, descritti nel rispettivo [README](../g01_perception/README.md).
 
 Per far cominciare un secondo giro, quando servono ulteriori pezzi, usare il comando
 
@@ -34,7 +45,7 @@ Non ha effetto se il task è stato completato correttamente.
 
 ### Note aggiuntive
 
-Sono state aggiunte routine apposite per il docking in zona di carico e di scarico e per effetturare una rotazione in caso di necessità di eseguire un secondo giro.
-Questa rotazione verrà effettuata per orientare il marrtino verso la direzione di approccio precedentemente utilizzata(sicuramente libera).
+Sono state aggiunte routine apposite per il docking in zona di carico e di scarico e per effetturare una rotazione in caso serva eseguire un secondo giro.
+Questa rotazione verrà effettuata per orientare marrtino verso la direzione di approccio precedentemente utilizzata (sicuramente libera).
 
-Per evitare problemi di perdita di localizzazione è stata utilizzata una configurazione dinamica della precisione voluta dell'angolo di goal nel primo checkpoint e nell'ultimo, cioè quelli per cui la direzione d'approccio non è e non può essere deterministica.
+Per evitare problemi di perdita di localizzazione è stata utilizzata una configurazione dinamica della precisione dell'angolo di goal, per il primo e l'ultimo checkpoint, dove la direzione d'approccio non è e non può essere deterministica.
