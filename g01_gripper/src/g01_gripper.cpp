@@ -52,7 +52,7 @@ G01Gripper::G01Gripper() : command(), n() {
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
 
             // move to a home position
-            goHome(group); //fixme create dark places???
+            goHome(group, true);
 
             // save pose for later (was hardcoded as joints angles)
             initialPose = group.getCurrentPose().pose;
@@ -81,7 +81,7 @@ G01Gripper::G01Gripper() : command(), n() {
             stateCommand.data = STATE_UR10_RDY;
             statePub.publish(stateCommand);
             tagsReceived = true;
-
+            goHome(group);
         } else if (currState == STATE_UR10_LOAD) {
             if (!tagsReceived) continue;
 
@@ -771,12 +771,15 @@ void G01Gripper::gripperCB(const robotiq_s_model_control::SModel_robot_input &ms
     status = msg;
 }
 
-void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group) {
+void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group, bool safe) {
     // just to be sure
     gripperOpen();
 
     // set joint values and move
-    group.setJointValueTarget(HOME_JOINT_POS);
+    if (safe)
+        group.setJointValueTarget(HOME_JOINT_POS_SAFE);
+    else
+        group.setJointValueTarget(HOME_JOINT_POS);
     if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
         group.move();
 }
