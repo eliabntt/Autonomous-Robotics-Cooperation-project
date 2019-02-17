@@ -218,13 +218,16 @@ G01Move::G01Move() : n(), spinner(2) {
         velPub.publish(moveCommand);
 
         ROS_INFO_STREAM("Advance toward the wall");
-        moveCommand.linear.x = 0.4; // todo if tuning needed, here
-        moveCommand.angular.z = 0.0;
-        velPub.publish(moveCommand);
-        ros::Duration(0.5).sleep();
-        moveCommand.linear.x = 0.0;
-        moveCommand.angular.z = 0.0;
-        velPub.publish(moveCommand);
+        //todo check @Filippo
+        if (frontWallDist > 0.8) {
+            moveCommand.linear.x = 0.4; // todo if tuning needed, here
+            moveCommand.angular.z = 0.0;
+            velPub.publish(moveCommand);
+            ros::Duration(0.5).sleep();
+            moveCommand.linear.x = 0.0;
+            moveCommand.angular.z = 0.0;
+            velPub.publish(moveCommand);
+        }
 
         ROS_INFO_STREAM("Done. Please manually unload objects from marrtino.");
         if (anotherRoundNeeded)
