@@ -52,7 +52,7 @@ G01Gripper::G01Gripper() : command(), n() {
             ROS_INFO_STREAM("Waiting to receive tags of objects...");
 
             // move to a home position
-            goHome(group);
+            goHome(group); //fixme create dark places???
 
             // save pose for later (was hardcoded as joints angles)
             initialPose = group.getCurrentPose().pose;
