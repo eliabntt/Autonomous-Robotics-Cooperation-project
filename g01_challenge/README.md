@@ -26,11 +26,11 @@ rosrun rviz rviz -d `rospack find g01_move`/rviz/marrtino_config.rviz
 ```
 
 ```
-roslaunch g01_move challenge_planners.launch sim:=true
+roslaunch g01_challenge challenge_planners.launch sim:=true
 ```
 
 ```
-roslaunch g01_move challenge_packages.launch sim:=true ids:="[[frame_id],]"
+roslaunch g01_challenge challenge_packages.launch sim:=true ids:="[[frame_id],]"
 ```
 
 I frame ID sono gli stessi in input al pacchetto della percezione, descritti nel rispettivo [README](../g01_perception/README.md).
