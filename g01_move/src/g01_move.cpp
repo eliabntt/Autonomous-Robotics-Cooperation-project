@@ -107,7 +107,10 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Cannot clear the costmaps!");
 
         ROS_INFO_STREAM("Try to go inside corridor");
-        corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
+        if(sim)
+            corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
+        else
+            corridorInside.target_pose.pose.position.x = 0.5;
         corridorInside.target_pose.pose.position.y = -0.9;
         corridorInside.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
@@ -594,13 +597,7 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
-    forwardDist = 0;
-    validCount = 0;
-    for (int i = readIFront - 5; i < readIFront + 5; i++) {
-        forwardDist += msg->ranges[i];
-        validCount++;
-    }
-    forwardDist /= validCount;
+    forwardDist = msg->ranges[readIFront];
 }
 
 void G01Move::wallFollower(bool forward) {
@@ -647,8 +644,10 @@ void G01Move::followerCallback(bool forward) {
     // if going forward, stop earlier for docking
     frontWallDist = ((forward) ? 1.6 : 1.15);
 
-    if (forwardDist > frontWallDist) {
+    if ((forward && marrPoseOdom.position.y > 0.5 && marrPoseOdom.position.y < 1.1) || (!forward && marrPoseOdom.position.y < -1.05 && marrPoseOdom.position.y > -1.2)) {
         // assume nearly aligned, we need to move forward
+        ROS_INFO_STREAM("cacca");
+        isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {

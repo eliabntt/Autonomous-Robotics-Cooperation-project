@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="x" default="0.0"/>
-	<arg name="y" default="0.0"/>
+	<arg name="x" default="0.0"/> <!-- -0.025 -->
+	<arg name="y" default="0.0"/> <!-- 0.25 -->
 	<arg name="z" default="0.0"/>
 	<arg name="yaw" default="3.1415926535897931"/>
 
@@ -15,14 +15,29 @@
 	<arg name="global_frame" default="$(arg prefix)map"/>
 	<arg name="odom_frame" default="$(arg prefix)odom"/>
 	<arg name="base_frame" default="$(arg prefix)base_footprint"/>
+	<arg name="sim" default="true"/>
 
 	<arg name="mapping" default="false"/>
 	<arg name="map_file" default="arena.yaml"/>
 	<arg name="output" default="screen"/>
+
  <!-- Initial Posizion -->
 	<group ns="$(arg robot_id)">
 
-	<include unless="$(arg mapping)" file="$(find g01_move)/launch/amcl.launch">
+	<include if="$(arg sim)" file="$(find g01_move)/launch/amcl.launch">
+		<arg name="prefix" value="$(arg prefix)"/>
+		<arg name="scan_topic" value="$(arg scan_topic)" />
+		<arg name="map_topic" value="$(arg map_topic)" />
+		<arg name="global_frame" value="$(arg global_frame)" />
+		<arg name="odom_frame" value="$(arg odom_frame)" />
+		<arg name="base_frame" value="$(arg base_frame)" />
+		<arg name="x" value="$(arg x)"/>
+		<arg name="y" value="$(arg y)"/>
+		<arg name="z" value="$(arg z)"/>
+		<arg name="yaw" value="$(arg yaw)"/>
+	</include>
+
+	<include unless="$(arg sim)" file="$(find g01_move)/launch/amcl_real.launch">
 		<arg name="prefix" value="$(arg prefix)"/>
 		<arg name="scan_topic" value="$(arg scan_topic)" />
 		<arg name="map_topic" value="$(arg map_topic)" />

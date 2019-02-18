@@ -365,6 +365,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // let the piece fall or go home:
         // no need to set it as remaining (already over the LZ and I cannot go down)
         if (!moveManipulator(pose, group)) {
+            gripperOpen();
             group.detachObject(obj.header.frame_id);
             if (sim) gazeboDetach(linknames[index][0], linknames[index][1]);
             goHome(group);
@@ -636,6 +637,9 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
                 tf::poseTFToMsg(final, item.pose);
 
                 item.pose.position.z -= vol[2] / 4;
+
+                if(!sim)
+                    item.pose.position.z -= vol[2];
 
                 triToGrab.emplace_back(item);
                 collObjects.emplace_back(
