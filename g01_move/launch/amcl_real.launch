@@ -9,8 +9,8 @@
   <arg name="use_map_topic" default="true"/>
 
   <!-- Initial Posizion -->
-  <arg name="x" default="-0.025"/>
-  <arg name="y" default="0.25"/>
+  <arg name="x" default="0"/>
+  <arg name="y" default="0"/>
   <arg name="z" default="0.0"/>
   <arg name="yaw" default="0.0"/>
 
