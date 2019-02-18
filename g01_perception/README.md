@@ -8,7 +8,7 @@
     - Size del tag
     - Pose rispetto a `camera_rgb_optical_frame`
 - Trasformazione delle coordinate dal frame della camera al frame della base del robot
-- Creazione di due *publisher* che comunicano, rispetto al `base_frame`
+- Creazione di due *publisher* che comunicano, rispetto a `world`
   (o al frame originale della camera, in caso di errori nella computazione della trasformata) del robot:
     1. le posizioni dei tag richiesti da riga di comando, se presenti
     2. le posizioni dei tag *NON* richiesti, se presenti
