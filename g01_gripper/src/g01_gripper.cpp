@@ -109,6 +109,47 @@ G01Gripper::G01Gripper() : command(), n() {
                 finish = true; // can change later
                 full = false;  // empty box
 
+                /*ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
+                ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2",1);
+                ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3",1);
+                ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4",1);
+                ros::Publisher p5 = n.advertise<geometry_msgs::PoseStamped>("/p5",1);
+                ros::Publisher p6 = n.advertise<geometry_msgs::PoseStamped>("/p6",1);
+                geometry_msgs::PoseStamped a;
+                a.header.frame_id = "world";
+
+                while(1) {
+                    a.pose = box.poses.at(0);
+                    a.header.stamp = ros::Time::now();
+                    p1.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(1);
+                    a.header.stamp = ros::Time::now();
+                    p2.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(2);
+                    a.header.stamp = ros::Time::now();
+                    p3.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(3);
+                    a.header.stamp = ros::Time::now();
+                    p4.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(4);
+                    a.header.stamp = ros::Time::now();
+                    p5.publish(a);
+                    ros::Duration(1).sleep();
+
+                    a.pose = box.poses.at(5);
+                    a.header.stamp = ros::Time::now();
+                    p6.publish(a);
+                    ros::Duration(1).sleep();
+                }*/
+
                 // move cylinders (hexagons)
                 int count = 0;
                 while (!cylToGrab.empty() && count < 5 && !full) {
@@ -311,8 +352,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose.position.x -= 0.15;
         }
 
-        // add offsets due to real map inconsistencies //fixme real
-        if (!sim) {
+        // add offsets due to real map inconsistencies
+        if (!sim) { //fixme real
             pose.position.x += 0.32;
             pose.position.y += 0.15;
         }

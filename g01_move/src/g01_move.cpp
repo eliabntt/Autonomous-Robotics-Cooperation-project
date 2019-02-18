@@ -115,7 +115,6 @@ G01Move::G01Move() : n(), spinner(2) {
 
         ROS_INFO_STREAM("Try to go inside corridor");
         corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
-
         corridorInside.target_pose.pose.position.y = -0.9;
         corridorInside.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
