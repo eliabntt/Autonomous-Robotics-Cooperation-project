@@ -2,7 +2,7 @@
 
 // fixme real
 // fixme threshold rotations main and rotation
-// todo check if odom or amcl
+// todo check if odom or amcl maybe odom for angles amcl for position
 // fixme frontWallDist
 // fixme else if ((forward && marrPoseOdom.position.y < 0.5) < 1.1
 // fixme amcl parameters
@@ -302,7 +302,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         reloc += 1;
     }
 
-    geometry_msgs::Pose currPose = marrPoseOdom;
+    geometry_msgs::Pose currPose = marrPoseAmcl;
 
     while (true) {
         goal.target_pose.header.frame_id = "marrtino_map";
@@ -313,8 +313,8 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
         client.sendGoal(goal);
         ros::Duration(3).sleep();
 
-        double diffX = fabs(currPose.position.x - marrPoseOdom.position.x);
-        double diffY = fabs(currPose.position.y - marrPoseOdom.position.y);
+        double diffX = fabs(currPose.position.x - marrPoseAmcl.position.x);
+        double diffY = fabs(currPose.position.y - marrPoseAmcl.position.y);
 
         if (diffX > +0.08 || diffX < -0.08 ||
             diffY < -0.08 || diffY > +0.08) {
@@ -328,8 +328,8 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
 
         client.waitForResult();
         if (client.getState() == actionlib::SimpleClientGoalState::SUCCEEDED ||
-            (fabs(marrPoseOdom.position.x - goal.target_pose.pose.position.x) < 0.2 &&
-             fabs(marrPoseOdom.position.y - goal.target_pose.pose.position.y) < 0.2)) {
+            (fabs(marrPoseAmcl.position.x - goal.target_pose.pose.position.x) < 0.2 &&
+             fabs(marrPoseAmcl.position.y - goal.target_pose.pose.position.y) < 0.2)) {
             changeVel(false);
             ROS_INFO_STREAM("Move successful");
             return true;
@@ -342,7 +342,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     ros::Duration(0.01).sleep();
                 }
                 reloc += 1;
-                currPose = marrPoseOdom;
+                currPose = marrPoseAmcl;
             }
             if (reloc > 1 || reloc == 0) {
                 if (!backed) {
@@ -351,7 +351,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     ROS_WARN_STREAM("Manual recovery: going back");
                     recoverManual();
                     backed = true;
-                    currPose = marrPoseOdom;
+                    currPose = marrPoseAmcl;
                 } else if (!cleaned) {
                     if (!clearMapsClient.call(empty))
                         ROS_INFO_STREAM("Cannot clear the costmaps!");
@@ -363,7 +363,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                     ROS_WARN_STREAM("Manual recovery: rotating, dangerous!");
                     recoverManual(true);
                     rotated = true;
-                    currPose = marrPoseOdom;
+                    currPose = marrPoseAmcl;
                 } else {
                     ROS_ERROR_STREAM("Error, robot failed moving");
                     changeVel(false);
@@ -378,7 +378,7 @@ bool G01Move::moveToGoal(move_base_msgs::MoveBaseGoal goal) {
                         ros::Duration(0.01).sleep();
                     }
                     reloc += 1;
-                    currPose = marrPoseOdom;
+                    currPose = marrPoseAmcl;
                 }
             }
         }
@@ -438,8 +438,9 @@ void G01Move::recoverManual(bool rot) {
         ros::Duration(2).sleep();
     } else {
         // get odom direction
-        tf::Quaternion rotation(marrPoseOdom.orientation.x, marrPoseOdom.orientation.y,
-                                marrPoseOdom.orientation.z, marrPoseOdom.orientation.w);
+        // fixme real
+        tf::Quaternion rotation(marrPoseAmcl.orientation.x, marrPoseAmcl.orientation.y,
+                                marrPoseAmcl.orientation.z, marrPoseAmcl.orientation.w);
         tf::Vector3 vector(0.25, 0, 0);
         // rotate the shift
         tf::Vector3 rotated_vector = tf::quatRotate(rotation, vector);
@@ -448,7 +449,7 @@ void G01Move::recoverManual(bool rot) {
         move_base_msgs::MoveBaseGoal goal_temp;
         goal_temp.target_pose.header.frame_id = "marrtino_map";
         goal_temp.target_pose.header.stamp = ros::Time::now();
-        goal_temp.target_pose.pose = marrPoseOdom;
+        goal_temp.target_pose.pose = marrPoseAmcl;
         // apply the shift
         goal_temp.target_pose.pose.position.x -= rotated_vector.getX();
         goal_temp.target_pose.pose.position.y -= rotated_vector.getY();
@@ -481,8 +482,8 @@ void G01Move::docking() {
     velPub.publish(moveCommand);
 
     ROS_INFO_STREAM("Go on");
-    while (marrPoseOdom.position.x > 0.57) {
-        //ROS_INFO_STREAM("X " << marrPoseOdom.position.x);
+    while (marrPoseAmcl.position.x > 0.57) {
+        //ROS_INFO_STREAM("X " << marrPoseAmcl.position.x);
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
@@ -508,7 +509,7 @@ void G01Move::docking() {
 
     ROS_INFO_STREAM("Go to loading zone");
     while (forwardDist > 1.15) { // tune
-        //ROS_INFO_STREAM("FW " << forwardDist << " Y " << marrPoseOdom.position.y);
+        //ROS_INFO_STREAM("FW " << forwardDist << " Y " << marrPoseAmcl.position.y);
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
@@ -561,7 +562,7 @@ void G01Move::rotateRight() {
     }
 
     // go forward if we are safe
-    if (marrPoseOdom.position.x > 0.7) {
+    if (marrPoseAmcl.position.x > 0.7) {
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0;
         velPub.publish(moveCommand);
@@ -669,7 +670,7 @@ void G01Move::wallFollower(bool forward) {
 
 void G01Move::followerCallback(bool forward) {
     // ROS_INFO_STREAM("FW " << forwardDist << " DX " << avgDx << " SX " << avgSx << " = " << val
-    //              << " Y " << marrPoseOdom.position.y);
+    //              << " Y " << marrPoseAmcl.position.y);
 
     // if going forward, stop earlier for docking
     if (sim)
@@ -682,7 +683,7 @@ void G01Move::followerCallback(bool forward) {
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
         // fixme
-        //isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
+        //isNearLoadPoint = (forward && marrPoseAmcl.position.y > 0.5);
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
@@ -693,7 +694,7 @@ void G01Move::followerCallback(bool forward) {
         } else
             moveCommand.angular.z = 0.0;
         //fixme < 1.2
-    } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {
+    } else if ((forward && marrPoseAmcl.position.y < 0.5) || (!forward && marrPoseAmcl.position.y > -1.05)) {
         // entrance and exit: just rotate a little
 
         moveCommand.linear.x = linVel * 1 / 3;
