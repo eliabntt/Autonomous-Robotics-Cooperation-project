@@ -3,6 +3,9 @@
 //
 #include "g01_gripper.h"
 
+//fixme check collision objects
+
+
 G01Gripper::G01Gripper() : command(), n() {
     ros::AsyncSpinner spinner(2);
     spinner.start();
@@ -509,8 +512,8 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 // Gripper
 void G01Gripper::gripperOpen() {
     if (!sim) {
-        ROS_INFO_STREAM("5 SEC TO MAN OPEN THE GRIPPER");
-        ros::Duration(5).sleep();
+        ROS_INFO_STREAM("1 SEC TO MAN OPEN THE GRIPPER");
+        ros::Duration(1).sleep();
         //fakeGripperOpen();
         return;
     }
@@ -556,8 +559,8 @@ bool G01Gripper::gazeboDetach(std::string name, std::string link) {
 
 void G01Gripper::gripperClose(int howMuch) {
     if (!sim) {
-        ROS_INFO_STREAM("5 SEC TO MAN CLOSE THE GRIPPER");
-        ros::Duration(5).sleep();
+        ROS_INFO_STREAM("1 SEC TO MAN CLOSE THE GRIPPER");
+        ros::Duration(1).sleep();
         //fakeGripperClose();
         return;
     }
@@ -638,7 +641,7 @@ void G01Gripper::grabCB(const g01_perception::PoseStampedArray::ConstPtr &input)
 
                 item.pose.position.z -= vol[2] / 4;
 
-                if(!sim)
+                if (!sim)
                     item.pose.position.z -= vol[2];
 
                 triToGrab.emplace_back(item);
@@ -798,7 +801,11 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     try {
         geometry_msgs::TransformStamped odom_to_world;
-        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
+        // fixme for real
+        if (!sim)
+            odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0));
+        else
+            odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
         tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
         ROS_INFO_STREAM("Pose from marrtino received");
         odomReceived = true;

@@ -49,7 +49,7 @@ private:
     move_base_msgs::MoveBaseGoal nearCorridor, corridorEntrance, corridorInside, plannerGoal, nearUnloadPoint, unloadPoint;
 
     // pose subscription stuff
-    geometry_msgs::Pose marrPoseOdom;
+    geometry_msgs::Pose marrPoseOdom, marrPoseAmcl;
     geometry_msgs::PoseWithCovariance marrPose;
     ros::Subscriber marrPoseSub, marrPoseOdomSub;
     ros::ServiceClient clearMapsClient;

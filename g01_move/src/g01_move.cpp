@@ -1,5 +1,12 @@
 #include "g01_move.h"
 
+// fixme real
+// fixme threshold rotations main and rotation
+// todo check if odom or amcl
+// fixme frontWallDist
+// fixme else if ((forward && marrPoseOdom.position.y < 0.5) < 1.1
+// fixme amcl parameters
+
 G01Move::G01Move() : n(), spinner(2) {
     ros::NodeHandle nh("~");
     if (nh.hasParam("sim") && (!nh.getParam("sim", sim))) {
@@ -54,7 +61,7 @@ G01Move::G01Move() : n(), spinner(2) {
             // set rotation of PI from current yaw (capping result in [-PI,PI])
             ty = (std::min(fabs(y - PI), fabs(y + PI)) == fabs(y - PI)) ? (y - PI) : (y + PI);
             poseToYPR(marrPoseOdom, &y, &p, &r);
-            while (fabs(y - ty) > 0.1) {
+            while (fabs(y - ty) > 0.1) { // fixme 0.2??
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
                 velPub.publish(moveCommand);
@@ -107,7 +114,7 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Cannot clear the costmaps!");
 
         ROS_INFO_STREAM("Try to go inside corridor");
-        if(sim)
+        if (sim)
             corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
         else
             corridorInside.target_pose.pose.position.x = 0.5;
@@ -124,9 +131,34 @@ G01Move::G01Move() : n(), spinner(2) {
         ROS_INFO_STREAM("Following the wall");
         wallFollower(true);
 
-        ROS_INFO_STREAM("Docking");
-        docking();
+        if (sim) {
+            ROS_INFO_STREAM("Docking");
+            docking();
+        }
+        else {
+            // fixme align + reloc
+            ROS_INFO_STREAM("Safety realign");
+            double yy, pp, rr;
+            double ty = PI/2;
+            poseToYPR(marrPoseOdom, &yy, &pp, &rr);
+            while (fabs(yy - ty) > 0.01) { //fixme 0.2??
+                //ROS_INFO_STREAM("Y " << y << " TY " << ty);
+                moveCommand.angular.z = ((yy > ty) ? -0.2 : 0.2);
+                velPub.publish(moveCommand);
+                ros::Duration(0.08).sleep();
+                poseToYPR(marrPoseOdom, &yy, &pp, &rr);
+            }
+            moveCommand.linear.x = 0.0;
+            moveCommand.angular.z = 0.0;
+            velPub.publish(moveCommand);
 
+            ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                    "/marrtino/request_nomotion_update");
+            for (int counter = 0; counter < 50; counter++) {
+                update_client.call(empty);
+                ros::Duration(0.02).sleep();
+            }
+        }
         // arrived at loading point: wait for objects detection before
         // issuing the load command and waiting for a response from ur10
         ROS_INFO_STREAM("Waiting for UR10 to be ready...");
@@ -209,7 +241,7 @@ G01Move::G01Move() : n(), spinner(2) {
         poseToYPR(marrPoseOdom, &y, &p, &r);
         ty = (y > 0) ? PI : -PI; // damn discontinuities
         moveCommand.linear.x = 0.01;
-        while (fabs(y - ty) > 0.1) {
+        while (fabs(y - ty) > 0.1) { //fixme 0.2??
             //ROS_INFO_STREAM("Y " << y << " TY " << ty);
             moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
             velPub.publish(moveCommand);
@@ -524,7 +556,7 @@ void G01Move::rotateRight() {
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.11;
     moveCommand.angular.z = -1.78 * twistVel;
-    while (fabs(y - ty) > 0.05) {
+    while (fabs(y - ty) > 0.05) { //fixme 0.2?
         velPub.publish(moveCommand);
         ros::Duration(0.06).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
@@ -642,12 +674,17 @@ void G01Move::followerCallback(bool forward) {
     //              << " Y " << marrPoseOdom.position.y);
 
     // if going forward, stop earlier for docking
-    frontWallDist = ((forward) ? 1.6 : 1.15);
+    if (sim)
+        frontWallDist = ((forward) ? 1.6 : 1.15);
+    else
+        // fixme for real
+        frontWallDist =((forward) ? 0.9 : 1.15);
 
-    if ((forward && marrPoseOdom.position.y > 0.5 && marrPoseOdom.position.y < 1.1) || (!forward && marrPoseOdom.position.y < -1.05 && marrPoseOdom.position.y > -1.2)) {
+
+    if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
-        ROS_INFO_STREAM("cacca");
-        isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
+        // fixme
+        //isNearLoadPoint = (forward && marrPoseOdom.position.y > 0.5);
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
@@ -657,6 +694,7 @@ void G01Move::followerCallback(bool forward) {
             moveCommand.angular.z = ((!isNearLoadPoint) ? +1.4 * twistVel : twistVel);
         } else
             moveCommand.angular.z = 0.0;
+        //fixme < 1.1
     } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {
         // entrance and exit: just rotate a little
 
@@ -679,6 +717,7 @@ void G01Move::followerCallback(bool forward) {
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
     marrPose = msgAMCL->pose;
+    marrPoseAmcl = marrPose.pose;
 }
 
 void G01Move::subPoseOdomCallback(const nav_msgs::Odometry::ConstPtr &msgOdom) {
