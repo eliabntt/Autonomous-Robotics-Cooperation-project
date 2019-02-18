@@ -114,10 +114,8 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Cannot clear the costmaps!");
 
         ROS_INFO_STREAM("Try to go inside corridor");
-        if (sim)
-            corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
-        else
-            corridorInside.target_pose.pose.position.x = 0.5;
+        corridorInside.target_pose.pose.position.x = 0.55; // little to the left, because planner is crap
+
         corridorInside.target_pose.pose.position.y = -0.9;
         corridorInside.target_pose.pose.position.z = 0.0;
         tf::quaternionTFToMsg(tf::createQuaternionFromRPY(0, 0, PI / 2),
@@ -140,8 +138,8 @@ G01Move::G01Move() : n(), spinner(2) {
             ROS_INFO_STREAM("Safety realign");
             double yy, pp, rr;
             double ty = PI/2;
-            poseToYPR(marrPoseOdom, &yy, &pp, &rr);
-            while (fabs(yy - ty) > 0.01) { //fixme 0.2??
+            poseToYPR(marrPoseOdom, &yy, &pp, &rr);//fixme 0.15
+            while (fabs(yy - ty) > 0.01) { //fixme 0.15??
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((yy > ty) ? -0.2 : 0.2);
                 velPub.publish(moveCommand);
@@ -241,7 +239,7 @@ G01Move::G01Move() : n(), spinner(2) {
         poseToYPR(marrPoseOdom, &y, &p, &r);
         ty = (y > 0) ? PI : -PI; // damn discontinuities
         moveCommand.linear.x = 0.01;
-        while (fabs(y - ty) > 0.1) { //fixme 0.2??
+        while (fabs(y - ty) > 0.1) { //fixme 0.15??
             //ROS_INFO_STREAM("Y " << y << " TY " << ty);
             moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
             velPub.publish(moveCommand);
@@ -556,7 +554,7 @@ void G01Move::rotateRight() {
     // rotate until desired yaw is reached
     moveCommand.linear.x = 0.11;
     moveCommand.angular.z = -1.78 * twistVel;
-    while (fabs(y - ty) > 0.05) { //fixme 0.2?
+    while (fabs(y - ty) > 0.05) { //fixme 0.15?
         velPub.publish(moveCommand);
         ros::Duration(0.06).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
@@ -694,7 +692,7 @@ void G01Move::followerCallback(bool forward) {
             moveCommand.angular.z = ((!isNearLoadPoint) ? +1.4 * twistVel : twistVel);
         } else
             moveCommand.angular.z = 0.0;
-        //fixme < 1.1
+        //fixme < 1.2
     } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {
         // entrance and exit: just rotate a little
 
