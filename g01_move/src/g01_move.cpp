@@ -646,16 +646,17 @@ void G01Move::followerCallback(bool forward) {
 
     // if going forward, stop earlier for docking
     frontWallDist = ((forward) ? 1.6 : 1.15);
+    isNearLoadPoint = forward && marrPoseOdom.position.y > 0.5;
 
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
         moveCommand.linear.x = linVel;
         if (avgSx < 0.98 * lateralMinDist) {
-            //fixme 1.4 1.5
-            moveCommand.angular.z = ((!isNearLoadPoint) ? -1.4 * twistVel : -twistVel);
+            //fixme 1.2 1.4 1.5
+            moveCommand.angular.z = ((!isNearLoadPoint) ? -1.2 * twistVel : -twistVel);
         } else if (avgSx > 1.02 * lateralMinDist) {
-            moveCommand.angular.z = ((!isNearLoadPoint) ? +1.4 * twistVel : twistVel);
+            moveCommand.angular.z = ((!isNearLoadPoint) ? +1.2 * twistVel : twistVel);
         } else
             moveCommand.angular.z = 0.0;
     } else if ((forward && marrPoseOdom.position.y < 0.5) || (!forward && marrPoseOdom.position.y > -1.05)) {
