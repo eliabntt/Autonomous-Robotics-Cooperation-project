@@ -50,7 +50,7 @@ G01Move::G01Move() : n(), spinner(2) {
             moveCommand.angular.z = 0.0;
             while (forwardDist < 0.3) {
                 velPub.publish(moveCommand);
-                ros::Duration(0.1).sleep();
+                ros::Duration(0.1).sleep(); //fixme
             }
             moveCommand.linear.x = 0.0;
             moveCommand.angular.z = 0.0;
@@ -61,11 +61,11 @@ G01Move::G01Move() : n(), spinner(2) {
             // set rotation of PI from current yaw (capping result in [-PI,PI])
             ty = (std::min(fabs(y - PI), fabs(y + PI)) == fabs(y - PI)) ? (y - PI) : (y + PI);
             poseToYPR(marrPoseOdom, &y, &p, &r);
-            while (fabs(y - ty) > 0.1) { // fixme 0.2??
+            while (fabs(y - ty) > 0.1) { // fixme 0.15??
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
                 velPub.publish(moveCommand);
-                ros::Duration(0.08).sleep();
+                ros::Duration(0.01).sleep(); // fixme 0.08
                 poseToYPR(marrPoseOdom, &y, &p, &r);
             }
             moveCommand.linear.x = 0.0;
@@ -142,7 +142,7 @@ G01Move::G01Move() : n(), spinner(2) {
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((yy > ty) ? -0.2 : 0.2);
                 velPub.publish(moveCommand);
-                ros::Duration(0.08).sleep();
+                ros::Duration(0.01).sleep(); // fixme 0.08
                 poseToYPR(marrPoseOdom, &yy, &pp, &rr);
             }
             moveCommand.linear.x = 0.0;
@@ -242,7 +242,7 @@ G01Move::G01Move() : n(), spinner(2) {
             //ROS_INFO_STREAM("Y " << y << " TY " << ty);
             moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
             velPub.publish(moveCommand);
-            ros::Duration(0.08).sleep();
+            ros::Duration(0.01).sleep(); // fixme 0.08
             poseToYPR(marrPoseOdom, &y, &p, &r);
         }
         moveCommand.linear.x = 0.0;
@@ -556,7 +556,7 @@ void G01Move::rotateRight() {
     moveCommand.angular.z = -1.78 * twistVel;
     while (fabs(y - ty) > 0.05) { //fixme 0.15?
         velPub.publish(moveCommand);
-        ros::Duration(0.06).sleep();
+        ros::Duration(0.01).sleep(); // fixme 0.06
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
 
@@ -684,7 +684,7 @@ void G01Move::followerCallback(bool forward) {
         // fixme
         //isNearLoadPoint = (forward && marrPoseAmcl.position.y > 0.5);
 
-        moveCommand.linear.x = linVel;
+        moveCommand.linear.x = 0.9 * linVel; // fixme 1
         if (avgSx < 0.98 * lateralMinDist) {
             //fixme 1.4 1.5
             moveCommand.angular.z = ((!isNearLoadPoint) ? -1.4 * twistVel : -twistVel);
@@ -710,7 +710,7 @@ void G01Move::followerCallback(bool forward) {
     }
 
     velPub.publish(moveCommand);
-    ros::Duration(0.1).sleep();
+    ros::Duration(0.05).sleep(); //fixme 0.1
 }
 
 void G01Move::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
