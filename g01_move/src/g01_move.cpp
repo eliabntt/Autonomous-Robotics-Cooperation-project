@@ -128,17 +128,19 @@ G01Move::G01Move() : n(), spinner(2) {
         ROS_INFO_STREAM("Following the wall");
         wallFollower(true);
 
+        ROS_INFO_STREAM("MARR POSE ODOM " << marrPoseOdom << " AMCL " << marrPoseAmcl);
+        ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
+
         if (sim) {
             ROS_INFO_STREAM("Docking");
             docking();
-        }
-        else {
+        } else {
             // fixme align + reloc
             ROS_INFO_STREAM("Safety realign");
             double yy, pp, rr;
-            double ty = PI/2;
+            double ty = PI / 2;
             poseToYPR(marrPoseOdom, &yy, &pp, &rr);//fixme 0.15
-            while (fabs(yy - ty) > 0.01) { //fixme 0.15??
+            while (fabs(yy - ty) > 0.1) { //fixme 0.15??
                 //ROS_INFO_STREAM("Y " << y << " TY " << ty);
                 moveCommand.angular.z = ((yy > ty) ? -0.2 : 0.2);
                 velPub.publish(moveCommand);
@@ -162,8 +164,8 @@ G01Move::G01Move() : n(), spinner(2) {
         while (currState != STATE_UR10_RDY)
             ros::Duration(STATE_SLEEP_TIME).sleep();
 
-        // ROS_INFO_STREAM("MARR POSE " << marrPoseOdom);
-        // ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
+        ROS_INFO_STREAM("MARR POSE ODOM " << marrPoseOdom << " AMCL " << marrPoseAmcl);
+        ROS_INFO_STREAM("MARR LASER FWD " << forwardDist << " LEFT " << avgSx << " RIGHT " << avgDx);
 
         stateCommand.data = STATE_UR10_LOAD;
         statePub.publish(stateCommand);
@@ -627,7 +629,20 @@ void G01Move::readLaser(const sensor_msgs::LaserScan::ConstPtr &msg) {
     val = fabs(avgSx - avgDx);
 
     // distance from front wall
-    forwardDist = msg->ranges[readIFront];
+    if (sim)
+        forwardDist = msg->ranges[readIFront];
+    else {
+        validCount = 0;
+        // wth 60 readings cannot be _all_ inf!
+        for (int i = readIFront - 30; i < readIFront + 30; i++) {
+            if (msg->ranges[i] < 5) // 5 mt is far than usable but less than inf
+                forwardDist += msg->ranges[i];
+            else
+                forwardDist += 5.0;
+            validCount++;
+        }
+        forwardDist /= validCount;
+    }
 }
 
 void G01Move::wallFollower(bool forward) {
@@ -676,7 +691,7 @@ void G01Move::followerCallback(bool forward) {
         frontWallDist = ((forward) ? 1.6 : 1.15);
     else
         // fixme for real
-        frontWallDist =((forward) ? 0.9 : 1.15);
+        frontWallDist = ((forward) ? 0.9 : 1.15);
 
 
     if (forwardDist > frontWallDist) {
