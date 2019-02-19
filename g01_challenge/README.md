@@ -46,6 +46,7 @@ Non ha effetto se il task è stato completato correttamente.
 ### Note aggiuntive
 
 Sono state aggiunte routine apposite per il docking in zona di carico e di scarico e per effetturare una rotazione in caso serva eseguire un secondo giro.
-La rotazione nella zona di scarico verrà effettuata tenendo conto della direzione di approccio alla posa utilizzata dal robot. In questo modo saremo pressochè sicuri di avere il robot orientato verso un percorso libero.
+La rotazione nella zona di scarico verrà effettuata tenendo conto della direzione di approccio alla posa utilizzata dal robot.
+In questo modo si è pressoché sicuri di avere il robot orientato verso un percorso libero.
 
 Per evitare problemi di perdita di localizzazione è stata utilizzata una configurazione dinamica della precisione dell'angolo di goal, per il primo e l'ultimo checkpoint, dove la direzione d'approccio non è e non può essere deterministica.
