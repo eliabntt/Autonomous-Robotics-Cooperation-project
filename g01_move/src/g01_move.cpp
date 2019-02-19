@@ -684,10 +684,10 @@ void G01Move::followerCallback(bool forward) {
         // fixme
         //isNearLoadPoint = (forward && marrPoseAmcl.position.y > 0.5);
 
-        moveCommand.linear.x = 0.9 * linVel; // fixme 1
+        moveCommand.linear.x = 0.9 * linVel; // fixme 1 if !near
         if (avgSx < 0.98 * lateralMinDist) {
             //fixme 1.4 1.5
-            moveCommand.angular.z = ((!isNearLoadPoint) ? -1.4 * twistVel : -twistVel);
+            moveCommand.angular.z = ((!isNearLoadPoint) ? -1.4 * twistVel : -twistVel); // fixme 1.2 if !near
         } else if (avgSx > 1.02 * lateralMinDist) {
             moveCommand.angular.z = ((!isNearLoadPoint) ? +1.4 * twistVel : twistVel);
         } else
