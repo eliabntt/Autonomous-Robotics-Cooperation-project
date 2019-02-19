@@ -651,7 +651,7 @@ void G01Move::followerCallback(bool forward) {
     if (forwardDist > frontWallDist) {
         // assume nearly aligned, we need to move forward
 
-        moveCommand.linear.x = linVel;
+        moveCommand.linear.x = ((!isNearLoadPoint) ? linVel : 0.9 * linVel);
         if (avgSx < 0.98 * lateralMinDist) {
             //fixme 1.2 1.4 1.5
             moveCommand.angular.z = ((!isNearLoadPoint) ? -1.2 * twistVel : -twistVel);
