@@ -44,7 +44,7 @@ G01Move::G01Move() : n(), spinner(2) {
             ros::Duration(STATE_SLEEP_TIME).sleep();
 
         // from second run onward, rotate where there are no obstacles, in-place
-        if (!firstRun) {
+        /*if (!firstRun) {
             ROS_INFO_STREAM("Push away from the wall");
             moveCommand.linear.x = -0.1;
             moveCommand.angular.z = 0.0;
@@ -123,7 +123,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
         // publish wake up command
         stateCommand.data = STATE_UR10_WAKE;
-        statePub.publish(stateCommand);
+        statePub.publish(stateCommand);*/
 
         ROS_INFO_STREAM("Following the wall");
         wallFollower(true);
@@ -471,7 +471,7 @@ void G01Move::docking() {
     ROS_INFO_STREAM("Rotate toward left wall");
     double r, p, y, ty = PI / 2 + 0.2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    moveCommand.linear.x = 0.01;
+   /* moveCommand.linear.x = 0.01;
     while (fabs(y - ty) > 0.01) {
         moveCommand.angular.z = ((y > ty) ? -0.3 : 0.3);
         velPub.publish(moveCommand);
@@ -481,15 +481,26 @@ void G01Move::docking() {
     moveCommand.linear.x = 0.0; // stop
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
-
+*/
+    ROS_INFO_STREAM("Y " << marrPoseAmcl.position.y);
+    ROS_INFO_STREAM("X " << marrPoseAmcl.position.x);
+    //todo tune
+    while (marrPoseAmcl.position.y < 1.2 && marrPoseAmcl.position.x > 0.52) {
+        moveCommand.linear.x = 0.2;
+        moveCommand.angular.z = 0.2;
+        velPub.publish(moveCommand);
+        ros::Duration(0.08).sleep();
+    }
+/*
     ROS_INFO_STREAM("Go on");
-    while (marrPoseAmcl.position.x > 0.57) {
+    while (marrPoseAmcl.position.x > 0.5) {
         //ROS_INFO_STREAM("X " << marrPoseAmcl.position.x);
         moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         velPub.publish(moveCommand);
-        ros::Duration(0.08).sleep();
-    }
+        ros::Duration(0.01).sleep();
+    }*/
+
     moveCommand.linear.x = 0.0;
     moveCommand.angular.z = 0.0;
     velPub.publish(moveCommand);
@@ -501,7 +512,7 @@ void G01Move::docking() {
         //ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
-        ros::Duration(0.08).sleep();
+        ros::Duration(0.01).sleep();
         poseToYPR(marrPoseOdom, &y, &p, &r);
     }
     moveCommand.linear.x = 0.0;
