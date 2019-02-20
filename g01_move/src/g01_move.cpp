@@ -152,7 +152,7 @@ G01Move::G01Move() : n(), spinner(2) {
 
         // rotation
         ROS_INFO_STREAM("Rotate, going back to unload point");
-        rotateRight(); //fixme is this necessary?
+        rotateRight();
 
         // move to the entrance of the corridor - back
         ROS_INFO_STREAM("Intermediate through the funnel");
@@ -218,7 +218,7 @@ G01Move::G01Move() : n(), spinner(2) {
         velPub.publish(moveCommand);
 
         ROS_INFO_STREAM("Advance toward the wall");
-        moveCommand.linear.x = 0.2; // todo if tuning needed, here
+        moveCommand.linear.x = 0.2;
         moveCommand.angular.z = 0.0;
         while (forwardDist > 0.2) {
             velPub.publish(moveCommand);
@@ -462,7 +462,7 @@ void G01Move::docking() {
     ROS_INFO_STREAM("Realign");
     ty = PI / 2;
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    while (fabs(y - ty) > 0.01) {
+    while (fabs(y - ty) > 0.1) {
         //ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
@@ -487,7 +487,7 @@ void G01Move::docking() {
 
     ROS_INFO_STREAM("Safety realign");
     poseToYPR(marrPoseOdom, &y, &p, &r);
-    while (fabs(y - ty) > 0.01) {
+    while (fabs(y - ty) > 0.1) {
         //ROS_INFO_STREAM("Y " << y << " TY " << ty);
         moveCommand.angular.z = ((y > ty) ? -0.2 : 0.2);
         velPub.publish(moveCommand);
@@ -513,8 +513,8 @@ void G01Move::rotateRight() {
     ty = y;       // current yaw
     ty -= (3.24); // target yaw
 
-    moveCommand.linear.x = 0.25; //fixme 0.3
-    moveCommand.angular.z = -1.2 * twistVel; //fixme 1.3
+    moveCommand.linear.x = 0.25;
+    moveCommand.angular.z = -1.2 * twistVel;
     velPub.publish(moveCommand);
     ros::Duration(1).sleep();
 
@@ -653,7 +653,6 @@ void G01Move::followerCallback(bool forward) {
 
         moveCommand.linear.x = ((!isNearLoadPoint) ? linVel : 0.9 * linVel);
         if (avgSx < 0.98 * lateralMinDist) {
-            //fixme 1.2 1.4 1.5
             moveCommand.angular.z = ((!isNearLoadPoint) ? -1.2 * twistVel : -twistVel);
         } else if (avgSx > 1.02 * lateralMinDist) {
             moveCommand.angular.z = ((!isNearLoadPoint) ? +1.2 * twistVel : twistVel);
@@ -664,7 +663,6 @@ void G01Move::followerCallback(bool forward) {
 
         moveCommand.linear.x = linVel * 1 / 3;
         if (avgSx < lateralMinDist)
-            //fixme 2.7 3
             moveCommand.angular.z = -2.7 * twistVel;
         else if (avgSx > 1.1 * lateralMinDist)
             moveCommand.angular.z = +2.7 * twistVel;

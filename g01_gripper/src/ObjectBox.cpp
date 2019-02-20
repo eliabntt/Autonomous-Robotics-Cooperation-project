@@ -18,7 +18,7 @@ ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     temp.orientation.w = 1;
     tf::Quaternion rotation(robotPose.orientation.x, robotPose.orientation.y,
                             robotPose.orientation.z, robotPose.orientation.w);
-    robotPose.position.y -= 0.01;//todo tune
+    robotPose.position.y -= 0.01;
     robotPose.position.x += 0.002;
     tf::Vector3 widthVector(W / 3, 0, 0);
     tf::Vector3 lengthVector(L / 4, 0, 0);

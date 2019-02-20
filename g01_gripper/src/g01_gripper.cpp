@@ -168,8 +168,8 @@ void G01Gripper::stateCallback(const std_msgs::UInt16::ConstPtr &msg) {
 std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning_interface::MoveGroupInterface &group,
                                                                 std::vector<geometry_msgs::PoseStamped> objectList,
                                                                 ObjectBox &box, int rotate) {
-    // settings //fixme with real ones
-    group.setMaxVelocityScalingFactor(0.9); //todo try 1 in real
+    // settings
+    group.setMaxVelocityScalingFactor(0.9);
     group.setGoalPositionTolerance(0.0001);
 
     // vector of objects for which the planning failed
@@ -308,7 +308,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
             pose.position.x -= 0.15;
         }
 
-        // add offsets due to real map inconsistencies //fixme real
+        // add offsets due to real map inconsistencies
         if (!sim) {
             pose.position.x += 0.32;
             pose.position.y += 0.15;
@@ -408,7 +408,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 bool G01Gripper::moveManipulator(geometry_msgs::Pose destination,
                                  moveit::planning_interface::MoveGroupInterface &group) {
     // cartesian path parameters
-    const double JUMP_THRESH = 0.0; // fixme check if good values
+    const double JUMP_THRESH = 0.0;
     const double EEF_STEP = 0.01;
     moveit_msgs::RobotTrajectory traj, trajTemp;
 
@@ -762,7 +762,7 @@ bool G01Gripper::isHeld(int howMuch) {
     // check if object is held by gripper's fingers
     if (sim) return true;
 
-    return true; // fixme test on real one (come concordato con Elisa)
+    return true; // fixme da testare su reale (come concordato con Elisa)
     /*
     while(status.gSTA == 0)
     ros::Duration(0.2).sleep();
