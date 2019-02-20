@@ -215,7 +215,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         double diff, diffAbs;
 
         diffAbs = std::min(fabs(y + p_ee), fabs(y - p_ee));
-        if (diffAbs - PI / 2 > 0.1 || diffAbs > 0.1) {
+        if (diffAbs - PI / 2 > 0.02 || diffAbs > 0.02 || rotate == ROT_TRI) {
             if (fabs(y + p_ee) == diffAbs)
                 diff = y + p_ee;
             else
