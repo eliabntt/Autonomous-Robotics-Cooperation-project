@@ -64,7 +64,7 @@ G01Gripper::G01Gripper() : command(), n() {
             // wait for perception module
             bool stop = false;
             while (ros::ok() && !stop)
-                if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty() || !objectsToAvoid.empty()) {
+                if (!cubeToGrab.empty() || !cylToGrab.empty() || !triToGrab.empty()) {
                     // objects detected, proceed to next step
                     subGrab.shutdown();
                     subAvoid.shutdown();
@@ -96,7 +96,8 @@ G01Gripper::G01Gripper() : command(), n() {
                 marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1,
                                           &G01Gripper::marrOdomCallback, this);
             else
-                marrOdomSub = n.subscribe("/odom", 1, &G01Gripper::marrOdomCallback, this);
+                //marrOdomSub = n.subscribe("/odom", 1, &G01Gripper::marrOdomCallback, this);
+                marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Gripper::subPoseCallback, this);
 
             // strategy: if planning fails objects are placed in the return vector;
             // retry the call for max 5 times if needed
@@ -108,8 +109,7 @@ G01Gripper::G01Gripper() : command(), n() {
                 ObjectBox box = ObjectBox(LZPose);
                 finish = true; // can change later
                 full = false;  // empty box
-
-                /*ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
+       /*         ros::Publisher p1 = n.advertise<geometry_msgs::PoseStamped>("/p1",1);
                 ros::Publisher p2 = n.advertise<geometry_msgs::PoseStamped>("/p2",1);
                 ros::Publisher p3 = n.advertise<geometry_msgs::PoseStamped>("/p3",1);
                 ros::Publisher p4 = n.advertise<geometry_msgs::PoseStamped>("/p4",1);
@@ -148,11 +148,11 @@ G01Gripper::G01Gripper() : command(), n() {
                     a.header.stamp = ros::Time::now();
                     p6.publish(a);
                     ros::Duration(1).sleep();
-                }*/
-
+                }
+*/
                 // move cylinders (hexagons)
                 int count = 0;
-                while (!cylToGrab.empty() && count < 5 && !full) {
+                while (!cylToGrab.empty() && count < 1 && !full) {
                     cylToGrab = moveObjects(group, cylToGrab, box, ROT_CYL);
                     count += 1;
                 }
@@ -163,7 +163,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 // move cubes
                 count = 0;
-                while (!cubeToGrab.empty() && count < 5 && !full) {
+                while (!cubeToGrab.empty() && count < 1 && !full) {
                     cubeToGrab = moveObjects(group, cubeToGrab, box, ROT_CUB);
                     count += 1;
                 }
@@ -174,7 +174,7 @@ G01Gripper::G01Gripper() : command(), n() {
 
                 // move prisms
                 count = 0;
-                while (!triToGrab.empty() && count < 5 && !full) {
+                while (!triToGrab.empty() && count < 1 && !full) {
                     triToGrab = moveObjects(group, triToGrab, box, ROT_TRI);
                     count += 1;
                 }
@@ -252,6 +252,8 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // set target above the object
         pose.position = obj.pose.position;
+        pose.position.x -= 0.015;
+        pose.position.y -= 0.015;
         pose.position.z += 0.4;
 
         poseToYPR(obj.pose, &y, &p, &r);
@@ -279,10 +281,13 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
 
         // get the right altitude for gripper:
         // anti squish countermeasure
-        if (obj.pose.position.z > 1.2)
+        if (rotate == 2)
             pose.position.z = obj.pose.position.z; // cylinders
         else
-            pose.position.z = obj.pose.position.z * 1.12;
+            if(rotate == 0)
+                pose.position.z = obj.pose.position.z * 1.1;
+            else
+                pose.position.z = obj.pose.position.z *1.2;
 
         // move or go back home (then save new position of the object:
         // movement can stop anywhere between start and stop positions)
@@ -353,11 +358,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // add offsets due to real map inconsistencies
-        if (!sim) { //fixme real
-            pose.position.x += 0.32;
-            pose.position.y += 0.15;
+    /*    if (!sim) { //fixme real
+            pose.position.x += 0.6;
+            pose.position.y += 0.6;
         }
-
+*/
         if (!moveManipulator(pose, group)) {
             if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
                 group.move();
@@ -435,6 +440,7 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         // remove the corresponding collision object from the scene
         std::vector<std::string> toRemove = {obj.header.frame_id};
         planningSceneIF.removeCollisionObjects(toRemove);
+        ROS_INFO_STREAM(toRemove.at(0));
 
         pose = group.getCurrentPose().pose;
         pose.position.z += 0.4;
@@ -837,16 +843,32 @@ void G01Gripper::goHome(moveit::planning_interface::MoveGroupInterface &group, b
         group.move();
 }
 
+void G01Gripper::subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL) {
+    marrPose = msgAMCL->pose;
+    marrPoseAmcl = marrPose.pose;
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tf2_listener(tfBuffer);
+    try {
+        geometry_msgs::TransformStamped amcl_to_world;
+        // fixme for real
+        amcl_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
+        tf2::doTransform(marrPoseAmcl, LZPose, amcl_to_world);
+        ROS_INFO_STREAM("Pose from marrtino received");
+        odomReceived = true;
+        marrOdomSub.shutdown();
+    } catch (tf2::TransformException &exception) {
+        ROS_ERROR_STREAM("Amcl-World transform not found");
+    }
+}
+
+
 void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) {
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tf2_listener(tfBuffer);
     try {
         geometry_msgs::TransformStamped odom_to_world;
         // fixme for real
-        if (!sim)
-            odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0));
-        else
-            odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
+        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
         tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
         ROS_INFO_STREAM("Pose from marrtino received");
         odomReceived = true;

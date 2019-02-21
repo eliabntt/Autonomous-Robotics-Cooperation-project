@@ -15,6 +15,7 @@
  */
 ObjectBox::ObjectBox(geometry_msgs::Pose robotPose) {
     geometry_msgs::Pose center, temp;
+// fixme robotPose.position.x= robotPose.position.y=
     temp.orientation.w = 1;
     tf::Quaternion rotation(robotPose.orientation.x, robotPose.orientation.y,
                             robotPose.orientation.z, robotPose.orientation.w);

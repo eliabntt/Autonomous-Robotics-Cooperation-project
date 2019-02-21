@@ -85,7 +85,7 @@ private:
     // joints' angles for fixed points       base    shoulder elbow     wr1      wr2      wr3
     std::vector<double> HOME_JOINT_POS      {PI / 2, -PI / 2, -PI / 2,  -PI / 2, PI / 2,  0};
     std::vector<double> HOME_JOINT_POS_SAFE {PI / 2, -PI / 2,       0,  -PI / 2, PI / 2,  0};
-    geometry_msgs::Pose LZPose;
+    geometry_msgs::Pose LZPose, marrPoseAmcl;
     geometry_msgs::Pose initialPose; // not in joints here
     std::string planFrameId, endEffId;
 
@@ -95,6 +95,9 @@ private:
     ros::Subscriber marrOdomSub;
     robotiq_s_model_control::SModel_robot_input status;
 
+    void subPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msgAMCL);
+    geometry_msgs::PoseWithCovariance marrPose;
+   ros::Subscriber marrPoseSub;
     // publisher
     ros::ServiceClient attacher, detacher;
     ros::Publisher gripperCommandPub, fakeGripperCommandPub;
