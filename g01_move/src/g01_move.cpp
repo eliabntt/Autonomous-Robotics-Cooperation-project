@@ -234,8 +234,8 @@ G01Move::G01Move() : n(), spinner(2) {
         ROS_INFO_STREAM("Going near the entrance of the corridor");
         while (marrPoseAmcl.position.y > 0.2 && marrPoseAmcl.position.x > 0.54) {
         //    ROS_INFO_STREAM("cca");
-            moveCommand.linear.x = 0.1;
-            moveCommand.angular.z = 0.0;
+            moveCommand.linear.x = 0.2;
+            moveCommand.angular.z = 0.2;
             velPub.publish(moveCommand);
             ros::Duration(0.01).sleep();
         }/*
@@ -278,16 +278,21 @@ G01Move::G01Move() : n(), spinner(2) {
 
         ROS_INFO_STREAM("Align toward the wall");
         double r, p, y, ty;
-//fixme insert amcl fix
-        poseToYPR(marrPoseOdom, &y, &p, &r);
+        poseToYPR(marrPoseAmcl, &y, &p, &r);
         ty = (y > 0) ? PI : -PI; // damn discontinuities //todo check
         moveCommand.linear.x = 0.01;
-        while (fabs(y - ty) > 0.01) { //fixme 0.15??
-            ROS_INFO_STREAM("Y " << y << " TY " << ty);
-            moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
-            velPub.publish(moveCommand);
-            ros::Duration(0.01).sleep(); // fixme 0.08
-            poseToYPR(marrPoseOdom, &y, &p, &r);
+        {
+            ros::ServiceClient update_client = n.serviceClient<std_srvs::Empty>(
+                    "/marrtino/request_nomotion_update");
+
+                while (fabs(y - ty) > 0.01) { //fixme 0.15??
+                ROS_INFO_STREAM("Y " << y << " TY " << ty);
+                moveCommand.angular.z = (ty > 0) ? 0.3 : -0.3; // works only on half circle
+                velPub.publish(moveCommand);
+                ros::Duration(0.01).sleep(); // fixme 0.08
+                update_client.call(empty);
+                poseToYPR(marrPoseAmcl, &y, &p, &r);
+            }
         }
         moveCommand.linear.x = 0.0;
         moveCommand.angular.z = 0.0;
