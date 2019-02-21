@@ -559,8 +559,8 @@ std::vector<geometry_msgs::Pose> G01Gripper::makeWaypoints(geometry_msgs::Pose f
 // Gripper
 void G01Gripper::gripperOpen() {
     if (!sim) {
-        ROS_INFO_STREAM("1 SEC TO MAN OPEN THE GRIPPER");
-        ros::Duration(1).sleep();
+        ROS_INFO_STREAM("3 SEC TO MAN OPEN THE GRIPPER");
+        ros::Duration(3).sleep();
         //fakeGripperOpen();
         return;
     }
@@ -606,8 +606,8 @@ bool G01Gripper::gazeboDetach(std::string name, std::string link) {
 
 void G01Gripper::gripperClose(int howMuch) {
     if (!sim) {
-        ROS_INFO_STREAM("1 SEC TO MAN CLOSE THE GRIPPER");
-        ros::Duration(1).sleep();
+        ROS_INFO_STREAM("3 SEC TO MAN CLOSE THE GRIPPER");
+        ros::Duration(3).sleep();
         //fakeGripperClose();
         return;
     }
