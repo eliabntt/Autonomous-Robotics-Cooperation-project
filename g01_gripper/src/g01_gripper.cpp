@@ -96,8 +96,8 @@ G01Gripper::G01Gripper() : command(), n() {
                 marrOdomSub = n.subscribe("/marrtino/marrtino_base_controller/odom", 1,
                                           &G01Gripper::marrOdomCallback, this);
             else
-                //marrOdomSub = n.subscribe("/odom", 1, &G01Gripper::marrOdomCallback, this);
-                marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Gripper::subPoseCallback, this);
+                marrOdomSub = n.subscribe("/odom", 1, &G01Gripper::marrOdomCallback, this);
+                //marrPoseSub = n.subscribe("/marrtino/amcl_pose", 100, &G01Gripper::subPoseCallback, this);
 
             // strategy: if planning fails objects are placed in the return vector;
             // retry the call for max 5 times if needed
@@ -358,11 +358,11 @@ std::vector<geometry_msgs::PoseStamped> G01Gripper::moveObjects(moveit::planning
         }
 
         // add offsets due to real map inconsistencies
-    /*    if (!sim) { //fixme real
-            pose.position.x += 0.6;
-            pose.position.y += 0.6;
+        if (!sim) { //fixme real
+            pose.position.x += 0.32;
+            pose.position.y += 0.15;
         }
-*/
+
         if (!moveManipulator(pose, group)) {
             if (group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS)
                 group.move();
@@ -868,7 +868,7 @@ void G01Gripper::marrOdomCallback(const nav_msgs::Odometry::ConstPtr &OdomPose) 
     try {
         geometry_msgs::TransformStamped odom_to_world;
         // fixme for real
-        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_map", ros::Time(0), ros::Duration(10.0));
+        odom_to_world = tfBuffer.lookupTransform("world", "marrtino_odom", ros::Time(0), ros::Duration(10.0));
         tf2::doTransform(OdomPose->pose.pose, LZPose, odom_to_world);
         ROS_INFO_STREAM("Pose from marrtino received");
         odomReceived = true;
