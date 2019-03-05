@@ -1,21 +1,22 @@
 # Homework 4 - FSM
 
-## Aspetti principali
+## Principal aspects
 
-La macchina a stati finiti comanda lo svolgimento dell'intera challenge.
-Funziona tramite lo scambio di messaggi tra i moduli di marrtino e del manipolatore sul topic `g01_fsm_state`.
+The finite state machine commands and synchronizes the entire challenge.
+It works by message exchange between marrtino and manipulator modules, on the `g01_fsm_state` topic.
 
-Quando marrtino raggiunge l'imboccatura del corridoio viene pubblicato il comando di risveglio della parte percettiva del modulo del manipolatore: le posizioni dei tag vengono lette e elaborate in modo da ottimizzare i tempi di esecuzione (la lettura nel reale impiega 4-5 secondi in media).
-Quando marrtino raggiunge la zona di carico, viene dato il via libera allo spostamento degli oggetti al manipolatore.
-La posa del marrtino viene utilizzata per creare una matrice di posizioni dove dovranno essere appoggiati gli oggetti:
-in base allo stato di occupazione della scatola posta in cima a marrtino e ai pezzi eventualmente mancanti, il modulo del manipolatore comunicherà se è necessario un secondo giro per completare il trasferimento di tutti i pezzi.
-In caso positivo, una volta raggiunta la zona di scarico marrtino rimarrà in attesa sul topic `g01_start_run` del via libera per poter cominciare un altro giro.
-Questi comportamenti vengono ripetuti in loop fino al completo trasferimento di tutti gli oggetti necessari.
+When marrtino reaches the start of the corridor, the awake command for the perception part of the manipulator will be published:
+tags positions will be read so to optimize execution times (a single reading takes an average of 4-5 seconds in a real environment).
+When marrtino enters the loading zone, the manipulator is allowed to move objects.
+Marrtino's pose will be used to create an occupancy and poses matrix where objects could be loaded at:
+based on the occupancy state of the box at the top of marrtino, the manipulator module will communicate if another round is needed to complete the transfer.
+If it is needed, while at the unload zone marrtino will listen on the `g01_start_run` topic before returning to the unload zone.
+These behaviors will be repeated until all the requested objects will be transferred.
 
-## Modalità di funzionamento (in simulazione)
+## Commands (for simulation)
 
-Questo modulo contiene i due launch file necessari per far partire l'intera challenge: 
-oltre a gazebo e rviz, lanciare prima il gruppo dei planner (apriltags, MoveIt, Marrtino) e poi quello dei package.
+This module contains the two launch file needed to start the entire challenge: 
+other than gazebo and rviz, launch first the planner group (apriltags, MoveIt, Marrtino) and then the package's one.
 
 ```
 roslaunch challenge_arena challenge.launch sim:=true
@@ -33,20 +34,19 @@ roslaunch g01_challenge challenge_planners.launch sim:=true
 roslaunch g01_challenge challenge_packages.launch sim:=true ids:="[[frame_id],]"
 ```
 
-I frame ID sono gli stessi in input al pacchetto della percezione, descritti nel rispettivo [README](../g01_perception/README.md).
+Frame IDs are the same as the input of the perception module, described in the [README](../g01_perception/README.md).
 
-Per far cominciare un secondo giro, quando servono ulteriori pezzi, usare il comando
+To start another round, when more objects are needed, use the command
 
 ```
 rostopic pub --once g01_start_run std_msgs/Bool 'true'
 ```
 
-Non ha effetto se il task è stato completato correttamente.
+It does not work if the task was completed successfully.
 
-### Note aggiuntive
+### Additional notes
 
-Sono state aggiunte routine apposite per il docking in zona di carico e di scarico e per effetturare una rotazione in caso serva eseguire un secondo giro.
-La rotazione nella zona di scarico verrà effettuata tenendo conto della direzione di approccio alla posa utilizzata dal robot.
-In questo modo si è pressoché sicuri di avere il robot orientato verso un percorso libero.
+Routines were added for the docking operation at the loading and unloading zones, and to perform a rotation in case another round is needed.
+Rotation at the unload point will be executed to the original direction where marrtino came from, so we are quite sure the robot faces an object-free direction.
 
-Per evitare problemi di perdita di localizzazione è stata utilizzata una configurazione dinamica della precisione dell'angolo di goal, per il primo e l'ultimo checkpoint, dove la direzione d'approccio non è e non può essere deterministica.
+To avoid localization issues, a dynamic configuration of the goal's angle precision was made for the first and the last checkpoint, where the coming direction cannot be deterministic.

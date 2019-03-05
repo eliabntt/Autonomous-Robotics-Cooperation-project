@@ -1,20 +1,20 @@
 # Homework 3 - Marrtino
 
-Questo homework per funzionare necessita delle versioni più aggiornate dei package dell'arena e di marrtino.
+This homework needs the latest versions of the arena and marrtino packages.
 
-## Aspetti principali
+## Principal aspects
 
-Partendo dalla posizione iniziale, il robot usa il planner, dotato di configurazioni personalizzate, per raggiungere tre posizioni intermedie in sequenza, avvicinandosi sempre più all'entrata del corrodoio;
-le posizioni sono al termine dell'area aperta e non troppo vicino ai muri, per lasciare al planner libertà d'azione, e compongono una traiettoria curvilinea, fino ad inserirsi all'inizio del corridoio.
-Il corridoio è affrontato in modo manuale seguendo il muro sinistro fino al raggiungimento della zona di carico, dove il robot attende di essere caricato.
-In seguito, marrtino viene ruotato di 180° verso destra; la rotazione non è esattamente sul posto, per allontanarsi dal muro sinistro, evitando contatti, e per evitare problemi di localizzazione.
-Il ritorno avviene inizialmente utilizzando il planner sfruttando la buona localizzazione precedentemente ottenuta per avvicinarsi quanto più possibile all'ingresso del corridoio.
-Successivamente, cercando di seguire sempre il muro sinistro, si prosegue fino all'uscita.
-Marrtino viene fatto poi deviare leggermente a destra e ritorna quindi sui suoi passi, raggiungendo tramite planner le prime due posizioni intermedie in ordine inverso, e poi viene indirizzato verso la zona di scarico.
+Starting from the initial position, the robot uses the planner, loaded with personalized configurations, to reach three intermediate positions and to approach the corridor entrance;
+positions are at the end of the open area and not too near the walls, to leave the planner freedom of movement, and they make a curvilinear trajectory, until the start of the corridor.
+The corridor is crossed in a manual way following the left wall until the loading zone is reached, where the robot waits to be loaded.
+Then, it rotates of 180° to the right; the rotation is not exactly in place, to push away from the left wall, avoiding contacts and localization issues.
+The planner is used along with the reached good level of localization to approach the other corridor entrance.
+Then, the left wall is followed until the corridor is over.
+Marrtino then deviates slightly to the right and returns to the first two intermediate positions (in inverse order), and then goes to the unload zone.
 
-## Modalità di funzionamento (in simulazione)
+## Commands (for simulation)
 
-In terminali separati lanciare l'arena in Gazebo e rviz.
+Launch Gazebo and rviz in separate shells.
 
 ```
 roslaunch challenge_arena challenge.launch sim:=true
@@ -24,22 +24,22 @@ roslaunch challenge_arena challenge.launch sim:=true
 rosrun rviz rviz -d `rospack find g01_move`/rviz/marrtino_config.rviz
 ```
 
-Questo modulo può essere lanciato tenendo la parte di navigazione separata (consigliato), con due terminali:
+This module can be launched by keeping the navigation part separated (recommended), using two shells:
 
 ```
 roslaunch g01_move robot_navigation.launch
 roslaunch g01_move move.launch sim:=true
 ```
 
-oppure con un singolo comando (l'output della navigazione va su log file):
+or with a single command (navigation output goes to log file):
 
 ```
 roslaunch g01_move move_nav.launch sim:=true
 ```
 
-**IMPORTANTE**: con l'aggiunta della macchina a stati finiti, questo modulo dipende da quello del manipolatore e quindi non è più possibile utilizzarlo separatamente
-(ossia, i comandi alla sezione precedente *non* portano a fare un giro completo).
+**IMPORTANT**: with the addition of the finite state machine, this module depends from the manipulator one and it is no more possible to use it individually
+(previous commands do not lead to a complete round).
 
-### Note aggiuntive
+### Additional notes
 
-I file delle configurazioni personalizzate per planner e costmap sono contenuti in questo modulo e vengono utilizzati automaticamente dal file launch al posto dei predefiniti dell'arena.
+Personalized config files for planner and costmaps are found in this module and are automatically used by launch files instead of the arena's default ones.
