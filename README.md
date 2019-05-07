@@ -2,6 +2,8 @@
 
 Devs: Elia Bonetto, Filippo Rigotto
 
+#### Translation still in progress
+
 The course's project is about cooperation between robots. Specifically we have to detect some objects on a table, take them with a robotic arm (UR10 + 3-finger Robotiq gripper) and place them over a mobile robot that has to navigate throughout a possibly dynamic enviroment with a narrow passage.
 
 This repo contains all the developed packages necessary to simulate the described challenge.
@@ -40,6 +42,6 @@ catkin_make
 ## Results
 
 The video of the simulation can be found [here]().
-
+ 
 The main problems faced within this challenge are related to the simulation of the physics inside Gazebo, especially related to the moving robot. As you can easily see the movements and the interaction with the other objects are pretty unrealistic. Anyway that wasn't our duty to provide that and to assess this problems and we couldn't change that much. One simple example can be seen [here]() or [here]() where we can see the slipping wheel (which is not much repeatable) and the interaction between the robot and the cylinders.
 Other problems are AMCL-related, especially in the rotational movements. These problems though are not present in the real version of the robot, even if the poor quality of the laser reads gave us other difficulties.
