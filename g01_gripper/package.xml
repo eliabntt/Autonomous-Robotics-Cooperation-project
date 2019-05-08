@@ -9,13 +9,12 @@
     <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
     <maintainer email="eliabntt94@gmail.com">Elia Bonetto</maintainer>
     <maintainer email="rigotto.filippo@gmail.com">Filippo Rigotto</maintainer>
-    <author email="zovomat@gmail.com">Matteo Dal Zovo</author>
 
 
     <!-- One license tag required, multiple allowed, one license per tag -->
     <!-- Commonly used license strings: -->
     <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-    <license>TODO</license>
+    <license>MIT</license>
 
 
     <!-- Url tags are optional, but multiple are allowed, one per tag -->
