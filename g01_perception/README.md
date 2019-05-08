@@ -9,13 +9,13 @@
     - Pose with respect to `camera_rgb_optical_frame`
 - Transformation of the pose's coordinates to have them with respect to the `world` reference frame
 - Creation of two *publisher* that expose, w.r.t. `world` frame:
-    1. the requested tags that have to be grabbed with the future modules
-    2. the not requested tags which will become collision objects to avoid 
+    1. the requested tags that have to be grabbed with future modules
+    2. the not requested tags which will become collision objects to avoid
 - Output of these informations in `output.txt` (inside module folder) as requested in the assignment.
 
 ## Commands (for simulation)
 
-In separated terminals launc:
+In separate terminals launch:
 
 - challenge_arena in Gazebo:  
     ```
@@ -34,21 +34,21 @@ In separated terminals launc:
     roslaunch g01_perception discover.launch 
         [ids:="[[frame_id],]"] [sim:=true/false] [forever:=true/false]
     ```
-    
-    - `ids` is meant to keep the list of the wanted tags (separated by `,`) that we want to detect:
+
+    - `ids` is meant to keep the list of wanted tags (separated by `,`) that we want to detect:
         if found, they will be saved in the output file and published within the related topic.
-        The eventually remaining tags found will be published within the other topic as explained above.
-        If the parameter is not present or is empty all tags will be flagged as wanted.
+        The eventually remaining found tags will be published within the other topic as explained above.
+        If the parameter is not present or is empty, all tags will be flagged as wanted.
         Each invalid tag will cause an error message.
-    - `sim` parameter is used to distinguish between simulated and real environment, mainly for offsett related values.
+    - `sim` parameter is used to distinguish between simulated and real environments, mainly for offset-related tuning values.
     - `forever` is used to keep the perception module running, continuosly publishing its topics.
 
 ## Additional notes
-    
+
 - Default values:  
-    
+
     - ```sim:=true```  
     - ```forever:=false```  
     - ```ids:=""```  
-    
+
 - If invalid values will be given to `sim` or `forever`, default behaviour is used.
